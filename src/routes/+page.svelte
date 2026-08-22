@@ -274,10 +274,32 @@
     { id: "cors_misconfiguration", label: "CORS" },
     { id: "insecure_form", label: "Forms" },
   ];
+
+  // Active Tab in Report View
+  let activeTab = $state<"findings" | "recon" | "dns" | "endpoints">("findings");
+  let subdomainSearch = $state("");
+  let copiedUrl = $state(false);
+
+  async function copyTargetUrl() {
+    if (!report) return;
+    try {
+      await navigator.clipboard.writeText(report.target_url);
+      copiedUrl = true;
+      setTimeout(() => (copiedUrl = false), 2000);
+    } catch {}
+  }
+
+  const filteredSubdomains = $derived.by(() => {
+    if (!report || !report.subdomains) return [];
+    if (!subdomainSearch.trim()) return report.subdomains;
+    return report.subdomains.filter((sub) =>
+      sub.toLowerCase().includes(subdomainSearch.toLowerCase())
+    );
+  });
 </script>
 
 <svelte:head>
-  <title>VulnRadar - Web Vulnerability & Security Scanner</title>
+  <title>VulnRadar — Enterprise Web Security Posture & Vulnerability Scanner</title>
 </svelte:head>
 
 <!-- Top Navigation & Scan Bar -->
@@ -297,13 +319,15 @@
 
 <!-- Watchdog Alert Banner -->
 {#if watchdogAlert}
-  <div class="bg-rose-950/80 border-b border-rose-800/80 px-6 py-3 text-rose-200 text-xs flex items-center justify-between gap-4 animate-fade-in print:hidden">
+  <div
+    class="bg-rose-950/80 backdrop-blur-md border-b border-rose-800/80 px-6 py-3 text-rose-200 text-xs flex items-center justify-between gap-4 animate-fade-in print:hidden"
+  >
     <div class="flex items-center gap-2.5 min-w-0">
       <Bell class="w-4 h-4 text-rose-400 animate-bounce flex-shrink-0" />
-      <span class="font-bold">Watchdog Alert:</span>
-      <span class="truncate font-mono">{watchdogAlert.target_url}</span>
-      <span class="text-rose-300">
-        Score changed from {watchdogAlert.previous_score} to {watchdogAlert.new_score} ({watchdogAlert.critical_count} critical issues)
+      <span class="font-bold uppercase tracking-wider font-mono text-[11px]">Watchdog Trigger:</span>
+      <span class="truncate font-mono font-bold text-white">{watchdogAlert.target_url}</span>
+      <span class="text-rose-300 hidden sm:inline">
+        Score dropped from {watchdogAlert.previous_score} to {watchdogAlert.new_score} ({watchdogAlert.critical_count} critical issues detected)
       </span>
     </div>
     <div class="flex items-center gap-2 flex-shrink-0">
@@ -314,7 +338,7 @@
           handleScan(watchdogAlert!.target_url);
           watchdogAlert = null;
         }}
-        class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded-lg font-bold cursor-pointer transition-colors"
+        class="px-3 py-1 bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold rounded-lg text-xs cursor-pointer transition-all shadow-md shadow-rose-500/20"
       >
         View Audit
       </button>
@@ -322,6 +346,7 @@
         type="button"
         onclick={() => (watchdogAlert = null)}
         class="p-1 text-rose-400 hover:text-rose-200 rounded cursor-pointer"
+        aria-label="Dismiss alert"
       >
         <X class="w-4 h-4" />
       </button>
@@ -333,66 +358,95 @@
 <main class="max-w-7xl w-full mx-auto px-6 py-8 flex-1 flex flex-col">
   <!-- Scanning State -->
   {#if isScanning}
-    <div class="my-auto py-24 flex flex-col items-center justify-center text-center animate-pulse">
-      <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-4 text-cyan-400">
-        <Sparkles class="w-8 h-8 animate-spin" />
+    <div class="my-auto py-24 flex flex-col items-center justify-center text-center">
+      <!-- High-Tech Cyber Radar Spinner -->
+      <div class="relative w-24 h-24 mb-8 flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full border border-cyan-500/20 animate-ping"></div>
+        <div class="absolute inset-2 rounded-full border border-cyan-500/40"></div>
+        <div class="absolute inset-4 rounded-full border border-cyan-500/60 animate-pulse"></div>
+        <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/50 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/20">
+          <Sparkles class="w-6 h-6 animate-spin" />
+        </div>
       </div>
-      <h2 class="text-xl font-extrabold text-slate-100">Auditing Target Security Posture</h2>
-      <p class="text-xs font-mono text-cyan-400 mt-2 max-w-md truncate">{targetUrl}</p>
-      <p class="text-xs text-slate-400 mt-2 max-w-md">
-        Running security headers inspection, cookie flags, DNS & email SPF/DMARC analysis, subdomain discovery, and client-side CVE detection...
+
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold mb-3">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        LIVE SECURITY AUDIT IN PROGRESS
+      </div>
+
+      <h2 class="text-2xl font-black text-slate-100 tracking-tight">Auditing Target Surface</h2>
+      <p class="text-xs font-mono text-cyan-400 mt-2 max-w-md truncate bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+        {targetUrl}
+      </p>
+
+      <p class="text-xs text-slate-400 mt-4 max-w-md leading-relaxed">
+        Evaluating HTTP security headers, TLS ciphers, cookie flags, Certificate Transparency subdomains, DNS SPF/DMARC anti-spoofing, and front-end CVE dependencies...
       </p>
     </div>
 
   <!-- Scan Error State -->
   {:else if scanError}
-    <div class="my-10 p-6 bg-rose-950/30 border border-rose-900/50 rounded-2xl flex items-start gap-4 text-rose-300">
-      <AlertOctagon class="w-6 h-6 flex-shrink-0 text-rose-400 mt-0.5" />
-      <div>
-        <h3 class="text-base font-bold text-rose-200">Scan Failed</h3>
-        <p class="text-xs text-rose-300/90 mt-1 font-mono">{scanError}</p>
+    <div class="my-auto max-w-xl mx-auto p-6 bg-rose-950/20 border border-rose-900/60 rounded-2xl flex items-start gap-4 text-rose-300 shadow-xl">
+      <AlertOctagon class="w-7 h-7 flex-shrink-0 text-rose-400 mt-0.5" />
+      <div class="space-y-2">
+        <h3 class="text-base font-bold text-rose-200">Security Audit Encountered an Error</h3>
+        <p class="text-xs text-rose-300/90 font-mono bg-rose-950/50 p-2.5 rounded-lg border border-rose-900/40">{scanError}</p>
         <button
           type="button"
           onclick={() => handleScan()}
-          class="mt-4 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          class="mt-2 px-4 py-2 bg-rose-500 hover:bg-rose-400 text-slate-950 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-lg shadow-rose-500/20"
         >
-          Try Again
+          Retry Scan
         </button>
       </div>
     </div>
 
   <!-- Active Report View -->
   {:else if report}
-    <div class="space-y-6">
+    <div class="space-y-6 animate-fade-in">
       <!-- Target Summary Header Card -->
-      <div class="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-        <div class="space-y-2 min-w-0">
-          <div class="flex items-center gap-2">
+      <div class="p-6 bg-slate-900/60 border border-slate-800/90 rounded-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 shadow-xl backdrop-blur-md">
+        <div class="space-y-2.5 min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="px-2.5 py-0.5 text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md">
               HTTP {report.status_code}
             </span>
             <span class="text-xs text-slate-400 font-mono">
-              Latency: {report.response_time_ms} ms
+              Latency: <strong class="text-slate-200">{report.response_time_ms} ms</strong>
             </span>
-            <span class="text-xs text-slate-500">•</span>
+            <span class="text-xs text-slate-600">•</span>
             <span class="text-xs text-slate-400 font-mono">
-              {new Date(report.scanned_at).toLocaleTimeString()}
+              Audited at {new Date(report.scanned_at).toLocaleTimeString()}
             </span>
           </div>
 
-          <h1 class="text-2xl font-black text-slate-100 truncate flex items-center gap-2">
-            <Globe class="w-6 h-6 text-cyan-400 flex-shrink-0" />
-            <span class="truncate">{report.target_url}</span>
-          </h1>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-black text-white tracking-tight truncate flex items-center gap-2.5">
+              <Globe class="w-6 h-6 text-cyan-400 flex-shrink-0" />
+              <span class="truncate">{report.target_url}</span>
+            </h1>
+            <button
+              type="button"
+              onclick={copyTargetUrl}
+              class="p-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 border border-slate-700/60 rounded-lg cursor-pointer transition-colors"
+              title="Copy URL"
+            >
+              {#if copiedUrl}
+                <CheckCircle2 class="w-4 h-4 text-emerald-400" />
+              {:else}
+                <Search class="w-4 h-4" />
+              {/if}
+            </button>
+          </div>
 
           <!-- Detected Tech Stack Tags -->
           {#if report.technologies_detected.length > 0}
             <div class="flex flex-wrap items-center gap-1.5 pt-1">
-              <span class="text-xs text-slate-400 font-semibold flex items-center gap-1 mr-1">
-                <Cpu class="w-3.5 h-3.5 text-slate-500" /> Stack:
+              <span class="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1 mr-1">
+                <Cpu class="w-3.5 h-3.5 text-cyan-400" /> Fingerprint:
               </span>
               {#each report.technologies_detected as tech}
-                <span class="px-2 py-0.5 text-xs font-mono bg-slate-800/80 text-slate-300 border border-slate-700/60 rounded">
+                <span class="px-2.5 py-0.5 text-xs font-mono bg-slate-950/80 text-slate-300 border border-slate-800 rounded-md">
                   {tech}
                 </span>
               {/each}
@@ -406,239 +460,327 @@
         </div>
       </div>
 
-      <!-- Reconnaissance Posture Grid (DNS, Endpoints, Subdomains) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- DNS & Email Security -->
-        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
-          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-            <Mail class="w-4 h-4 text-cyan-400" />
-            <span>DNS & Email Security</span>
-          </div>
-          {#if report.dns_security}
-            <div class="space-y-1.5 text-xs font-mono pt-1">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-400">SPF Record:</span>
-                <span class={report.dns_security.spf_record ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
-                  {report.dns_security.spf_record ? "Configured" : "Missing"}
-                </span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-400">DMARC Policy:</span>
-                <span class={report.dns_security.dmarc_policy && report.dns_security.dmarc_policy !== "none" ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
-                  {report.dns_security.dmarc_policy || "None"}
-                </span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-400">DNSSEC:</span>
-                <span class={report.dns_security.dnssec_enabled ? "text-emerald-400 font-semibold" : "text-slate-500"}>
-                  {report.dns_security.dnssec_enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-            </div>
-          {:else}
-            <p class="text-xs text-slate-500">Not inspected.</p>
-          {/if}
-        </div>
-
-        <!-- Endpoints & Metafiles -->
-        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
-          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-            <FileCode class="w-4 h-4 text-cyan-400" />
-            <span>Endpoint Policies</span>
-          </div>
-          <div class="space-y-1.5 text-xs font-mono pt-1">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400">robots.txt:</span>
-              <span class={report.endpoint_report?.robots_txt_found ? "text-slate-200" : "text-slate-500"}>
-                {report.endpoint_report?.robots_txt_found ? `${report.endpoint_report.disallowed_paths.length} disallow rules` : "Not Found"}
-              </span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400">Sensitive Paths:</span>
-              <span class={(report.endpoint_report?.sensitive_disallowed_paths.length || 0) > 0 ? "text-amber-400 font-bold" : "text-emerald-400"}>
-                {report.endpoint_report?.sensitive_disallowed_paths.length || 0} exposed
-              </span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400">security.txt (RFC 9116):</span>
-              <span class={report.endpoint_report?.security_txt_found ? "text-emerald-400 font-semibold" : "text-slate-500"}>
-                {report.endpoint_report?.security_txt_found ? "Verified" : "Missing"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Subdomain Assets -->
-        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-              <Globe class="w-4 h-4 text-cyan-400" />
-              <span>Subdomain Map</span>
-            </div>
-            <span class="text-xs font-mono font-bold text-cyan-400">
-              {report.subdomains?.length || 0} found
-            </span>
-          </div>
-          {#if report.subdomains && report.subdomains.length > 0}
-            <div class="max-h-20 overflow-y-auto space-y-1 text-[11px] font-mono text-slate-300 pt-1">
-              {#each report.subdomains.slice(0, 8) as sub}
-                <button
-                  type="button"
-                  class="truncate text-left text-slate-400 hover:text-cyan-300 cursor-pointer block w-full"
-                  onclick={() => { targetUrl = `https://${sub}`; handleScan(`https://${sub}`); }}
-                >
-                  • {sub}
-                </button>
-              {/each}
-              {#if report.subdomains.length > 8}
-                <div class="text-[10px] text-slate-500">+ {report.subdomains.length - 8} more subdomains</div>
-              {/if}
-            </div>
-          {:else}
-            <p class="text-xs text-slate-500 pt-1">No public subdomains recorded.</p>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Finding Metrics Grid -->
+      <!-- Severity Metrics Grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Findings</span>
+        <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl flex flex-col shadow-sm">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">Total Issues</span>
           <span class="text-2xl font-black text-slate-100 mt-1 font-mono">{report.total_findings}</span>
         </div>
-        <div class="p-4 bg-rose-950/20 border border-rose-900/30 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">Critical</span>
+        <div class="p-4 bg-rose-500/5 border border-rose-500/20 rounded-xl flex flex-col shadow-sm hover:border-rose-500/40 transition-colors">
+          <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider font-mono">Critical</span>
           <span class="text-2xl font-black text-rose-400 mt-1 font-mono">{report.critical_count}</span>
         </div>
-        <div class="p-4 bg-orange-950/20 border border-orange-900/30 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">High</span>
+        <div class="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl flex flex-col shadow-sm hover:border-orange-500/40 transition-colors">
+          <span class="text-[11px] font-bold text-orange-400 uppercase tracking-wider font-mono">High</span>
           <span class="text-2xl font-black text-orange-400 mt-1 font-mono">{report.high_count}</span>
         </div>
-        <div class="p-4 bg-amber-950/20 border border-amber-900/30 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Medium</span>
+        <div class="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex flex-col shadow-sm hover:border-amber-500/40 transition-colors">
+          <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider font-mono">Medium</span>
           <span class="text-2xl font-black text-amber-400 mt-1 font-mono">{report.medium_count}</span>
         </div>
-        <div class="p-4 bg-blue-950/20 border border-blue-900/30 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Low</span>
+        <div class="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex flex-col shadow-sm hover:border-blue-500/40 transition-colors">
+          <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider font-mono">Low</span>
           <span class="text-2xl font-black text-blue-400 mt-1 font-mono">{report.low_count}</span>
         </div>
-        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col">
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Info</span>
-          <span class="text-2xl font-black text-slate-400 mt-1 font-mono">{report.info_count}</span>
+        <div class="p-4 bg-slate-800/20 border border-slate-700/40 rounded-xl flex flex-col shadow-sm">
+          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">Info</span>
+          <span class="text-2xl font-black text-slate-300 mt-1 font-mono">{report.info_count}</span>
         </div>
       </div>
 
-      <!-- Findings Filter & Search Bar -->
-      <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-        <!-- Search -->
-        <div class="relative w-full md:w-80">
-          <Search class="w-4 h-4 text-slate-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
-          <input
-            type="text"
-            bind:value={searchQuery}
-            placeholder="Search findings by keyword, CVE, or OWASP..."
-            class="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-200 placeholder-slate-500"
-          />
-        </div>
+      <!-- Navigation Tabs (Findings, DNS/Email, Endpoints, Subdomain Map) -->
+      <div class="border-b border-slate-800 flex items-center gap-2 overflow-x-auto pb-px">
+        <button
+          type="button"
+          onclick={() => (activeTab = "findings")}
+          class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer {activeTab === 'findings' ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <ShieldCheck class="w-4 h-4" />
+          <span>Vulnerabilities ({report.findings.length})</span>
+        </button>
 
-        <!-- Category & Severity Filter -->
-        <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
-          <button
-            type="button"
-            onclick={() => (selectedSeverity = "all")}
-            class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'all' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}"
-          >
-            All ({report.total_findings})
-          </button>
-          <button
-            type="button"
-            onclick={() => (selectedSeverity = "critical")}
-            class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'critical' ? 'bg-rose-500 text-white font-bold' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'}"
-          >
-            Critical ({report.critical_count})
-          </button>
-          <button
-            type="button"
-            onclick={() => (selectedSeverity = "high")}
-            class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'high' ? 'bg-orange-500 text-white font-bold' : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'}"
-          >
-            High ({report.high_count})
-          </button>
-          <button
-            type="button"
-            onclick={() => (selectedSeverity = "medium")}
-            class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'medium' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'}"
-          >
-            Med ({report.medium_count})
-          </button>
-          <button
-            type="button"
-            onclick={() => (selectedSeverity = "low")}
-            class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'low' ? 'bg-blue-500 text-white font-bold' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}"
-          >
-            Low ({report.low_count})
-          </button>
-        </div>
+        <button
+          type="button"
+          onclick={() => (activeTab = "dns")}
+          class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer {activeTab === 'dns' ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <Mail class="w-4 h-4" />
+          <span>DNS & Email Posture</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => (activeTab = "endpoints")}
+          class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer {activeTab === 'endpoints' ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <FileCode class="w-4 h-4" />
+          <span>Endpoint Policies</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => (activeTab = "recon")}
+          class="px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-all cursor-pointer {activeTab === 'recon' ? 'border-cyan-400 text-cyan-400 bg-cyan-500/5' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <Globe class="w-4 h-4" />
+          <span>Subdomain Map ({report.subdomains?.length || 0})</span>
+        </button>
       </div>
 
-      <!-- Findings List -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-between px-1">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">
-            Detected Vulnerabilities & Weaknesses ({filteredFindings.length})
-          </h2>
-          {#if selectedSeverity !== "all" || searchQuery.trim()}
+      <!-- TAB 1: Findings View -->
+      {#if activeTab === "findings"}
+        <!-- Search & Filter Controls -->
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="relative w-full md:w-80">
+            <Search class="w-4 h-4 text-slate-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
+            <input
+              type="text"
+              bind:value={searchQuery}
+              placeholder="Search CVEs, OWASP, or keyword..."
+              class="w-full pl-9 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-200 placeholder-slate-500 font-mono shadow-inner"
+            />
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
             <button
               type="button"
-              onclick={() => {
-                selectedSeverity = "all";
-                searchQuery = "";
-              }}
-              class="text-xs text-cyan-400 hover:underline cursor-pointer"
+              onclick={() => (selectedSeverity = "all")}
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'all' ? 'bg-cyan-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}"
             >
-              Reset Filters
+              All ({report.total_findings})
             </button>
+            <button
+              type="button"
+              onclick={() => (selectedSeverity = "critical")}
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'critical' ? 'bg-rose-500 text-white font-bold' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'}"
+            >
+              Critical ({report.critical_count})
+            </button>
+            <button
+              type="button"
+              onclick={() => (selectedSeverity = "high")}
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'high' ? 'bg-orange-500 text-white font-bold' : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'}"
+            >
+              High ({report.high_count})
+            </button>
+            <button
+              type="button"
+              onclick={() => (selectedSeverity = "medium")}
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'medium' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'}"
+            >
+              Med ({report.medium_count})
+            </button>
+            <button
+              type="button"
+              onclick={() => (selectedSeverity = "low")}
+              class="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors {selectedSeverity === 'low' ? 'bg-blue-500 text-white font-bold' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}"
+            >
+              Low ({report.low_count})
+            </button>
+          </div>
+        </div>
+
+        <!-- Findings List -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between px-1">
+            <h2 class="text-xs font-bold uppercase tracking-wider font-mono text-slate-400">
+              Security Findings ({filteredFindings.length})
+            </h2>
+            {#if selectedSeverity !== "all" || searchQuery.trim()}
+              <button
+                type="button"
+                onclick={() => {
+                  selectedSeverity = "all";
+                  searchQuery = "";
+                }}
+                class="text-xs text-cyan-400 hover:underline cursor-pointer font-mono"
+              >
+                Reset Filters
+              </button>
+            {/if}
+          </div>
+
+          {#if filteredFindings.length === 0}
+            <div class="py-16 text-center bg-slate-900/30 border border-slate-800 rounded-2xl">
+              <CheckCircle2 class="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
+              <h3 class="text-base font-bold text-slate-200">No matching issues found</h3>
+              <p class="text-xs text-slate-400 mt-1">No vulnerabilities match the current filter selection.</p>
+            </div>
+          {:else}
+            {#each filteredFindings as finding (finding.id)}
+              <FindingCard {finding} />
+            {/each}
           {/if}
         </div>
 
-        {#if filteredFindings.length === 0}
-          <div class="py-16 text-center bg-slate-900/30 border border-slate-800 rounded-2xl">
-            <CheckCircle2 class="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
-            <h3 class="text-base font-bold text-slate-200">No matching findings</h3>
-            <p class="text-xs text-slate-400 mt-1">No vulnerabilities match the current search or filter.</p>
+      <!-- TAB 2: DNS & Email Hardening Posture -->
+      {:else if activeTab === "dns"}
+        <div class="space-y-4">
+          {#if report.dns_security}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">SPF Anti-Spoofing</span>
+                  <span class="px-2 py-0.5 text-xs font-mono font-bold rounded {report.dns_security.spf_record ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}">
+                    {report.dns_security.spf_record ? "Configured" : "Missing"}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400">Validates authorized mail senders via Sender Policy Framework.</p>
+                {#if report.dns_security.spf_record}
+                  <pre class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-cyan-300 border border-slate-800 overflow-x-auto whitespace-pre-wrap">{report.dns_security.spf_record}</pre>
+                {/if}
+              </div>
+
+              <div class="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">DMARC Policy</span>
+                  <span class="px-2 py-0.5 text-xs font-mono font-bold rounded {report.dns_security.dmarc_policy && report.dns_security.dmarc_policy !== 'none' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}">
+                    {report.dns_security.dmarc_policy || "None"}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400">Enforces domain-based message authentication and alignment.</p>
+                {#if report.dns_security.dmarc_record}
+                  <pre class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-cyan-300 border border-slate-800 overflow-x-auto whitespace-pre-wrap">{report.dns_security.dmarc_record}</pre>
+                {/if}
+              </div>
+
+              <div class="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">DNSSEC Enforcement</span>
+                  <span class="px-2 py-0.5 text-xs font-mono font-bold rounded {report.dns_security.dnssec_enabled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}">
+                    {report.dns_security.dnssec_enabled ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400">Cryptographically authenticates DNS responses against spoofing.</p>
+                <div class="text-xs text-slate-500 font-mono pt-2">
+                  Authenticated Data (AD) Flag: {report.dns_security.dnssec_enabled ? "Verified" : "Not Present"}
+                </div>
+              </div>
+            </div>
+          {:else}
+            <div class="p-8 text-center bg-slate-900/40 border border-slate-800 rounded-2xl text-slate-400 text-xs">
+              DNS security was not inspected for this scan.
+            </div>
+          {/if}
+        </div>
+
+      <!-- TAB 3: Endpoint Policies (robots.txt, security.txt) -->
+      {:else if activeTab === "endpoints"}
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- robots.txt -->
+            <div class="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">robots.txt Disallow Rules</span>
+                <span class="px-2 py-0.5 text-xs font-mono font-bold rounded bg-slate-800 text-slate-300">
+                  {report.endpoint_report?.disallowed_paths.length || 0} paths
+                </span>
+              </div>
+              {#if report.endpoint_report && report.endpoint_report.disallowed_paths.length > 0}
+                <div class="max-h-56 overflow-y-auto space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs font-mono">
+                  {#each report.endpoint_report.disallowed_paths as path}
+                    <div class="text-slate-400">Disallow: {path}</div>
+                  {/each}
+                </div>
+              {:else}
+                <p class="text-xs text-slate-500">No robots.txt disallowed rules found.</p>
+              {/if}
+            </div>
+
+            <!-- Sensitive Exposed Paths -->
+            <div class="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">Sensitive Paths Disclosed</span>
+                <span class="px-2 py-0.5 text-xs font-mono font-bold rounded {(report.endpoint_report?.sensitive_disallowed_paths.length || 0) > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}">
+                  {report.endpoint_report?.sensitive_disallowed_paths.length || 0} exposed
+                </span>
+              </div>
+              {#if report.endpoint_report && report.endpoint_report.sensitive_disallowed_paths.length > 0}
+                <div class="max-h-56 overflow-y-auto space-y-1 bg-amber-950/20 p-3 rounded-lg border border-amber-900/40 text-xs font-mono">
+                  {#each report.endpoint_report.sensitive_disallowed_paths as sp}
+                    <div class="text-amber-300">⚠️ {sp}</div>
+                  {/each}
+                </div>
+              {:else}
+                <p class="text-xs text-emerald-400">No sensitive administration endpoints disclosed in robots.txt.</p>
+              {/if}
+            </div>
           </div>
-        {:else}
-          {#each filteredFindings as finding (finding.id)}
-            <FindingCard {finding} />
-          {/each}
-        {/if}
-      </div>
+        </div>
+
+      <!-- TAB 4: Subdomain Discovery Map -->
+      {:else if activeTab === "recon"}
+        <div class="space-y-4">
+          <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-2xl flex items-center justify-between gap-4">
+            <div class="relative w-full max-w-sm">
+              <Search class="w-4 h-4 text-slate-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
+              <input
+                type="text"
+                bind:value={subdomainSearch}
+                placeholder="Filter discovered subdomains..."
+                class="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-slate-200 placeholder-slate-500 font-mono"
+              />
+            </div>
+            <span class="text-xs font-mono text-cyan-400 font-bold">
+              {filteredSubdomains.length} / {report.subdomains?.length || 0} Total
+            </span>
+          </div>
+
+          {#if filteredSubdomains.length > 0}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              {#each filteredSubdomains as sub}
+                <button
+                  type="button"
+                  onclick={() => {
+                    targetUrl = `https://${sub}`;
+                    handleScan(`https://${sub}`);
+                  }}
+                  class="p-3 bg-slate-900/60 hover:bg-slate-850 hover:border-cyan-500/40 border border-slate-800 rounded-xl text-left text-xs font-mono text-slate-300 hover:text-cyan-300 transition-all cursor-pointer truncate flex items-center justify-between group shadow-sm"
+                >
+                  <span class="truncate">{sub}</span>
+                  <ExternalLink class="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 flex-shrink-0 ml-2" />
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <div class="p-12 text-center bg-slate-900/30 border border-slate-800 rounded-2xl text-slate-500 text-xs">
+              No subdomains found matching current search.
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
 
   <!-- Empty Initial Dashboard Landing -->
   {:else}
-    <div class="my-auto py-16 flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
-      <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-6 text-cyan-400 shadow-xl shadow-cyan-500/10">
-        <ShieldCheck class="w-8 h-8" />
+    <div class="my-auto py-12 flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
+      <!-- High-End Cyber Radar Emblem -->
+      <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-cyan-500/10 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center mb-6 text-cyan-400 shadow-2xl shadow-cyan-500/20">
+        <ShieldCheck class="w-10 h-10 text-cyan-400" />
+        <div class="absolute -inset-1 rounded-2xl bg-cyan-400/10 blur-md pointer-events-none"></div>
       </div>
 
-      <h1 class="text-3xl font-black text-white tracking-tight">
-        Instant Web Vulnerability Scanner
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold mb-4">
+        ENTERPRISE WEB SECURITY SUITE
+      </div>
+
+      <h1 class="text-4xl font-black text-white tracking-tight sm:text-5xl">
+        Automated Web Posture & Vulnerability Scanner
       </h1>
-      <p class="text-sm text-slate-400 mt-3 max-w-lg leading-relaxed">
-        Enter any website URL above to audit HTTP headers, SSL/TLS, cookie policies, DNS/email spoofing resistance (SPF/DMARC), subdomain map, and client-side CVEs.
+      <p class="text-sm text-slate-400 mt-4 max-w-xl leading-relaxed">
+        Perform real-time passive reconnaissance across HTTP security headers, SSL/TLS, cookie directives, Certificate Transparency subdomains, DNS email spoofing (SPF/DMARC), and front-end CVE dependencies.
       </p>
 
-      <!-- Quick targets -->
+      <!-- Quick presets -->
       <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
-        <span class="text-xs text-slate-500 font-semibold mr-1">Quick Presets:</span>
+        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider font-mono mr-1">Sample Targets:</span>
         <button
           type="button"
           onclick={() => {
             targetUrl = "https://example.com";
             handleScan("https://example.com");
           }}
-          class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-xs font-mono text-cyan-400 transition-colors cursor-pointer"
+          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           example.com
         </button>
@@ -648,7 +790,7 @@
             targetUrl = "http://testphp.vulnweb.com";
             handleScan("http://testphp.vulnweb.com");
           }}
-          class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-xs font-mono text-cyan-400 transition-colors cursor-pointer"
+          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           testphp.vulnweb.com
         </button>
@@ -658,7 +800,7 @@
             targetUrl = "https://httpbin.org";
             handleScan("https://httpbin.org");
           }}
-          class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-xs font-mono text-cyan-400 transition-colors cursor-pointer"
+          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           httpbin.org
         </button>
@@ -666,17 +808,28 @@
 
       <!-- Feature Badges -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 w-full text-left">
-        <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">Recon & OSINT</div>
-          <p class="text-xs text-slate-400">Automated subdomain discovery via Certificate Transparency and DNS email spoofing checks.</p>
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+            <Globe class="w-4 h-4" />
+          </div>
+          <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Recon & Subdomains</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Passive asset mapping via Certificate Transparency logs and SPF/DMARC anti-spoofing checks.</p>
         </div>
-        <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">CVE Audit (SCA)</div>
-          <p class="text-xs text-slate-400">Detects outdated JavaScript libraries (jQuery, Angular, Lodash, Bootstrap) with known CVEs.</p>
+
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+            <Cpu class="w-4 h-4" />
+          </div>
+          <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Software Composition (SCA)</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Identifies outdated front-end JavaScript libraries and maps them to known public CVEs.</p>
         </div>
-        <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">Continuous Watchdog</div>
-          <p class="text-xs text-slate-400">Automated scheduled background scanning with desktop alert triggers when risk scores drop.</p>
+
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+            <Activity class="w-4 h-4" />
+          </div>
+          <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Continuous Watchdog</div>
+          <p class="text-xs text-slate-400 leading-relaxed">Automated scheduled background scanning with desktop alert triggers when risk scores drop.</p>
         </div>
       </div>
     </div>
