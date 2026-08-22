@@ -187,10 +187,10 @@ pub fn run() {
                 db: database.clone(),
             });
 
-            // Start background Tokio monitoring worker
+            // Start background monitoring worker using Tauri async runtime
             let app_handle = app.handle().clone();
             let bg_db = database.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 loop {
                     tokio::time::sleep(Duration::from_secs(60)).await;
                     let now = Utc::now();
