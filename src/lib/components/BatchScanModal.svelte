@@ -83,33 +83,33 @@
 
 {#if isOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
   >
     <div
-      class="bg-slate-900/95 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden backdrop-blur-2xl"
+      class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden text-[#e3e2e0]"
     >
       <!-- Header -->
-      <div class="p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/40">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+      <div class="p-4 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
             <Layers class="w-4 h-4" />
           </div>
           <div>
-            <h2 class="text-base font-black text-white tracking-tight">Fleet & Batch Security Scanner</h2>
-            <p class="text-[11px] text-slate-400">Sequential multi-target automated surface assessment</p>
+            <h2 class="text-sm font-semibold text-white tracking-tight">Fleet & Batch Security Scanner</h2>
+            <p class="text-[11px] text-neutral-400">Sequential multi-target automated surface assessment</p>
           </div>
         </div>
         <button
           type="button"
           onclick={onClose}
-          class="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+          class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
         >
-          <X class="w-5 h-5" />
+          <X class="w-4 h-4" />
         </button>
       </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
         {#if !isRunning && batchItems.length === 0}
           <!-- Input Form -->
           <div class="space-y-4">
@@ -117,30 +117,30 @@
               <div class="flex items-center justify-between mb-2">
                 <label
                   for="batch-urls"
-                  class="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider"
+                  class="block text-xs font-medium text-neutral-400 uppercase tracking-wider"
                 >
                   Target Inventory (One URL Per Line)
                 </label>
-                <span class="text-[11px] font-mono text-slate-500">Supports HTTP & HTTPS</span>
+                <span class="text-[11px] text-neutral-500">Supports HTTP & HTTPS</span>
               </div>
               <textarea
                 id="batch-urls"
                 bind:value={rawUrls}
                 rows="6"
                 placeholder="https://example.com&#10;https://api.example.com&#10;https://staging.example.com"
-                class="w-full p-3.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 rounded-xl text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none shadow-inner"
+                class="w-full p-3 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
               ></textarea>
             </div>
 
-            <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div class="text-xs text-slate-400">
-                <span class="font-bold text-slate-200 font-mono">Sequential Audit Queue:</span>
-                Targets are scanned one after another to prevent network congestion.
+            <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="text-xs text-neutral-400">
+                <span class="font-medium text-neutral-200">Sequential Audit Queue:</span>
+                Targets are audited one by one to prevent socket saturation.
               </div>
               <button
                 type="button"
                 onclick={startBatchScan}
-                class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer flex-shrink-0"
+                class="px-4 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-sm flex-shrink-0"
               >
                 <Play class="w-3.5 h-3.5 fill-current" />
                 <span>Launch Fleet Audit</span>
@@ -152,11 +152,11 @@
           <div class="space-y-4">
             <div class="flex items-center justify-between">
               <div>
-                <h3 class="text-sm font-black text-white tracking-tight">
+                <h3 class="text-sm font-semibold text-white tracking-tight">
                   {isRunning ? "Auditing Fleet Surface..." : "Fleet Assessment Completed"}
                 </h3>
-                <p class="text-xs text-slate-400 font-mono mt-0.5">
-                  Progress: <strong class="text-cyan-400">{completedCount}</strong> of {batchItems.length} audited
+                <p class="text-xs text-neutral-400 font-mono mt-0.5">
+                  Progress: <strong class="text-white">{completedCount}</strong> of {batchItems.length} audited
                 </p>
               </div>
 
@@ -164,7 +164,7 @@
                 <button
                   type="button"
                   onclick={() => (batchItems = [])}
-                  class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                  class="px-3 py-1.5 bg-[#262626] hover:bg-[#303030] text-neutral-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
                 >
                   New Target Batch
                 </button>
@@ -172,9 +172,9 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="w-full bg-slate-950 border border-slate-800 rounded-full h-2.5 overflow-hidden p-0.5">
+            <div class="w-full bg-[#161616] border border-[#2e2e2e] rounded-full h-2 overflow-hidden p-0.5">
               <div
-                class="bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
+                class="bg-blue-500 h-full rounded-full transition-all duration-300"
                 style="width: {batchItems.length > 0 ? (completedCount / batchItems.length) * 100 : 0}%"
               ></div>
             </div>
@@ -183,30 +183,30 @@
             <div class="space-y-2 max-h-80 overflow-y-auto">
               {#each batchItems as item}
                 <div
-                  class="p-3.5 bg-slate-950/80 border border-slate-800/90 rounded-xl flex items-center justify-between gap-4 shadow-sm"
+                  class="p-3 bg-[#191919] border border-[#2e2e2e] rounded-lg flex items-center justify-between gap-4"
                 >
                   <div class="flex items-center gap-3 min-w-0 flex-1">
                     {#if item.status === "scanning"}
-                      <Loader2 class="w-4 h-4 text-cyan-400 animate-spin flex-shrink-0" />
+                      <Loader2 class="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
                     {:else if item.status === "completed"}
                       <CheckCircle2 class="w-4 h-4 text-emerald-400 flex-shrink-0" />
                     {:else}
-                      <AlertOctagon class="w-4 h-4 text-rose-400 flex-shrink-0" />
+                      <AlertOctagon class="w-4 h-4 text-red-400 flex-shrink-0" />
                     {/if}
 
                     <div class="min-w-0 flex-1">
-                      <div class="text-xs font-bold text-slate-200 truncate font-mono">
+                      <div class="text-xs font-medium text-neutral-200 truncate font-mono">
                         {item.url}
                       </div>
                       {#if item.error}
-                        <div class="text-[11px] text-rose-400 font-mono mt-0.5 truncate">
+                        <div class="text-[11px] text-red-400 font-mono mt-0.5 truncate">
                           {item.error}
                         </div>
                       {:else if item.report}
-                        <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-2">
+                        <div class="text-[11px] text-neutral-400 font-mono mt-0.5 flex items-center gap-2">
                           <span>{item.report.total_findings} findings</span>
                           {#if item.report.critical_count > 0}
-                            <span class="text-rose-400 font-bold">({item.report.critical_count} critical)</span>
+                            <span class="text-red-400 font-medium">({item.report.critical_count} critical)</span>
                           {/if}
                         </div>
                       {/if}
@@ -216,7 +216,7 @@
                   {#if item.report}
                     <div class="flex items-center gap-2 flex-shrink-0">
                       <span
-                        class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-md border {getScoreBadge(item.report.security_score)}"
+                        class="px-2 py-0.5 text-xs font-mono rounded border {getScoreBadge(item.report.security_score)}"
                       >
                         {item.report.security_score} pts
                       </span>
@@ -228,7 +228,7 @@
                             onClose();
                           }
                         }}
-                        class="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        class="px-2.5 py-1 bg-[#262626] hover:bg-[#303030] text-neutral-200 border border-[#383838] rounded-md text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <span>Inspect</span>
                         <ArrowRight class="w-3 h-3" />

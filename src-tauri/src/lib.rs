@@ -107,6 +107,18 @@ fn toggle_monitor(state: State<'_, AppState>, id: String) -> Result<bool, String
 }
 
 #[tauri::command]
+async fn scan_ports(
+    host: String,
+    profile: Option<String>,
+    custom_ports: Option<String>,
+    timeout_ms: Option<u64>,
+) -> Result<models::PortScanReport, String> {
+    let prof = profile.unwrap_or_else(|| "top20".to_string());
+    let (report, _) = scanner::ports::audit_ports(&host, &prof, custom_ports.as_deref(), timeout_ms).await;
+    Ok(report)
+}
+
+#[tauri::command]
 fn export_report_markdown(report: ScanReport) -> String {
     let mut md = String::new();
     md.push_str(&format!("# Security Assessment Report: {}\n\n", report.target_url));
@@ -126,7 +138,28 @@ fn export_report_markdown(report: ScanReport) -> String {
         for tech in &report.technologies_detected {
             md.push_str(&format!("- {}\n", tech));
         }
-        md.push_str("\n");
+        md.push('\n');
+    }
+
+    if let Some(port_rep) = &report.port_report {
+        md.push_str("### Discovered Open Ports & Services\n");
+        if let Some(ip) = &port_rep.ip_address {
+            md.push_str(&format!("- **Resolved IP**: {}\n", ip));
+        }
+        md.push_str(&format!("- **Ports Scanned**: {}\n", port_rep.scanned_ports_count));
+        md.push_str(&format!("- **Open Ports Found**: {}\n", port_rep.open_ports_count));
+        md.push_str(&format!("- **Scan Duration**: {} ms\n\n", port_rep.scan_duration_ms));
+
+        if !port_rep.open_ports.is_empty() {
+            md.push_str("| Port | Protocol | Service | State | Risk | Banner / Details |\n");
+            md.push_str("| --- | --- | --- | --- | --- | --- |\n");
+            for p in &port_rep.open_ports {
+                let risk_label = if p.is_risky { "⚠️ EXPOSED / RISKY" } else { "STANDARD" };
+                let banner_info = p.banner.as_deref().unwrap_or(p.description.as_str());
+                md.push_str(&format!("| {} | {} | {} | {} | {} | {} |\n", p.port, p.protocol.to_uppercase(), p.service, p.state.to_uppercase(), risk_label, banner_info));
+            }
+            md.push('\n');
+        }
     }
 
     if let Some(dns) = &report.dns_security {
@@ -141,7 +174,7 @@ fn export_report_markdown(report: ScanReport) -> String {
         for sub in &report.subdomains {
             md.push_str(&format!("- {}\n", sub));
         }
-        md.push_str("\n");
+        md.push('\n');
     }
 
     md.push_str("## Vulnerability Findings\n\n");
@@ -162,7 +195,7 @@ fn export_report_markdown(report: ScanReport) -> String {
             for r in &finding.references {
                 md.push_str(&format!("- {}\n", r));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
         md.push_str("---\n\n");
     }
@@ -232,6 +265,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_target,
             scan_batch,
+            scan_ports,
             get_history,
             get_scan_report,
             delete_scan,

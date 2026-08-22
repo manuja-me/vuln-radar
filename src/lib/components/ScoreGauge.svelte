@@ -1,7 +1,7 @@
 <script lang="ts">
   let { score = 100 }: { score: number } = $props();
 
-  const radius = 44;
+  const radius = 40;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = $derived(circumference - (score / 100) * circumference);
 
@@ -12,93 +12,86 @@
   const colorConfig = $derived(
     score >= 85
       ? {
-          stroke: "#10b981",
+          stroke: "#34d399",
           text: "text-emerald-400",
-          glow: "drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]",
-          bg: "bg-emerald-500/10",
-          border: "border-emerald-500/30",
-          label: "Hardened Posture",
+          bg: "bg-emerald-950/40",
+          border: "border-emerald-800/40",
+          label: "Hardened",
           sub: "No critical misconfigurations or high-risk vulnerabilities detected.",
         }
       : score >= 70
       ? {
-          stroke: "#06b6d4",
-          text: "text-cyan-400",
-          glow: "drop-shadow-[0_0_12px_rgba(6,182,212,0.35)]",
-          bg: "bg-cyan-500/10",
-          border: "border-cyan-500/30",
-          label: "Moderate Posture",
-          sub: "Standard security controls present; minor header or cookie risks found.",
+          stroke: "#60a5fa",
+          text: "text-blue-400",
+          bg: "bg-blue-950/40",
+          border: "border-blue-800/40",
+          label: "Moderate",
+          sub: "Standard security controls present; minor risks or header gaps found.",
         }
       : score >= 50
       ? {
-          stroke: "#f59e0b",
+          stroke: "#fbbf24",
           text: "text-amber-400",
-          glow: "drop-shadow-[0_0_12px_rgba(245,158,11,0.35)]",
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
+          bg: "bg-amber-950/40",
+          border: "border-amber-800/40",
           label: "Elevated Risk",
-          sub: "Multiple security defenses missing or outdated dependencies detected.",
+          sub: "Multiple security defenses missing or outdated components detected.",
         }
       : {
-          stroke: "#f43f5e",
-          text: "text-rose-400",
-          glow: "drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]",
-          bg: "bg-rose-500/10",
-          border: "border-rose-500/30",
+          stroke: "#f87171",
+          text: "text-red-400",
+          bg: "bg-red-950/40",
+          border: "border-red-800/40",
           label: "Critical Exposure",
-          sub: "High-impact vulnerabilities or secret leaks require immediate remediation.",
+          sub: "High-impact vulnerabilities require immediate remediation.",
         }
   );
 </script>
 
-<div class="flex items-center gap-5 p-5 bg-slate-900/60 border border-slate-800 rounded-2xl relative overflow-hidden backdrop-blur-md">
-  <!-- Subtle background glow -->
-  <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-3xl opacity-20 pointer-events-none {colorConfig.bg}"></div>
-
+<div class="flex items-center gap-5 p-4 bg-[#202020] border border-[#2e2e2e] rounded-xl relative overflow-hidden">
   <!-- Radial Gauge -->
-  <div class="relative flex items-center justify-center w-28 h-28 flex-shrink-0">
-    <svg class="w-full h-full -rotate-90 transform {colorConfig.glow}" viewBox="0 0 104 104">
+  <div class="relative flex items-center justify-center w-24 h-24 flex-shrink-0">
+    <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
       <!-- Background track -->
       <circle
-        cx="52"
-        cy="52"
+        cx="50"
+        cy="50"
         r={radius}
-        class="text-slate-800/80"
-        stroke-width="7"
+        class="text-neutral-800"
+        stroke-width="6"
         stroke="currentColor"
         fill="transparent"
       />
       <!-- Active gauge stroke -->
       <circle
-        cx="52"
-        cy="52"
+        cx="50"
+        cy="50"
         r={radius}
         stroke={colorConfig.stroke}
-        stroke-width="7"
+        stroke-width="6"
         stroke-dasharray={circumference}
         stroke-dashoffset={strokeDashoffset}
         stroke-linecap="round"
         fill="transparent"
-        class="transition-all duration-1000 ease-out"
+        class="transition-all duration-700 ease-out"
       />
     </svg>
     <div class="absolute flex flex-col items-center justify-center">
-      <span class="text-3xl font-black font-mono tracking-tight {colorConfig.text}">{score}</span>
-      <span class="text-[9px] font-bold uppercase tracking-widest text-slate-500 font-mono">/ 100</span>
+      <span class="text-2xl font-bold font-mono text-white">{score}</span>
+      <span class="text-[9px] text-neutral-400 font-mono">/ 100</span>
     </div>
   </div>
 
   <!-- Posture Information -->
   <div class="flex flex-col min-w-0">
     <div class="flex items-center gap-2">
-      <span class="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">Security Health</span>
-      <span class="px-2 py-0.5 text-xs font-mono font-bold rounded-md border {colorConfig.bg} {colorConfig.text} {colorConfig.border}">
+      <span class="text-[11px] text-neutral-400 font-medium">Security Score</span>
+      <span class="px-2 py-0.5 text-xs font-mono font-medium rounded-md border {colorConfig.bg} {colorConfig.text} {colorConfig.border}">
         Grade {grade}
       </span>
     </div>
-    <div class="text-base font-extrabold text-white mt-1 truncate">{colorConfig.label}</div>
-    <p class="text-xs text-slate-400 mt-1 leading-relaxed max-w-[240px]">
+    <div class="text-sm font-semibold text-white mt-1 truncate">{colorConfig.label}</div>
+    <p class="text-xs text-neutral-400 mt-0.5 leading-relaxed max-w-[240px]">
       {colorConfig.sub}
     </p>
   </div>

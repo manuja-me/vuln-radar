@@ -1,16 +1,14 @@
 <script lang="ts">
   import {
-    ShieldAlert,
+    ShieldCheck,
     Search,
     Loader2,
     History,
     FileDown,
-    RefreshCw,
     Layers,
     Activity,
-    Settings2,
+    Sliders,
     Printer,
-    Sparkles,
   } from "lucide-svelte";
 
   let {
@@ -47,33 +45,30 @@
 </script>
 
 <header
-  class="bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-40 px-6 py-3.5 print:hidden shadow-lg shadow-black/40"
+  class="bg-[#191919] border-b border-[#2e2e2e] sticky top-0 z-40 px-6 py-3 print:hidden"
 >
   <div
     class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-3.5"
   >
     <!-- Brand -->
-    <div class="flex items-center gap-3 self-start lg:self-auto">
+    <div class="flex items-center gap-2.5 self-start lg:self-auto">
       <div
-        class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 text-slate-950 font-black relative overflow-hidden"
+        class="w-8 h-8 rounded-lg bg-[#262626] border border-[#333333] flex items-center justify-center text-neutral-200"
       >
-        <ShieldAlert class="w-6 h-6 text-slate-950 relative z-10" />
-        <div class="absolute inset-0 bg-white/20 blur-[1px]"></div>
+        <ShieldCheck class="w-4 h-4 text-white" />
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <span
-            class="text-base font-black tracking-tight text-white flex items-center gap-1.5"
-          >
+          <span class="text-sm font-semibold tracking-tight text-white">
             VulnRadar
           </span>
           <span
-            class="px-1.5 py-0.2 text-[10px] uppercase font-mono font-bold tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-md"
+            class="px-1.5 py-0.2 text-[10px] font-mono bg-neutral-800 text-neutral-400 border border-neutral-700/60 rounded"
           >
-            v0.2.0
+            v0.3.0
           </span>
         </div>
-        <p class="text-[11px] text-slate-400 font-medium">
+        <p class="text-[11px] text-neutral-400">
           Web Security Posture & Vulnerability Scanner
         </p>
       </div>
@@ -86,19 +81,19 @@
     >
       <div class="relative flex-1 group">
         <div
-          class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors"
+          class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-500 group-focus-within:text-neutral-300 transition-colors"
         >
-          <Search class="w-4 h-4" />
+          <Search class="w-3.5 h-3.5" />
         </div>
         <input
           type="text"
           bind:value={targetUrl}
-          placeholder="Enter URL (e.g. example.com, testphp.vulnweb.com)..."
+          placeholder="Enter target domain or URL (e.g. example.com)..."
           disabled={isScanning}
-          class="w-full pl-10 pr-12 py-2 bg-slate-900/90 hover:bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 rounded-xl text-xs text-slate-100 placeholder-slate-500 font-mono transition-all disabled:opacity-60 shadow-inner"
+          class="w-full pl-9 pr-10 py-1.5 bg-[#202020] hover:bg-[#252525] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-[#e3e2e0] placeholder-neutral-500 font-mono transition-all disabled:opacity-60 focus:outline-none"
         />
         <div
-          class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[11px] font-mono text-slate-500"
+          class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[10px] font-mono text-neutral-400"
         >
           ⏎
         </div>
@@ -108,13 +103,13 @@
       <button
         type="button"
         onclick={onOpenOptions}
-        class="p-2 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-slate-100 border border-slate-800 hover:border-slate-700 rounded-xl transition-all cursor-pointer relative"
-        title="Scan Options & Custom Headers"
+        class="p-2 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer relative"
+        title="Scan Options & Parameters"
       >
-        <Settings2 class="w-4 h-4 text-cyan-400" />
+        <Sliders class="w-3.5 h-3.5 text-neutral-300" />
         {#if hasCustomOptions}
           <span
-            class="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_6px_rgba(6,182,212,0.8)]"
+            class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full"
           ></span>
         {/if}
       </button>
@@ -123,47 +118,46 @@
       <button
         type="submit"
         disabled={!targetUrl.trim() || isScanning}
-        class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
+        class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0 shadow-sm"
       >
         {#if isScanning}
           <Loader2 class="w-3.5 h-3.5 animate-spin" />
           <span>Auditing...</span>
         {:else}
-          <Sparkles class="w-3.5 h-3.5" />
-          <span>Audit Target</span>
+          <span>Audit</span>
         {/if}
       </button>
     </form>
 
-    <!-- Navigation & Feature Action Badges -->
+    <!-- Navigation & Feature Actions -->
     <div class="flex flex-wrap items-center gap-1.5 self-end lg:self-auto">
       <button
         type="button"
         onclick={onOpenBatch}
-        class="px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
         title="Batch Fleet Scanner"
       >
-        <Layers class="w-3.5 h-3.5 text-cyan-400" />
+        <Layers class="w-3.5 h-3.5 text-neutral-400" />
         <span>Batch</span>
       </button>
 
       <button
         type="button"
         onclick={onOpenMonitors}
-        class="px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-        title="Continuous Monitoring Watchdogs"
+        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+        title="Continuous Monitoring Watchdog"
       >
-        <Activity class="w-3.5 h-3.5 text-cyan-400" />
+        <Activity class="w-3.5 h-3.5 text-neutral-400" />
         <span>Watchdog</span>
       </button>
 
       <button
         type="button"
         onclick={onOpenHistory}
-        class="px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
         title="View Scan History"
       >
-        <History class="w-3.5 h-3.5 text-cyan-400" />
+        <History class="w-3.5 h-3.5 text-neutral-400" />
         <span>History</span>
       </button>
 
@@ -171,20 +165,20 @@
         <button
           type="button"
           onclick={onOpenExecutiveReport}
-          class="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+          class="px-2.5 py-1.5 bg-[#262626] hover:bg-[#303030] text-neutral-200 border border-[#383838] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
           title="Executive PDF Report"
         >
-          <Printer class="w-3.5 h-3.5" />
-          <span>PDF</span>
+          <Printer class="w-3.5 h-3.5 text-neutral-300" />
+          <span>Report</span>
         </button>
 
         <button
           type="button"
           onclick={onOpenExport}
-          class="p-1.5 bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 rounded-xl transition-all cursor-pointer"
-          title="Export Markdown"
+          class="p-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer"
+          title="Export Markdown/JSON"
         >
-          <FileDown class="w-4 h-4 text-cyan-400" />
+          <FileDown class="w-3.5 h-3.5 text-neutral-400" />
         </button>
       {/if}
     </div>

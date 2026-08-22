@@ -4,6 +4,7 @@ pub mod dns;
 pub mod endpoints;
 pub mod headers;
 pub mod leaks;
+pub mod ports;
 pub mod subdomains;
 
 use crate::models::{Finding, ScanOptions, ScanReport, Severity};
@@ -98,7 +99,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let leak_findings = leaks::analyze_leaks(&html_body, is_https);
     all_findings.extend(leak_findings);
 
-    // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter)
+    // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter, Port Scanner)
     let subdomains_fut = async {
         if opts.include_subdomains.unwrap_or(true) && !domain.is_empty() {
             subdomains::discover_subdomains(&domain).await
@@ -119,12 +120,26 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         endpoints::audit_endpoints(&parsed_url).await
     };
 
+    let port_scan_enabled = opts.enable_port_scan.unwrap_or(false);
+    let port_profile = opts.port_scan_profile.clone().unwrap_or_else(|| "top20".to_string());
+    let custom_ports_str = opts.custom_ports.clone();
+    let port_timeout = opts.port_timeout_ms;
+
+    let ports_fut = async {
+        if port_scan_enabled && !domain.is_empty() {
+            ports::audit_ports(&domain, &port_profile, custom_ports_str.as_deref(), port_timeout).await
+        } else {
+            (Default::default(), Vec::new())
+        }
+    };
+
     // Run async recon concurrently
-    let (subdomains_list, (dns_report, dns_findings), (endpoint_report, endpoint_findings)) =
-        tokio::join!(subdomains_fut, dns_fut, endpoints_fut);
+    let (subdomains_list, (dns_report, dns_findings), (endpoint_report, endpoint_findings), (port_report, port_findings)) =
+        tokio::join!(subdomains_fut, dns_fut, endpoints_fut, ports_fut);
 
     all_findings.extend(dns_findings);
     all_findings.extend(endpoint_findings);
+    all_findings.extend(port_findings);
 
     // 6. Calculate Metrics & Security Score
     let mut critical_count = 0;
@@ -164,6 +179,12 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let total_findings = all_findings.len();
     let scan_id = format!("scan_{}", Utc::now().timestamp_millis());
 
+    let port_report_opt = if port_scan_enabled {
+        Some(port_report)
+    } else {
+        None
+    };
+
     Ok(ScanReport {
         id: scan_id,
         target_url: formatted_url,
@@ -184,6 +205,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         subdomains: subdomains_list,
         dns_security: Some(dns_report),
         endpoint_report: Some(endpoint_report),
+        port_report: port_report_opt,
     })
 }
 

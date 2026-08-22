@@ -23,6 +23,7 @@ pub enum Category {
     DomSecurity,
     DnsEmailSecurity,
     EndpointExposure,
+    PortExposure,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +62,31 @@ pub struct ScanOptions {
     pub user_agent: Option<String>,
     pub timeout_seconds: Option<u64>,
     pub include_subdomains: Option<bool>,
+    pub enable_port_scan: Option<bool>,
+    pub port_scan_profile: Option<String>,
+    pub custom_ports: Option<String>,
+    pub port_timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenPort {
+    pub port: u16,
+    pub protocol: String,
+    pub service: String,
+    pub state: String,
+    pub banner: Option<String>,
+    pub is_risky: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PortScanReport {
+    pub host: String,
+    pub ip_address: Option<String>,
+    pub scanned_ports_count: usize,
+    pub open_ports_count: usize,
+    pub open_ports: Vec<OpenPort>,
+    pub scan_duration_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -107,6 +133,8 @@ pub struct ScanReport {
     pub dns_security: Option<DnsSecurityReport>,
     #[serde(default)]
     pub endpoint_report: Option<EndpointReport>,
+    #[serde(default)]
+    pub port_report: Option<PortScanReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

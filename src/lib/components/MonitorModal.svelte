@@ -69,42 +69,42 @@
 
 {#if isOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
   >
     <div
-      class="bg-slate-900/95 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden backdrop-blur-2xl"
+      class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden text-[#e3e2e0]"
     >
       <!-- Header -->
-      <div class="p-5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/40">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+      <div class="p-4 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
             <Activity class="w-4 h-4" />
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-base font-black text-white tracking-tight">Continuous Security Watchdog</h2>
-              <span class="px-2 py-0.2 text-[10px] bg-slate-800 text-cyan-400 rounded-full font-mono font-bold border border-slate-700">
+              <h2 class="text-sm font-semibold text-white tracking-tight">Continuous Security Watchdog</h2>
+              <span class="px-1.5 py-0.2 text-[10px] bg-[#282828] text-neutral-400 rounded font-mono border border-[#383838]">
                 {monitors.length} Active
               </span>
             </div>
-            <p class="text-[11px] text-slate-400">Automated background re-scanning with degradation alerts</p>
+            <p class="text-[11px] text-neutral-400">Automated background re-scanning with degradation alerts</p>
           </div>
         </div>
         <button
           type="button"
           onclick={onClose}
-          class="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+          class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
         >
-          <X class="w-5 h-5" />
+          <X class="w-4 h-4" />
         </button>
       </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      <div class="flex-1 overflow-y-auto p-5 space-y-5">
         <!-- Add Monitor Form -->
-        <div class="p-4 bg-slate-950/60 border border-slate-800 rounded-xl space-y-3 shadow-inner">
-          <div class="flex items-center gap-1.5 text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-            <BellRing class="w-3.5 h-3.5 text-cyan-400" />
+        <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-lg space-y-2.5">
+          <div class="flex items-center gap-1.5 text-xs font-medium text-neutral-400 uppercase tracking-wider">
+            <BellRing class="w-3.5 h-3.5 text-neutral-400" />
             <span>Schedule Asset Watchdog</span>
           </div>
           <div class="flex flex-col sm:flex-row items-center gap-2">
@@ -112,11 +112,11 @@
               type="text"
               bind:value={newUrl}
               placeholder="https://domain-to-watch.com"
-              class="w-full sm:flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 rounded-xl text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none"
+              class="w-full sm:flex-1 px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
             />
             <select
               bind:value={selectedInterval}
-              class="w-full sm:w-auto px-3.5 py-2.5 bg-slate-900 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs font-semibold text-slate-300 focus:outline-none cursor-pointer"
+              class="w-full sm:w-auto px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-medium text-neutral-300 focus:outline-none cursor-pointer"
             >
               <option value={1}>Every 1 hour</option>
               <option value={6}>Every 6 hours</option>
@@ -128,55 +128,55 @@
               type="button"
               onclick={handleAdd}
               disabled={!newUrl.trim() || isAdding}
-              class="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer flex-shrink-0"
+              class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0 shadow-sm"
             >
-              <Plus class="w-4 h-4" />
+              <Plus class="w-3.5 h-3.5" />
               <span>Add Watchdog</span>
             </button>
           </div>
         </div>
 
         <!-- Monitor List -->
-        <div class="space-y-3">
+        <div class="space-y-2.5">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wider">
               Configured Domains ({monitors.length})
             </h3>
-            <span class="text-[11px] font-mono text-slate-500">Auto-polls every 60s</span>
+            <span class="text-[11px] font-mono text-neutral-500">Auto-polls every 60s</span>
           </div>
 
           {#if monitors.length === 0}
-            <div class="py-14 text-center text-slate-500 bg-slate-950/40 border border-slate-800/80 rounded-xl">
-              <Activity class="w-10 h-10 mx-auto mb-2 opacity-30 text-cyan-400" />
-              <p class="text-xs font-bold text-slate-300">No continuous monitors configured</p>
-              <p class="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
-                Add your critical web properties above. VulnRadar will passively inspect them on schedule and alert you when scores drop.
+            <div class="py-12 text-center text-neutral-500 bg-[#191919] border border-[#2e2e2e] rounded-lg">
+              <Activity class="w-8 h-8 mx-auto mb-2 opacity-30 text-neutral-400" />
+              <p class="text-xs font-medium text-neutral-300">No continuous monitors configured</p>
+              <p class="text-[11px] text-neutral-500 mt-0.5 max-w-sm mx-auto">
+                Add your critical web properties above to track and alert on configuration changes.
               </p>
             </div>
           {:else}
-            <div class="space-y-2.5">
+            <div class="space-y-2">
               {#each monitors as item}
                 <div
-                  class="p-4 bg-slate-950/80 border border-slate-800/90 rounded-xl flex items-center justify-between gap-4 shadow-sm"
+                  class="p-3 bg-[#191919] border border-[#2e2e2e] rounded-lg flex items-center justify-between gap-4"
                 >
-                  <div class="flex items-center gap-3.5 min-w-0 flex-1">
-                    <!-- Animated Pulse Indicator -->
+                  <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <!-- Status dot -->
                     <div
-                      class="w-2.5 h-2.5 rounded-full flex-shrink-0 {item.is_active ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' : 'bg-slate-600'}"
+                      class="w-2 h-2 rounded-full flex-shrink-0 {item.is_active ? 'bg-emerald-400' : 'bg-neutral-600'}"
                       title={item.is_active ? 'Active Watchdog' : 'Paused Watchdog'}
                     ></div>
 
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-slate-200 font-mono truncate">
+                        <span class="text-xs font-medium text-neutral-200 font-mono truncate">
                           {item.target_url}
                         </span>
-                        <span class="px-2 py-0.5 text-[10px] font-mono bg-slate-800/80 text-slate-400 rounded-md border border-slate-700/60">
+                        <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#282828] text-neutral-400 rounded border border-[#383838]">
                           Every {item.interval_hours}h
                         </span>
                       </div>
 
-                      <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 font-mono mt-1">
+                      <div class="flex flex-wrap items-center gap-2 text-[11px] text-neutral-400 font-mono mt-0.5">
                         <span>Last: {formatDate(item.last_scanned_at)}</span>
                         <span>•</span>
                         <span>Next: {formatDate(item.next_scan_at)}</span>
@@ -185,10 +185,10 @@
                   </div>
 
                   <!-- Right actions -->
-                  <div class="flex items-center gap-2 flex-shrink-0">
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
                     {#if item.last_score !== null && item.last_score !== undefined}
                       <span
-                        class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-md border {getScoreBadge(item.last_score)}"
+                        class="px-2 py-0.5 text-xs font-mono rounded border {getScoreBadge(item.last_score)}"
                       >
                         {item.last_score} pts
                       </span>
@@ -200,32 +200,32 @@
                         onScanNow(item.target_url);
                         onClose();
                       }}
-                      class="p-2 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors cursor-pointer"
+                      class="p-1.5 text-neutral-300 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
                       title="Run Audit Now"
                     >
-                      <RotateCw class="w-4 h-4" />
+                      <RotateCw class="w-3.5 h-3.5" />
                     </button>
 
                     <button
                       type="button"
                       onclick={() => onToggleMonitor(item.id)}
-                      class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                      class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
                       title={item.is_active ? 'Pause Watchdog' : 'Resume Watchdog'}
                     >
                       {#if item.is_active}
-                        <Pause class="w-4 h-4" />
+                        <Pause class="w-3.5 h-3.5" />
                       {:else}
-                        <Play class="w-4 h-4" />
+                        <Play class="w-3.5 h-3.5" />
                       {/if}
                     </button>
 
                     <button
                       type="button"
                       onclick={() => onDeleteMonitor(item.id)}
-                      class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                      class="p-1.5 text-neutral-500 hover:text-red-400 rounded-md transition-colors cursor-pointer"
                       title="Delete Watchdog"
                     >
-                      <Trash2 class="w-4 h-4" />
+                      <Trash2 class="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

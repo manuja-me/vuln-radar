@@ -10,7 +10,8 @@ export type Category =
   | "insecure_form"
   | "dom_security"
   | "dns_email_security"
-  | "endpoint_exposure";
+  | "endpoint_exposure"
+  | "port_exposure";
 
 export interface Finding {
   id: string;
@@ -45,6 +46,29 @@ export interface ScanOptions {
   user_agent?: string;
   timeout_seconds?: number;
   include_subdomains?: boolean;
+  enable_port_scan?: boolean;
+  port_scan_profile?: "top20" | "top100" | "databases" | "custom" | string;
+  custom_ports?: string;
+  port_timeout_ms?: number;
+}
+
+export interface OpenPort {
+  port: number;
+  protocol: string;
+  service: string;
+  state: string;
+  banner?: string | null;
+  is_risky: boolean;
+  description: string;
+}
+
+export interface PortScanReport {
+  host: string;
+  ip_address?: string | null;
+  scanned_ports_count: number;
+  open_ports_count: number;
+  open_ports: OpenPort[];
+  scan_duration_ms: number;
 }
 
 export interface DnsSecurityReport {
@@ -85,6 +109,7 @@ export interface ScanReport {
   subdomains?: string[];
   dns_security?: DnsSecurityReport | null;
   endpoint_report?: EndpointReport | null;
+  port_report?: PortScanReport | null;
 }
 
 export interface MonitorTarget {
