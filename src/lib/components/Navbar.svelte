@@ -70,7 +70,7 @@
           <span
             class="px-1.5 py-0.2 text-[10px] uppercase font-mono font-bold tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-md"
           >
-            v0.1.0
+            v0.2.0
           </span>
         </div>
         <p class="text-[11px] text-slate-400 font-medium">
