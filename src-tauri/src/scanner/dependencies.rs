@@ -1,153 +1,150 @@
 use crate::models::{Category, Finding, Severity};
 use regex::Regex;
 use scraper::{Html, Selector};
+use std::sync::LazyLock;
 
-struct KnownLibRule {
+struct CompiledLibRule {
     name: &'static str,
-    pattern: &'static str,
+    regex: &'static LazyLock<Regex>,
     vulnerable_check: fn(major: u32, minor: u32, patch: u32) -> Option<(&'static str, Severity, &'static str, &'static str, &'static str)>,
 }
 
+static SCRIPT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("script").unwrap());
+
+static JQUERY_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:jquery[.-]|jquery/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)").unwrap());
+static ANGULAR_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:angular[.-]|angular/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)").unwrap());
+static BOOTSTRAP_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:bootstrap[.-]|bootstrap/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)").unwrap());
+static LODASH_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:lodash[.-]|lodash/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)").unwrap());
+static MOMENT_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?:moment[.-]|moment/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)").unwrap());
+
+static COMPILED_RULES: [CompiledLibRule; 5] = [
+    CompiledLibRule {
+        name: "jQuery",
+        regex: &JQUERY_REGEX,
+        vulnerable_check: |major, minor, patch| {
+            if (major == 1 || major == 2) || (major == 3 && (minor < 5 || (minor == 5 && patch == 0))) {
+                Some((
+                    "CVE-2020-11022 / CVE-2020-11023",
+                    Severity::High,
+                    "Passing HTML from untrusted sources to jQuery's DOM manipulation methods (e.g. $.htmlPrefilter) leads to Cross-Site Scripting (XSS).",
+                    "Upgrade jQuery to version 3.5.0 or later (currently 3.7.1+ recommended).",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2020-11022",
+                ))
+            } else if major < 3 {
+                Some((
+                    "CVE-2015-9251",
+                    Severity::Medium,
+                    "3rd-party CORS requests may execute unintended scripts.",
+                    "Upgrade jQuery to version 3.5.0+",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2015-9251",
+                ))
+            } else {
+                None
+            }
+        },
+    },
+    CompiledLibRule {
+        name: "AngularJS",
+        regex: &ANGULAR_REGEX,
+        vulnerable_check: |major, _minor, _patch| {
+            if major == 1 {
+                Some((
+                    "CVE-2020-7674 / EOL",
+                    Severity::High,
+                    "AngularJS 1.x reached End-of-Life (EOL) and contains multiple unpatched client-side template injection and XSS vulnerabilities.",
+                    "Migrate to modern Angular (v18+) or a supported framework (React, Vue, Svelte).",
+                    "https://blog.angular.io/discontinued-long-term-support-for-angularjs-cc066b82e65a",
+                ))
+            } else {
+                None
+            }
+        },
+    },
+    CompiledLibRule {
+        name: "Bootstrap",
+        regex: &BOOTSTRAP_REGEX,
+        vulnerable_check: |major, minor, patch| {
+            if major < 4 || (major == 4 && (minor < 3 || (minor == 3 && patch < 1))) {
+                Some((
+                    "CVE-2019-8331 / CVE-2018-14041",
+                    Severity::Medium,
+                    "Cross-Site Scripting (XSS) in Bootstrap tooltip, popover, and scrollspy components via data-template / data-container attributes.",
+                    "Upgrade Bootstrap to 4.3.1 or Bootstrap 5.3+.",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2019-8331",
+                ))
+            } else {
+                None
+            }
+        },
+    },
+    CompiledLibRule {
+        name: "Lodash",
+        regex: &LODASH_REGEX,
+        vulnerable_check: |major, minor, patch| {
+            if major < 4 || (major == 4 && (minor < 17 || (minor == 17 && patch < 21))) {
+                Some((
+                    "CVE-2021-23337 / CVE-2020-8203",
+                    Severity::High,
+                    "Prototype pollution and command injection vulnerabilities via template / zipObjectDeep methods.",
+                    "Upgrade Lodash to version 4.17.21 or later.",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2021-23337",
+                ))
+            } else {
+                None
+            }
+        },
+    },
+    CompiledLibRule {
+        name: "Moment.js",
+        regex: &MOMENT_REGEX,
+        vulnerable_check: |major, minor, patch| {
+            if major < 2 || (major == 2 && (minor < 29 || (minor == 29 && patch < 4))) {
+                Some((
+                    "CVE-2022-31129 / CVE-2022-24785",
+                    Severity::High,
+                    "Path traversal and Regular Expression Denial of Service (ReDoS) when parsing crafted user date inputs.",
+                    "Upgrade Moment.js to version 2.29.4 or migrate to Luxon / date-fns.",
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-31129",
+                ))
+            } else {
+                None
+            }
+        },
+    },
+];
+
 fn parse_semver(ver_str: &str) -> Option<(u32, u32, u32)> {
-    let parts: Vec<&str> = ver_str.split('.').collect();
-    if parts.is_empty() {
-        return None;
-    }
-    let major = parts[0].parse::<u32>().ok()?;
-    let minor = if parts.len() > 1 { parts[1].parse::<u32>().unwrap_or(0) } else { 0 };
-    let patch = if parts.len() > 2 {
-        parts[2].chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse::<u32>().unwrap_or(0)
-    } else {
-        0
-    };
+    let mut parts = ver_str.split('.');
+    let major = parts.next()?.parse::<u32>().ok()?;
+    let minor = parts.next().and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
+    let patch = parts
+        .next()
+        .map(|p| {
+            p.chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .parse::<u32>()
+                .unwrap_or(0)
+        })
+        .unwrap_or(0);
     Some((major, minor, patch))
 }
 
 pub fn analyze_dependencies(html_content: &str, detected_tech: &mut Vec<String>) -> Vec<Finding> {
     let mut findings = Vec::new();
     let document = Html::parse_document(html_content);
-    let script_selector = match Selector::parse("script") {
-        Ok(s) => s,
-        Err(_) => return findings,
-    };
 
-    // Extract script src attributes and inline script contents
+    // Extract script src attributes
     let mut script_sources = Vec::new();
-    for element in document.select(&script_selector) {
+    for element in document.select(&SCRIPT_SELECTOR) {
         if let Some(src) = element.value().attr("src") {
-            script_sources.push(src.to_string());
+            script_sources.push(src);
         }
     }
 
-    // Rules for popular libraries and CVEs
-    let rules: Vec<KnownLibRule> = vec![
-        // jQuery
-        KnownLibRule {
-            name: "jQuery",
-            pattern: r"(?:jquery[.-]|jquery/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)",
-            vulnerable_check: |major, minor, patch| {
-                if (major == 1 || major == 2) || (major == 3 && (minor < 5 || (minor == 5 && patch == 0))) {
-                    Some((
-                        "CVE-2020-11022 / CVE-2020-11023",
-                        Severity::High,
-                        "Passing HTML from untrusted sources to jQuery's DOM manipulation methods (e.g. $.htmlPrefilter) leads to Cross-Site Scripting (XSS).",
-                        "Upgrade jQuery to version 3.5.0 or later (currently 3.7.1+ recommended).",
-                        "https://nvd.nist.gov/vuln/detail/CVE-2020-11022",
-                    ))
-                } else if major < 3 {
-                    Some((
-                        "CVE-2015-9251",
-                        Severity::Medium,
-                        "3rd-party CORS requests may execute unintended scripts.",
-                        "Upgrade jQuery to version 3.5.0+",
-                        "https://nvd.nist.gov/vuln/detail/CVE-2015-9251",
-                    ))
-                } else {
-                    None
-                }
-            },
-        },
-        // AngularJS 1.x
-        KnownLibRule {
-            name: "AngularJS",
-            pattern: r"(?:angular[.-]|angular/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)",
-            vulnerable_check: |major, _minor, _patch| {
-                if major == 1 {
-                    Some((
-                        "CVE-2020-7674 / EOL",
-                        Severity::High,
-                        "AngularJS 1.x reached End-of-Life (EOL) and contains multiple unpatched client-side template injection and XSS vulnerabilities.",
-                        "Migrate to modern Angular (v18+) or a supported framework (React, Vue, Svelte).",
-                        "https://blog.angular.io/discontinued-long-term-support-for-angularjs-cc066b82e65a",
-                    ))
-                } else {
-                    None
-                }
-            },
-        },
-        // Bootstrap
-        KnownLibRule {
-            name: "Bootstrap",
-            pattern: r"(?:bootstrap[.-]|bootstrap/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)",
-            vulnerable_check: |major, minor, patch| {
-                if major < 4 || (major == 4 && (minor < 3 || (minor == 3 && patch < 1))) {
-                    Some((
-                        "CVE-2019-8331 / CVE-2018-14041",
-                        Severity::Medium,
-                        "Cross-Site Scripting (XSS) in Bootstrap tooltip, popover, and scrollspy components via data-template / data-container attributes.",
-                        "Upgrade Bootstrap to 4.3.1 or Bootstrap 5.3+.",
-                        "https://nvd.nist.gov/vuln/detail/CVE-2019-8331",
-                    ))
-                } else {
-                    None
-                }
-            },
-        },
-        // Lodash
-        KnownLibRule {
-            name: "Lodash",
-            pattern: r"(?:lodash[.-]|lodash/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)",
-            vulnerable_check: |major, minor, patch| {
-                if major < 4 || (major == 4 && (minor < 17 || (minor == 17 && patch < 21))) {
-                    Some((
-                        "CVE-2021-23337 / CVE-2020-8203",
-                        Severity::High,
-                        "Prototype pollution and command injection vulnerabilities via template / zipObjectDeep methods.",
-                        "Upgrade Lodash to version 4.17.21 or later.",
-                        "https://nvd.nist.gov/vuln/detail/CVE-2021-23337",
-                    ))
-                } else {
-                    None
-                }
-            },
-        },
-        // Moment.js
-        KnownLibRule {
-            name: "Moment.js",
-            pattern: r"(?:moment[.-]|moment/)([0-9]+\.[0-9]+(?:\.[0-9]+)?)",
-            vulnerable_check: |major, minor, patch| {
-                if major < 2 || (major == 2 && (minor < 29 || (minor == 29 && patch < 4))) {
-                    Some((
-                        "CVE-2022-31129 / CVE-2022-24785",
-                        Severity::High,
-                        "Path traversal and Regular Expression Denial of Service (ReDoS) when parsing crafted user date inputs.",
-                        "Upgrade Moment.js to version 2.29.4 or migrate to Luxon / date-fns.",
-                        "https://nvd.nist.gov/vuln/detail/CVE-2022-31129",
-                    ))
-                } else {
-                    None
-                }
-            },
-        },
-    ];
-
-    for rule in &rules {
-        let re = match Regex::new(rule.pattern) {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-
-        for src in &script_sources {
+    for rule in &COMPILED_RULES {
+        let re = &rule.regex;
+        for &src in &script_sources {
             if let Some(caps) = re.captures(src) {
                 if let Some(ver_match) = caps.get(1) {
                     let version_str = ver_match.as_str();

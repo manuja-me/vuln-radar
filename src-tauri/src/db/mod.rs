@@ -11,6 +11,16 @@ pub struct Database {
 impl Database {
     pub fn new(db_path: PathBuf) -> Result<Self> {
         let conn = Connection::open(db_path)?;
+
+        // High-performance SQLite tuning: WAL mode, memory cache, normal sync
+        let _ = conn.execute_batch(
+            "PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;
+             PRAGMA temp_store = MEMORY;
+             PRAGMA cache_size = -32000;
+             PRAGMA busy_timeout = 5000;",
+        );
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS scans (
                 id TEXT PRIMARY KEY,

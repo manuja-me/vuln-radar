@@ -1,21 +1,10 @@
 use crate::models::{Category, EndpointReport, Finding, Severity};
 use reqwest::Client;
-use std::time::Duration;
 use url::Url;
 
-pub async fn audit_endpoints(base_url: &Url) -> (EndpointReport, Vec<Finding>) {
+pub async fn audit_endpoints(client: &Client, base_url: &Url) -> (EndpointReport, Vec<Finding>) {
     let mut report = EndpointReport::default();
     let mut findings = Vec::new();
-
-    let client = match Client::builder()
-        .timeout(Duration::from_secs(6))
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) VulnRadar/1.0")
-        .redirect(reqwest::redirect::Policy::limited(3))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return (report, findings),
-    };
 
     // 1. Audit /robots.txt
     if let Ok(robots_url) = base_url.join("/robots.txt") {

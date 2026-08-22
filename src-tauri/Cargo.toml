@@ -25,3 +25,9 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 url = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
 
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

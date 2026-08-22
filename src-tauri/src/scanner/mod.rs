@@ -102,7 +102,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter, Port Scanner)
     let subdomains_fut = async {
         if opts.include_subdomains.unwrap_or(true) && !domain.is_empty() {
-            subdomains::discover_subdomains(&domain).await
+            subdomains::discover_subdomains(&client, &domain).await
         } else {
             Vec::new()
         }
@@ -110,14 +110,14 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
 
     let dns_fut = async {
         if !domain.is_empty() {
-            dns::audit_dns_and_email_security(&domain).await
+            dns::audit_dns_and_email_security(&client, &domain).await
         } else {
             (Default::default(), Vec::new())
         }
     };
 
     let endpoints_fut = async {
-        endpoints::audit_endpoints(&parsed_url).await
+        endpoints::audit_endpoints(&client, &parsed_url).await
     };
 
     let port_scan_enabled = opts.enable_port_scan.unwrap_or(false);

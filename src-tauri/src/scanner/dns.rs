@@ -1,7 +1,6 @@
 use crate::models::{Category, DnsSecurityReport, Finding, Severity};
 use reqwest::Client;
 use serde::Deserialize;
-use std::time::Duration;
 
 #[derive(Deserialize)]
 struct DohAnswer {
@@ -52,7 +51,7 @@ async fn query_doh_txt(client: &Client, name: &str) -> (Vec<String>, bool) {
     (records, dnssec)
 }
 
-pub async fn audit_dns_and_email_security(domain: &str) -> (DnsSecurityReport, Vec<Finding>) {
+pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (DnsSecurityReport, Vec<Finding>) {
     let clean_domain = domain.trim_start_matches("www.").to_lowercase();
     let mut report = DnsSecurityReport {
         domain: clean_domain.clone(),
@@ -69,17 +68,8 @@ pub async fn audit_dns_and_email_security(domain: &str) -> (DnsSecurityReport, V
         return (report, findings);
     }
 
-    let client = match Client::builder()
-        .timeout(Duration::from_secs(6))
-        .user_agent("VulnRadar/1.0")
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return (report, findings),
-    };
-
     // 1. Query SPF (TXT records on root domain)
-    let (root_txts, dnssec) = query_doh_txt(&client, &clean_domain).await;
+    let (root_txts, dnssec) = query_doh_txt(client, &clean_domain).await;
     report.dnssec_enabled = dnssec;
 
     let spf_record = root_txts
@@ -143,7 +133,7 @@ pub async fn audit_dns_and_email_security(domain: &str) -> (DnsSecurityReport, V
 
     // 2. Query DMARC (TXT records on _dmarc.{domain})
     let dmarc_query_name = format!("_dmarc.{}", clean_domain);
-    let (dmarc_txts, _) = query_doh_txt(&client, &dmarc_query_name).await;
+    let (dmarc_txts, _) = query_doh_txt(client, &dmarc_query_name).await;
 
     let dmarc_record = dmarc_txts
         .into_iter()
