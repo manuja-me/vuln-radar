@@ -1,13 +1,10 @@
-name: Release & Build Executables
+name: Release VulnRadar Desktop
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   release:
@@ -17,50 +14,46 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'windows-latest'
-            args: ''
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'macos-latest'
-            args: ''
+          - platform: "windows-latest"
+            args: ""
+          - platform: "macos-latest"
+            args: "--target universal-apple-darwin"
+          - platform: "ubuntu-22.04"
+            args: ""
 
     runs-on: ${{ matrix.platform }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install system dependencies (Linux only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust Cache
-        uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Install frontend dependencies
-        run: npm ci || npm install
+      - name: Install Linux system dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
 
-      - name: Build Desktop Application & Create GitHub Release
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build Tauri Desktop Package
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'VulnRadar v__VERSION__'
-          releaseBody: 'See the assets below to download the executable for your operating system.'
+          tagName: ${{ github.ref_name }}
+          releaseName: "VulnRadar ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download VulnRadar for your operating system."
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
