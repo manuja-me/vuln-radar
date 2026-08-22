@@ -53,13 +53,29 @@ vuln-radar/
 
 ## ⚡ Getting Started
 
-### Prerequisites
+### 📥 Download Pre-built Release
+
+Download the latest installer or portable executable for your operating system from the [Releases](https://github.com/manuja-me/vuln-radar/releases) page:
+
+- **Windows**: `VulnRadar_<version>_x64-setup.exe` or `.msi`
+- **macOS**: `VulnRadar_<version>_universal.dmg`
+- **Linux**: `VulnRadar_<version>_amd64.AppImage` or `.deb`
+
+> [!NOTE]
+> **Windows Defender SmartScreen Notice**:
+> Because VulnRadar is an open-source tool distributed without a costly commercial Extended Validation (EV) certificate, Windows may show a *"Windows protected your PC (Unknown publisher)"* popup on first launch.
+> 1. Click **More info**
+> 2. Click **Run anyway**
+
+---
+
+### Prerequisites (For Building from Source)
 
 - [Node.js](https://nodejs.org/) (v18+) & `npm`
 - [Rust & Cargo](https://rustup.rs/) (v1.80+)
 - [Tauri Prerequisites](https://tauri.app/start/prerequisites/) for your operating system
 
-### Installation & Development
+### Local Development
 
 ```bash
 # 1. Clone the repository
@@ -79,7 +95,8 @@ npm run tauri dev
 npm run tauri build
 ```
 
-The compiled standalone executable will be generated under `src-tauri/target/release/`.
+The compiled standalone installer and executable will be generated under `src-tauri/target/release/bundle/`.
+
 
 ---
 
