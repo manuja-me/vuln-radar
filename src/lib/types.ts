@@ -8,7 +8,9 @@ export type Category =
   | "tls_ssl"
   | "cors_misconfiguration"
   | "insecure_form"
-  | "dom_security";
+  | "dom_security"
+  | "dns_email_security"
+  | "endpoint_exposure";
 
 export interface Finding {
   id: string;
@@ -38,6 +40,31 @@ export interface ScanSummary {
   info_count: number;
 }
 
+export interface ScanOptions {
+  custom_headers?: [string, string][];
+  user_agent?: string;
+  timeout_seconds?: number;
+  include_subdomains?: boolean;
+}
+
+export interface DnsSecurityReport {
+  domain: string;
+  spf_record?: string | null;
+  spf_valid: boolean;
+  dmarc_record?: string | null;
+  dmarc_valid: boolean;
+  dmarc_policy?: string | null;
+  dnssec_enabled: boolean;
+}
+
+export interface EndpointReport {
+  robots_txt_found: boolean;
+  disallowed_paths: string[];
+  sensitive_disallowed_paths: string[];
+  security_txt_found: boolean;
+  security_txt_content?: string | null;
+}
+
 export interface ScanReport {
   id: string;
   target_url: string;
@@ -55,4 +82,26 @@ export interface ScanReport {
   server_info?: string | null;
   technologies_detected: string[];
   response_headers: [string, string][];
+  subdomains?: string[];
+  dns_security?: DnsSecurityReport | null;
+  endpoint_report?: EndpointReport | null;
 }
+
+export interface MonitorTarget {
+  id: string;
+  target_url: string;
+  interval_hours: number;
+  last_scanned_at?: string | null;
+  next_scan_at: string;
+  last_score?: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BatchScanItem {
+  url: string;
+  status: "pending" | "scanning" | "completed" | "failed";
+  report?: ScanReport | null;
+  error?: string | null;
+}
+

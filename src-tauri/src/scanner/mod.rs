@@ -1,15 +1,22 @@
 pub mod cookies;
 pub mod dependencies;
+pub mod dns;
+pub mod endpoints;
 pub mod headers;
 pub mod leaks;
+pub mod subdomains;
 
-use crate::models::{Finding, ScanReport, Severity};
+use crate::models::{Finding, ScanOptions, ScanReport, Severity};
 use chrono::Utc;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Client;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use url::Url;
 
-pub async fn run_scan(target_url: &str) -> Result<ScanReport, String> {
+pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<ScanReport, String> {
+    let opts = options.unwrap_or_default();
+
     // 1. Normalize and parse URL
     let formatted_url = if !target_url.starts_with("http://") && !target_url.starts_with("https://") {
         format!("https://{}", target_url)
@@ -19,11 +26,27 @@ pub async fn run_scan(target_url: &str) -> Result<ScanReport, String> {
 
     let parsed_url = Url::parse(&formatted_url).map_err(|e| format!("Invalid URL format: {}", e))?;
     let is_https = parsed_url.scheme() == "https";
+    let domain = parsed_url.host_str().unwrap_or_default().to_string();
 
-    // 2. Build HTTP client
+    // 2. Build HTTP client with custom options
+    let timeout_secs = opts.timeout_seconds.unwrap_or(15);
+    let user_agent_str = opts.user_agent.unwrap_or_else(|| {
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 VulnRadar/1.0".to_string()
+    });
+
+    let mut custom_header_map = HeaderMap::new();
+    if let Some(headers) = &opts.custom_headers {
+        for (k, v) in headers {
+            if let (Ok(name), Ok(val)) = (HeaderName::from_str(k), HeaderValue::from_str(v)) {
+                custom_header_map.insert(name, val);
+            }
+        }
+    }
+
     let client = Client::builder()
-        .timeout(Duration::from_secs(15))
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 VulnRadar/1.0")
+        .timeout(Duration::from_secs(timeout_secs))
+        .user_agent(user_agent_str)
+        .default_headers(custom_header_map)
         .redirect(reqwest::redirect::Policy::limited(5))
         .build()
         .map_err(|e| format!("Failed to initialize HTTP client: {}", e))?;
@@ -51,7 +74,7 @@ pub async fn run_scan(target_url: &str) -> Result<ScanReport, String> {
 
     let html_body = response.text().await.unwrap_or_default();
 
-    // 4. Run Analysis Modules
+    // 4. Run Core Analysis Modules
     let mut all_findings: Vec<Finding> = Vec::new();
     let mut detected_tech: Vec<String> = Vec::new();
 
@@ -75,7 +98,35 @@ pub async fn run_scan(target_url: &str) -> Result<ScanReport, String> {
     let leak_findings = leaks::analyze_leaks(&html_body, is_https);
     all_findings.extend(leak_findings);
 
-    // 5. Calculate Metrics & Security Score
+    // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter)
+    let subdomains_fut = async {
+        if opts.include_subdomains.unwrap_or(true) && !domain.is_empty() {
+            subdomains::discover_subdomains(&domain).await
+        } else {
+            Vec::new()
+        }
+    };
+
+    let dns_fut = async {
+        if !domain.is_empty() {
+            dns::audit_dns_and_email_security(&domain).await
+        } else {
+            (Default::default(), Vec::new())
+        }
+    };
+
+    let endpoints_fut = async {
+        endpoints::audit_endpoints(&parsed_url).await
+    };
+
+    // Run async recon concurrently
+    let (subdomains_list, (dns_report, dns_findings), (endpoint_report, endpoint_findings)) =
+        tokio::join!(subdomains_fut, dns_fut, endpoints_fut);
+
+    all_findings.extend(dns_findings);
+    all_findings.extend(endpoint_findings);
+
+    // 6. Calculate Metrics & Security Score
     let mut critical_count = 0;
     let mut high_count = 0;
     let mut medium_count = 0;
@@ -130,6 +181,9 @@ pub async fn run_scan(target_url: &str) -> Result<ScanReport, String> {
         server_info,
         technologies_detected: detected_tech,
         response_headers: response_headers_list,
+        subdomains: subdomains_list,
+        dns_security: Some(dns_report),
+        endpoint_report: Some(endpoint_report),
     })
 }
 

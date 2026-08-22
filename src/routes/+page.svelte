@@ -1,12 +1,23 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { ScanReport, ScanSummary, Severity, Category } from "$lib/types";
+  import type {
+    ScanReport,
+    ScanSummary,
+    Severity,
+    Category,
+    ScanOptions,
+    MonitorTarget,
+  } from "$lib/types";
   import Navbar from "$lib/components/Navbar.svelte";
   import ScoreGauge from "$lib/components/ScoreGauge.svelte";
   import SeverityBadge from "$lib/components/SeverityBadge.svelte";
   import FindingCard from "$lib/components/FindingCard.svelte";
   import HistoryModal from "$lib/components/HistoryModal.svelte";
   import ExportModal from "$lib/components/ExportModal.svelte";
+  import ExecutiveReportModal from "$lib/components/ExecutiveReportModal.svelte";
+  import BatchScanModal from "$lib/components/BatchScanModal.svelte";
+  import ScanOptionsModal from "$lib/components/ScanOptionsModal.svelte";
+  import MonitorModal from "$lib/components/MonitorModal.svelte";
   import {
     ShieldCheck,
     AlertOctagon,
@@ -21,6 +32,12 @@
     Server,
     Sparkles,
     CheckCircle2,
+    Mail,
+    FileCode,
+    Layers,
+    Activity,
+    Bell,
+    X,
   } from "lucide-svelte";
 
   let targetUrl = $state("");
@@ -28,21 +45,53 @@
   let scanError = $state<string | null>(null);
   let report = $state<ScanReport | null>(null);
   let history = $state<ScanSummary[]>([]);
+  let monitors = $state<MonitorTarget[]>([]);
+
+  // Scan Configuration
+  let scanOptions = $state<ScanOptions>({
+    timeout_seconds: 15,
+    include_subdomains: true,
+  });
+
+  // Modal States
   let isHistoryOpen = $state(false);
   let isExportOpen = $state(false);
+  let isExecutiveReportOpen = $state(false);
+  let isBatchOpen = $state(false);
+  let isOptionsOpen = $state(false);
+  let isMonitorsOpen = $state(false);
   let exportMarkdown = $state("");
+
+  // Watchdog Alert Banner
+  let watchdogAlert = $state<{
+    target_url: string;
+    new_score: number;
+    previous_score: number;
+    critical_count: number;
+  } | null>(null);
 
   // Filters
   let searchQuery = $state("");
   let selectedSeverity = $state<Severity | "all">("all");
   let selectedCategory = $state<Category | "all">("all");
 
-  async function invokeTauri<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
+  const hasCustomOptions = $derived(
+    !!(
+      (scanOptions.custom_headers && scanOptions.custom_headers.length > 0) ||
+      scanOptions.user_agent ||
+      (scanOptions.timeout_seconds && scanOptions.timeout_seconds !== 15) ||
+      scanOptions.include_subdomains === false
+    )
+  );
+
+  async function invokeTauri<T>(
+    cmd: string,
+    args: Record<string, unknown> = {}
+  ): Promise<T> {
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       return await invoke<T>(cmd, args);
     } catch (e: any) {
-      // In browser preview / fallback dev environment
       console.warn("Tauri invoke fallback / error:", cmd, e);
       throw e;
     }
@@ -56,8 +105,36 @@
     }
   }
 
+  async function loadMonitors() {
+    try {
+      monitors = await invokeTauri<MonitorTarget[]>("get_monitors");
+    } catch {
+      // ignore
+    }
+  }
+
   onMount(() => {
     loadHistory();
+    loadMonitors();
+
+    // Listen for background watchdog alerts
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlisten = await listen<any>("monitor_alert", (event) => {
+          watchdogAlert = event.payload;
+          loadMonitors();
+          loadHistory();
+        });
+      } catch {
+        // ignore in non-tauri dev
+      }
+    })();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
   });
 
   async function handleScan(urlToScan?: string) {
@@ -69,11 +146,16 @@
     report = null;
 
     try {
-      const res = await invokeTauri<ScanReport>("scan_target", { url });
+      const res = await invokeTauri<ScanReport>("scan_target", {
+        url,
+        options: scanOptions,
+      });
       report = res;
       await loadHistory();
     } catch (err: any) {
-      scanError = err?.toString() || "Failed to scan target. Please check the URL and internet connection.";
+      scanError =
+        err?.toString() ||
+        "Failed to scan target. Please check the URL and internet connection.";
     } finally {
       isScanning = false;
     }
@@ -85,7 +167,9 @@
     scanError = null;
 
     try {
-      const res = await invokeTauri<ScanReport | null>("get_scan_report", { id: scanId });
+      const res = await invokeTauri<ScanReport | null>("get_scan_report", {
+        id: scanId,
+      });
       if (res) {
         report = res;
         targetUrl = res.target_url;
@@ -115,10 +199,39 @@
     }
   }
 
+  async function handleAddMonitor(url: string, intervalHours: number) {
+    try {
+      await invokeTauri("add_monitor", { url, intervalHours });
+      await loadMonitors();
+    } catch (err) {
+      console.error("Failed to add monitor:", err);
+    }
+  }
+
+  async function handleDeleteMonitor(id: string) {
+    try {
+      await invokeTauri("delete_monitor", { id });
+      await loadMonitors();
+    } catch (err) {
+      console.error("Failed to delete monitor:", err);
+    }
+  }
+
+  async function handleToggleMonitor(id: string) {
+    try {
+      await invokeTauri("toggle_monitor", { id });
+      await loadMonitors();
+    } catch (err) {
+      console.error("Failed to toggle monitor:", err);
+    }
+  }
+
   async function openExportModal() {
     if (!report) return;
     try {
-      exportMarkdown = await invokeTauri<string>("export_report_markdown", { report });
+      exportMarkdown = await invokeTauri<string>("export_report_markdown", {
+        report,
+      });
     } catch {
       exportMarkdown = `# Security Report: ${report.target_url}\nScore: ${report.security_score}/100`;
     }
@@ -128,15 +241,15 @@
   const filteredFindings = $derived.by(() => {
     if (!report) return [];
     return report.findings.filter((finding) => {
-      // Filter severity
       if (selectedSeverity !== "all" && finding.severity !== selectedSeverity) {
         return false;
       }
-      // Filter category
-      if (selectedCategory !== "all" && finding.category !== selectedCategory) {
+      if (
+        selectedCategory !== "all" &&
+        finding.category !== selectedCategory
+      ) {
         return false;
       }
-      // Filter query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesTitle = finding.title.toLowerCase().includes(q);
@@ -153,6 +266,8 @@
     { id: "all", label: "All Categories" },
     { id: "security_headers", label: "Headers" },
     { id: "cookie_security", label: "Cookies" },
+    { id: "dns_email_security", label: "DNS & Email" },
+    { id: "endpoint_exposure", label: "Endpoints / Recon" },
     { id: "vulnerable_dependency", label: "Dependencies (CVEs)" },
     { id: "information_disclosure", label: "Info Leaks" },
     { id: "tls_ssl", label: "TLS / HTTPS" },
@@ -170,10 +285,49 @@
   bind:targetUrl
   {isScanning}
   hasReport={!!report}
+  {hasCustomOptions}
   onScan={() => handleScan()}
+  onOpenOptions={() => (isOptionsOpen = true)}
+  onOpenBatch={() => (isBatchOpen = true)}
+  onOpenMonitors={() => (isMonitorsOpen = true)}
   onOpenHistory={() => (isHistoryOpen = true)}
   onOpenExport={openExportModal}
+  onOpenExecutiveReport={() => (isExecutiveReportOpen = true)}
 />
+
+<!-- Watchdog Alert Banner -->
+{#if watchdogAlert}
+  <div class="bg-rose-950/80 border-b border-rose-800/80 px-6 py-3 text-rose-200 text-xs flex items-center justify-between gap-4 animate-fade-in print:hidden">
+    <div class="flex items-center gap-2.5 min-w-0">
+      <Bell class="w-4 h-4 text-rose-400 animate-bounce flex-shrink-0" />
+      <span class="font-bold">Watchdog Alert:</span>
+      <span class="truncate font-mono">{watchdogAlert.target_url}</span>
+      <span class="text-rose-300">
+        Score changed from {watchdogAlert.previous_score} to {watchdogAlert.new_score} ({watchdogAlert.critical_count} critical issues)
+      </span>
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <button
+        type="button"
+        onclick={() => {
+          targetUrl = watchdogAlert!.target_url;
+          handleScan(watchdogAlert!.target_url);
+          watchdogAlert = null;
+        }}
+        class="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded-lg font-bold cursor-pointer transition-colors"
+      >
+        View Audit
+      </button>
+      <button
+        type="button"
+        onclick={() => (watchdogAlert = null)}
+        class="p-1 text-rose-400 hover:text-rose-200 rounded cursor-pointer"
+      >
+        <X class="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+{/if}
 
 <!-- Main Content Area -->
 <main class="max-w-7xl w-full mx-auto px-6 py-8 flex-1 flex flex-col">
@@ -183,10 +337,10 @@
       <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-4 text-cyan-400">
         <Sparkles class="w-8 h-8 animate-spin" />
       </div>
-      <h2 class="text-xl font-extrabold text-slate-100">Scanning Target Security Posture</h2>
+      <h2 class="text-xl font-extrabold text-slate-100">Auditing Target Security Posture</h2>
       <p class="text-xs font-mono text-cyan-400 mt-2 max-w-md truncate">{targetUrl}</p>
       <p class="text-xs text-slate-400 mt-2 max-w-md">
-        Inspecting HTTP response headers, cookie flags, client-side JavaScript dependencies, and DOM security indicators...
+        Running security headers inspection, cookie flags, DNS & email SPF/DMARC analysis, subdomain discovery, and client-side CVE detection...
       </p>
     </div>
 
@@ -252,6 +406,100 @@
         </div>
       </div>
 
+      <!-- Reconnaissance Posture Grid (DNS, Endpoints, Subdomains) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- DNS & Email Security -->
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+            <Mail class="w-4 h-4 text-cyan-400" />
+            <span>DNS & Email Security</span>
+          </div>
+          {#if report.dns_security}
+            <div class="space-y-1.5 text-xs font-mono pt-1">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">SPF Record:</span>
+                <span class={report.dns_security.spf_record ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
+                  {report.dns_security.spf_record ? "Configured" : "Missing"}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">DMARC Policy:</span>
+                <span class={report.dns_security.dmarc_policy && report.dns_security.dmarc_policy !== "none" ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
+                  {report.dns_security.dmarc_policy || "None"}
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">DNSSEC:</span>
+                <span class={report.dns_security.dnssec_enabled ? "text-emerald-400 font-semibold" : "text-slate-500"}>
+                  {report.dns_security.dnssec_enabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+            </div>
+          {:else}
+            <p class="text-xs text-slate-500">Not inspected.</p>
+          {/if}
+        </div>
+
+        <!-- Endpoints & Metafiles -->
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+            <FileCode class="w-4 h-4 text-cyan-400" />
+            <span>Endpoint Policies</span>
+          </div>
+          <div class="space-y-1.5 text-xs font-mono pt-1">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">robots.txt:</span>
+              <span class={report.endpoint_report?.robots_txt_found ? "text-slate-200" : "text-slate-500"}>
+                {report.endpoint_report?.robots_txt_found ? `${report.endpoint_report.disallowed_paths.length} disallow rules` : "Not Found"}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">Sensitive Paths:</span>
+              <span class={(report.endpoint_report?.sensitive_disallowed_paths.length || 0) > 0 ? "text-amber-400 font-bold" : "text-emerald-400"}>
+                {report.endpoint_report?.sensitive_disallowed_paths.length || 0} exposed
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">security.txt (RFC 9116):</span>
+              <span class={report.endpoint_report?.security_txt_found ? "text-emerald-400 font-semibold" : "text-slate-500"}>
+                {report.endpoint_report?.security_txt_found ? "Verified" : "Missing"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subdomain Assets -->
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+              <Globe class="w-4 h-4 text-cyan-400" />
+              <span>Subdomain Map</span>
+            </div>
+            <span class="text-xs font-mono font-bold text-cyan-400">
+              {report.subdomains?.length || 0} found
+            </span>
+          </div>
+          {#if report.subdomains && report.subdomains.length > 0}
+            <div class="max-h-20 overflow-y-auto space-y-1 text-[11px] font-mono text-slate-300 pt-1">
+              {#each report.subdomains.slice(0, 8) as sub}
+                <button
+                  type="button"
+                  class="truncate text-left text-slate-400 hover:text-cyan-300 cursor-pointer block w-full"
+                  onclick={() => { targetUrl = `https://${sub}`; handleScan(`https://${sub}`); }}
+                >
+                  • {sub}
+                </button>
+              {/each}
+              {#if report.subdomains.length > 8}
+                <div class="text-[10px] text-slate-500">+ {report.subdomains.length - 8} more subdomains</div>
+              {/if}
+            </div>
+          {:else}
+            <p class="text-xs text-slate-500 pt-1">No public subdomains recorded.</p>
+          {/if}
+        </div>
+      </div>
+
       <!-- Finding Metrics Grid -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl flex flex-col">
@@ -293,7 +541,7 @@
           />
         </div>
 
-        <!-- Severity Filter Buttons -->
+        <!-- Category & Severity Filter -->
         <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
           <button
             type="button"
@@ -357,7 +605,7 @@
           <div class="py-16 text-center bg-slate-900/30 border border-slate-800 rounded-2xl">
             <CheckCircle2 class="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
             <h3 class="text-base font-bold text-slate-200">No matching findings</h3>
-            <p class="text-xs text-slate-400 mt-1">No vulnerabilities match the current search or severity filter.</p>
+            <p class="text-xs text-slate-400 mt-1">No vulnerabilities match the current search or filter.</p>
           </div>
         {:else}
           {#each filteredFindings as finding (finding.id)}
@@ -378,7 +626,7 @@
         Instant Web Vulnerability Scanner
       </h1>
       <p class="text-sm text-slate-400 mt-3 max-w-lg leading-relaxed">
-        Enter any website URL above to inspect its live HTTP headers, SSL/TLS configuration, cookie policies, exposed sensitive data, and client-side CVEs.
+        Enter any website URL above to audit HTTP headers, SSL/TLS, cookie policies, DNS/email spoofing resistance (SPF/DMARC), subdomain map, and client-side CVEs.
       </p>
 
       <!-- Quick targets -->
@@ -419,16 +667,16 @@
       <!-- Feature Badges -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 w-full text-left">
         <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">Passive & Safe</div>
-          <p class="text-xs text-slate-400">Non-intrusive header, cookie, and DOM inspection without triggering intrusion alarms.</p>
+          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">Recon & OSINT</div>
+          <p class="text-xs text-slate-400">Automated subdomain discovery via Certificate Transparency and DNS email spoofing checks.</p>
         </div>
         <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
           <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">CVE Audit (SCA)</div>
           <p class="text-xs text-slate-400">Detects outdated JavaScript libraries (jQuery, Angular, Lodash, Bootstrap) with known CVEs.</p>
         </div>
         <div class="p-4 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">OWASP Mapped</div>
-          <p class="text-xs text-slate-400">Aligns findings with OWASP Top 10 classifications and actionable remediation steps.</p>
+          <div class="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-1">Continuous Watchdog</div>
+          <p class="text-xs text-slate-400">Automated scheduled background scanning with desktop alert triggers when risk scores drop.</p>
         </div>
       </div>
     </div>
@@ -452,3 +700,43 @@
   markdownContent={exportMarkdown}
   onClose={() => (isExportOpen = false)}
 />
+
+<!-- Executive PDF / Print Report Modal -->
+<ExecutiveReportModal
+  isOpen={isExecutiveReportOpen}
+  {report}
+  onClose={() => (isExecutiveReportOpen = false)}
+/>
+
+<!-- Batch Fleet Scanner Modal -->
+<BatchScanModal
+  isOpen={isBatchOpen}
+  options={scanOptions}
+  onSelectReport={(rep) => {
+    report = rep;
+    targetUrl = rep.target_url;
+  }}
+  onClose={() => (isBatchOpen = false)}
+/>
+
+<!-- Scan Options & Custom Headers Modal -->
+<ScanOptionsModal
+  isOpen={isOptionsOpen}
+  bind:options={scanOptions}
+  onClose={() => (isOptionsOpen = false)}
+/>
+
+<!-- Continuous Monitor Modal -->
+<MonitorModal
+  isOpen={isMonitorsOpen}
+  {monitors}
+  onAddMonitor={handleAddMonitor}
+  onDeleteMonitor={handleDeleteMonitor}
+  onToggleMonitor={handleToggleMonitor}
+  onScanNow={(url) => {
+    targetUrl = url;
+    handleScan(url);
+  }}
+  onClose={() => (isMonitorsOpen = false)}
+/>
+

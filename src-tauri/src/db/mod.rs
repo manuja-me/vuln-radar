@@ -1,4 +1,5 @@
-use crate::models::{ScanReport, ScanSummary};
+use crate::models::{MonitorTarget, ScanReport, ScanSummary};
+use chrono::{Duration as ChronoDuration, Utc};
 use rusqlite::{params, Connection, Result};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -24,6 +25,20 @@ impl Database {
                 low_count INTEGER NOT NULL,
                 info_count INTEGER NOT NULL,
                 report_json TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS monitors (
+                id TEXT PRIMARY KEY,
+                target_url TEXT NOT NULL,
+                interval_hours INTEGER NOT NULL,
+                last_scanned_at TEXT,
+                next_scan_at TEXT NOT NULL,
+                last_score INTEGER,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
             )",
             [],
         )?;
@@ -119,5 +134,123 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM scans", [])?;
         Ok(())
+    }
+
+    // Monitoring Operations
+    pub fn add_monitor(&self, target_url: &str, interval_hours: u32) -> Result<MonitorTarget> {
+        let conn = self.conn.lock().unwrap();
+        let id = format!("mon_{}", Utc::now().timestamp_millis());
+        let now = Utc::now();
+        let next_scan = now + ChronoDuration::hours(interval_hours as i64);
+        let created_at = now.to_rfc3339();
+        let next_scan_at = next_scan.to_rfc3339();
+
+        conn.execute(
+            "INSERT INTO monitors (id, target_url, interval_hours, last_scanned_at, next_scan_at, last_score, is_active, created_at)
+             VALUES (?1, ?2, ?3, NULL, ?4, NULL, 1, ?5)",
+            params![id, target_url, interval_hours, next_scan_at, created_at],
+        )?;
+
+        Ok(MonitorTarget {
+            id,
+            target_url: target_url.to_string(),
+            interval_hours,
+            last_scanned_at: None,
+            next_scan_at,
+            last_score: None,
+            is_active: true,
+            created_at,
+        })
+    }
+
+    pub fn get_monitors(&self) -> Result<Vec<MonitorTarget>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, target_url, interval_hours, last_scanned_at, next_scan_at, last_score, is_active, created_at
+             FROM monitors ORDER BY created_at DESC",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            let active_int: i32 = row.get(6)?;
+            Ok(MonitorTarget {
+                id: row.get(0)?,
+                target_url: row.get(1)?,
+                interval_hours: row.get(2)?,
+                last_scanned_at: row.get(3)?,
+                next_scan_at: row.get(4)?,
+                last_score: row.get(5)?,
+                is_active: active_int == 1,
+                created_at: row.get(7)?,
+            })
+        })?;
+
+        let mut monitors = Vec::new();
+        for row in rows {
+            if let Ok(item) = row {
+                monitors.push(item);
+            }
+        }
+        Ok(monitors)
+    }
+
+    pub fn delete_monitor(&self, id: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM monitors WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn toggle_monitor(&self, id: &str) -> Result<bool> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE monitors SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?1",
+            params![id],
+        )?;
+
+        let mut stmt = conn.prepare("SELECT is_active FROM monitors WHERE id = ?1")?;
+        let mut rows = stmt.query(params![id])?;
+        if let Some(row) = rows.next()? {
+            let active_int: i32 = row.get(0)?;
+            return Ok(active_int == 1);
+        }
+        Ok(false)
+    }
+
+    pub fn update_monitor_scan(&self, id: &str, last_scanned_at: &str, next_scan_at: &str, last_score: u32) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE monitors SET last_scanned_at = ?1, next_scan_at = ?2, last_score = ?3 WHERE id = ?4",
+            params![last_scanned_at, next_scan_at, last_score, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_due_monitors(&self, now_iso: &str) -> Result<Vec<MonitorTarget>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, target_url, interval_hours, last_scanned_at, next_scan_at, last_score, is_active, created_at
+             FROM monitors WHERE is_active = 1 AND next_scan_at <= ?1",
+        )?;
+
+        let rows = stmt.query_map(params![now_iso], |row| {
+            let active_int: i32 = row.get(6)?;
+            Ok(MonitorTarget {
+                id: row.get(0)?,
+                target_url: row.get(1)?,
+                interval_hours: row.get(2)?,
+                last_scanned_at: row.get(3)?,
+                next_scan_at: row.get(4)?,
+                last_score: row.get(5)?,
+                is_active: active_int == 1,
+                created_at: row.get(7)?,
+            })
+        })?;
+
+        let mut monitors = Vec::new();
+        for row in rows {
+            if let Ok(item) = row {
+                monitors.push(item);
+            }
+        }
+        Ok(monitors)
     }
 }
