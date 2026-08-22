@@ -5,17 +5,14 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      release_tag:
-        description: 'Release tag (e.g. v0.1.0)'
-        required: false
-        default: 'v0.1.0'
 
 permissions:
   contents: write
 
 jobs:
-  build-tauri:
+  release:
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -61,14 +58,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || 'v0.1.0' }}
-          releaseName: 'VulnRadar ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || 'v0.1.0' }}'
-          releaseBody: |
-            ## 🛡️ VulnRadar Release Assets
-            Download the appropriate desktop executable for your operating system:
-            - **Windows**: `.exe` setup installer or standalone executable
-            - **Linux**: `.AppImage` / `.deb` package
-            - **macOS**: `.dmg` / `.app` bundle
+          tagName: v__VERSION__
+          releaseName: 'VulnRadar v__VERSION__'
+          releaseBody: 'See the assets below to download the executable for your operating system.'
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
