@@ -753,34 +753,64 @@
 
   <!-- Empty Initial Dashboard Landing -->
   {:else}
-    <div class="my-auto py-12 flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
+    <div class="my-auto py-12 flex flex-col items-center justify-center text-center max-w-3xl mx-auto animate-fade-in">
       <!-- High-End Cyber Radar Emblem -->
-      <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-cyan-500/10 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center mb-6 text-cyan-400 shadow-2xl shadow-cyan-500/20">
-        <ShieldCheck class="w-10 h-10 text-cyan-400" />
-        <div class="absolute -inset-1 rounded-2xl bg-cyan-400/10 blur-md pointer-events-none"></div>
+      <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-cyan-500/10 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center mb-6 text-cyan-400 shadow-2xl shadow-cyan-500/20 group">
+        <ShieldCheck class="w-10 h-10 text-cyan-400 relative z-10 transition-transform group-hover:scale-110 duration-300" />
+        <div class="absolute -inset-1.5 rounded-2xl bg-cyan-400/15 blur-lg pointer-events-none"></div>
       </div>
 
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold mb-4">
-        ENTERPRISE WEB SECURITY SUITE
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold mb-4 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
+        ENTERPRISE WEB SECURITY POSTURE SUITE
       </div>
 
-      <h1 class="text-4xl font-black text-white tracking-tight sm:text-5xl">
-        Automated Web Posture & Vulnerability Scanner
+      <h1 class="text-4xl font-black text-white tracking-tight sm:text-5xl leading-tight">
+        Next-Generation Web Security & Posture Scanner
       </h1>
       <p class="text-sm text-slate-400 mt-4 max-w-xl leading-relaxed">
-        Perform real-time passive reconnaissance across HTTP security headers, SSL/TLS, cookie directives, Certificate Transparency subdomains, DNS email spoofing (SPF/DMARC), and front-end CVE dependencies.
+        Perform real-time passive reconnaissance across HTTP security headers, TLS ciphers, cookie directives, Certificate Transparency subdomains, DNS SPF/DMARC anti-spoofing, and front-end CVE dependencies.
       </p>
 
+      <!-- Center-Stage Instant Scan Input -->
+      <div class="w-full max-w-xl mt-8">
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            handleScan();
+          }}
+          class="relative flex items-center gap-2 p-1.5 bg-slate-900/90 border border-slate-800 focus-within:border-cyan-500/80 focus-within:ring-2 focus-within:ring-cyan-500/20 rounded-2xl shadow-2xl shadow-cyan-500/5 transition-all"
+        >
+          <div class="pl-3.5 text-slate-500">
+            <Search class="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            bind:value={targetUrl}
+            placeholder="Enter target domain or URL (e.g. example.com)..."
+            class="w-full py-2 bg-transparent text-xs font-mono text-white placeholder-slate-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!targetUrl.trim() || isScanning}
+            class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
+          >
+            <Sparkles class="w-3.5 h-3.5" />
+            <span>Launch Audit</span>
+          </button>
+        </form>
+      </div>
+
       <!-- Quick presets -->
-      <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
-        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider font-mono mr-1">Sample Targets:</span>
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-2">
+        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider font-mono mr-1">Preset Targets:</span>
         <button
           type="button"
           onclick={() => {
             targetUrl = "https://example.com";
             handleScan("https://example.com");
           }}
-          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
+          class="px-3 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-lg text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           example.com
         </button>
@@ -790,7 +820,7 @@
             targetUrl = "http://testphp.vulnweb.com";
             handleScan("http://testphp.vulnweb.com");
           }}
-          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
+          class="px-3 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-lg text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           testphp.vulnweb.com
         </button>
@@ -800,7 +830,7 @@
             targetUrl = "https://httpbin.org";
             handleScan("https://httpbin.org");
           }}
-          class="px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-xl text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
+          class="px-3 py-1 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 rounded-lg text-xs font-mono text-cyan-400 transition-all cursor-pointer shadow-sm"
         >
           httpbin.org
         </button>
@@ -808,24 +838,24 @@
 
       <!-- Feature Badges -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 w-full text-left">
-        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
-          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm group">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
             <Globe class="w-4 h-4" />
           </div>
           <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Recon & Subdomains</div>
           <p class="text-xs text-slate-400 leading-relaxed">Passive asset mapping via Certificate Transparency logs and SPF/DMARC anti-spoofing checks.</p>
         </div>
 
-        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
-          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm group">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
             <Cpu class="w-4 h-4" />
           </div>
           <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Software Composition (SCA)</div>
           <p class="text-xs text-slate-400 leading-relaxed">Identifies outdated front-end JavaScript libraries and maps them to known public CVEs.</p>
         </div>
 
-        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm">
-          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3">
+        <div class="p-5 bg-slate-900/40 hover:bg-slate-900/70 border border-slate-800 hover:border-cyan-500/30 rounded-2xl transition-all shadow-sm group">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
             <Activity class="w-4 h-4" />
           </div>
           <div class="text-slate-200 text-xs font-bold uppercase tracking-wider mb-1">Continuous Watchdog</div>
