@@ -83,6 +83,33 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         detected_tech.push(format!("Server: {}", srv));
     }
 
+    // Passive CDN / WAF Edge Detection
+    if resp_headers.contains_key("cf-ray") || server_info.as_deref().unwrap_or("").to_lowercase().contains("cloudflare") {
+        if !detected_tech.iter().any(|t| t.contains("Cloudflare")) {
+            detected_tech.push("WAF/CDN: Cloudflare".to_string());
+        }
+    }
+    if resp_headers.contains_key("x-amz-cf-id") || resp_headers.get("via").and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase().contains("cloudfront") {
+        if !detected_tech.iter().any(|t| t.contains("CloudFront")) {
+            detected_tech.push("CDN: AWS CloudFront".to_string());
+        }
+    }
+    if resp_headers.contains_key("x-fastly-request-id") || resp_headers.contains_key("fastly-restarts") {
+        if !detected_tech.iter().any(|t| t.contains("Fastly")) {
+            detected_tech.push("CDN: Fastly".to_string());
+        }
+    }
+    if resp_headers.contains_key("x-akamai-transformed") {
+        if !detected_tech.iter().any(|t| t.contains("Akamai")) {
+            detected_tech.push("CDN: Akamai".to_string());
+        }
+    }
+    if resp_headers.contains_key("x-varnish") {
+        if !detected_tech.iter().any(|t| t.contains("Varnish")) {
+            detected_tech.push("Cache: Varnish".to_string());
+        }
+    }
+
     // Security Headers Analysis
     let header_findings = headers::analyze_headers(&resp_headers, is_https);
     all_findings.extend(header_findings);

@@ -9,6 +9,7 @@
     Activity,
     Sliders,
     Printer,
+    Keyboard,
   } from "lucide-svelte";
 
   let {
@@ -23,6 +24,7 @@
     onOpenHistory,
     onOpenExport,
     onOpenExecutiveReport,
+    onOpenShortcuts,
   }: {
     targetUrl: string;
     isScanning: boolean;
@@ -35,6 +37,7 @@
     onOpenHistory: () => void;
     onOpenExport: () => void;
     onOpenExecutiveReport: () => void;
+    onOpenShortcuts?: () => void;
   } = $props();
 
   function handleSubmit(e: Event) {
@@ -155,11 +158,22 @@
         type="button"
         onclick={onOpenHistory}
         class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-        title="View Scan History"
+        title="View Scan History (Ctrl+H)"
       >
         <History class="w-3.5 h-3.5 text-neutral-400" />
         <span>History</span>
       </button>
+
+      {#if onOpenShortcuts}
+        <button
+          type="button"
+          onclick={onOpenShortcuts}
+          class="p-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-400 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer"
+          title="Keyboard Shortcuts (⌘K / ?)"
+        >
+          <Keyboard class="w-3.5 h-3.5" />
+        </button>
+      {/if}
 
       {#if hasReport}
         <button

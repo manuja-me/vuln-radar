@@ -16,6 +16,7 @@
   let { finding }: { finding: Finding } = $props();
   let expanded = $state(false);
   let copied = $state(false);
+  let copiedRemediationText = $state(false);
 
   function toggle() {
     expanded = !expanded;
@@ -28,6 +29,17 @@
       await navigator.clipboard.writeText(finding.evidence);
       copied = true;
       setTimeout(() => (copied = false), 2000);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function copyRemediation(e: MouseEvent) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(finding.remediation);
+      copiedRemediationText = true;
+      setTimeout(() => (copiedRemediationText = false), 2000);
     } catch {
       // ignore
     }
@@ -133,17 +145,35 @@
 
         <!-- Remediation -->
         <div
-          class="space-y-1 bg-emerald-950/20 border border-emerald-900/30 p-3 rounded-lg"
+          class="space-y-1 bg-emerald-950/20 border border-emerald-900/30 p-3 rounded-lg flex flex-col justify-between"
         >
-          <div
-            class="text-[11px] font-medium text-emerald-300 flex items-center gap-1.5"
-          >
-            <CheckCircle2 class="w-3.5 h-3.5" />
-            <span>Remediation</span>
+          <div>
+            <div
+              class="text-[11px] font-medium text-emerald-300 flex items-center justify-between gap-1.5 mb-1"
+            >
+              <div class="flex items-center gap-1.5">
+                <CheckCircle2 class="w-3.5 h-3.5" />
+                <span>Remediation</span>
+              </div>
+              <button
+                type="button"
+                onclick={copyRemediation}
+                class="px-1.5 py-0.5 text-[10px] font-mono text-emerald-400/80 hover:text-emerald-200 flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/40 rounded cursor-pointer transition-colors"
+                title="Copy remediation guidance"
+              >
+                {#if copiedRemediationText}
+                  <Check class="w-2.5 h-2.5 text-emerald-400" />
+                  <span>Copied</span>
+                {:else}
+                  <Copy class="w-2.5 h-2.5" />
+                  <span>Copy</span>
+                {/if}
+              </button>
+            </div>
+            <p class="text-emerald-200/90 text-xs leading-relaxed">
+              {finding.remediation}
+            </p>
           </div>
-          <p class="text-emerald-200/90 text-xs leading-relaxed">
-            {finding.remediation}
-          </p>
         </div>
       </div>
 

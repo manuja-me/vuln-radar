@@ -18,6 +18,8 @@
   import BatchScanModal from "$lib/components/BatchScanModal.svelte";
   import ScanOptionsModal from "$lib/components/ScanOptionsModal.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
+  import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
+  import Toast from "$lib/components/Toast.svelte";
   import {
     ShieldCheck,
     AlertOctagon,
@@ -40,6 +42,12 @@
     Sliders,
     Loader2,
     X,
+    Keyboard,
+    Terminal,
+    ArrowUpDown,
+    Check,
+    TrendingUp,
+    TrendingDown,
   } from "lucide-svelte";
 
   let targetUrl = $state("");
@@ -62,7 +70,24 @@
   let isBatchOpen = $state(false);
   let isOptionsOpen = $state(false);
   let isMonitorsOpen = $state(false);
+  let isShortcutsOpen = $state(false);
   let exportMarkdown = $state("");
+
+  // Toast Notification System
+  let toastMessage = $state("");
+  let toastType = $state<"success" | "error" | "info">("info");
+  let toastVisible = $state(false);
+  let toastTimer: any = null;
+
+  function showToast(msg: string, type: "success" | "error" | "info" = "info") {
+    toastMessage = msg;
+    toastType = type;
+    toastVisible = true;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastVisible = false;
+    }, 2800);
+  }
 
   // Watchdog Alert Banner
   let watchdogAlert = $state<{
@@ -72,10 +97,12 @@
     critical_count: number;
   } | null>(null);
 
-  // Filters
+  // Filters & Sorting
   let searchQuery = $state("");
   let selectedSeverity = $state<Severity | "all">("all");
   let selectedCategory = $state<Category | "all">("all");
+  let sortFindingsBy = $state<"severity" | "title" | "category">("severity");
+  let copiedCurl = $state(false);
 
   const hasCustomOptions = $derived(
     !!(
@@ -116,9 +143,79 @@
     }
   }
 
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      isHistoryOpen = false;
+      isExportOpen = false;
+      isExecutiveReportOpen = false;
+      isBatchOpen = false;
+      isOptionsOpen = false;
+      isMonitorsOpen = false;
+      isShortcutsOpen = false;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      const input = document.querySelector('header input[type="text"]') as HTMLInputElement | null;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      isBatchOpen = !isBatchOpen;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "h") {
+      e.preventDefault();
+      isHistoryOpen = !isHistoryOpen;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+      e.preventDefault();
+      isMonitorsOpen = !isMonitorsOpen;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+      e.preventDefault();
+      isOptionsOpen = !isOptionsOpen;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+      if (report) {
+        e.preventDefault();
+        openExportModal();
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+      if (report) {
+        e.preventDefault();
+        isExecutiveReportOpen = !isExecutiveReportOpen;
+      }
+      return;
+    }
+
+    if (e.key === "?" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
+      e.preventDefault();
+      isShortcutsOpen = !isShortcutsOpen;
+    }
+  }
+
   onMount(() => {
     loadHistory();
     loadMonitors();
+
+    window.addEventListener("keydown", handleKeydown);
 
     // Listen for background watchdog alerts
     let unlisten: (() => void) | undefined;
@@ -129,6 +226,7 @@
           watchdogAlert = event.payload;
           loadMonitors();
           loadHistory();
+          showToast(`Watchdog Alert for ${event.payload?.target_url || "monitored target"}`, "error");
         });
       } catch {
         // ignore in non-tauri dev
@@ -136,6 +234,7 @@
     })();
 
     return () => {
+      window.removeEventListener("keydown", handleKeydown);
       if (unlisten) unlisten();
     };
   });
@@ -155,10 +254,12 @@
       });
       report = res;
       await loadHistory();
+      showToast(`Scan complete: Score ${res.security_score}/100 with ${res.total_findings} findings`, "success");
     } catch (err: any) {
       scanError =
         err?.toString() ||
         "Failed to scan target. Please check the URL and internet connection.";
+      showToast("Security audit failed. Check target URL and network.", "error");
     } finally {
       isScanning = false;
     }
@@ -176,6 +277,7 @@
       if (res) {
         report = res;
         targetUrl = res.target_url;
+        showToast(`Loaded historical audit from ${new Date(res.scanned_at).toLocaleDateString()}`, "info");
       }
     } catch (err: any) {
       scanError = err?.toString() || "Failed to load past scan report.";
@@ -188,6 +290,7 @@
     try {
       await invokeTauri("delete_scan", { id: scanId });
       await loadHistory();
+      showToast("Scan removed from history archive", "info");
     } catch (err) {
       console.error(err);
     }
@@ -197,6 +300,7 @@
     try {
       await invokeTauri("clear_history");
       history = [];
+      showToast("History archive cleared", "info");
     } catch (err) {
       console.error(err);
     }
@@ -206,6 +310,7 @@
     try {
       await invokeTauri("add_monitor", { url, intervalHours });
       await loadMonitors();
+      showToast(`Added ${url} to continuous watchdog (${intervalHours}h)`, "success");
     } catch (err) {
       console.error("Failed to add monitor:", err);
     }
@@ -215,6 +320,7 @@
     try {
       await invokeTauri("delete_monitor", { id });
       await loadMonitors();
+      showToast("Monitor removed", "info");
     } catch (err) {
       console.error("Failed to delete monitor:", err);
     }
@@ -241,9 +347,23 @@
     isExportOpen = true;
   }
 
+  const previousScan = $derived.by(() => {
+    if (!report || history.length === 0) return null;
+    const cleanCurrent = report.target_url.replace(/\/$/, "").toLowerCase();
+    return history.find((h) => h.id !== report?.id && h.target_url.replace(/\/$/, "").toLowerCase() === cleanCurrent) || null;
+  });
+
+  const severityWeights: Record<Severity, number> = {
+    critical: 5,
+    high: 4,
+    medium: 3,
+    low: 2,
+    info: 1,
+  };
+
   const filteredFindings = $derived.by(() => {
     if (!report) return [];
-    return report.findings.filter((finding) => {
+    let list = report.findings.filter((finding) => {
       if (selectedSeverity !== "all" && finding.severity !== selectedSeverity) {
         return false;
       }
@@ -263,6 +383,16 @@
       }
       return true;
     });
+
+    if (sortFindingsBy === "severity") {
+      list.sort((a, b) => severityWeights[b.severity] - severityWeights[a.severity]);
+    } else if (sortFindingsBy === "title") {
+      list.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortFindingsBy === "category") {
+      list.sort((a, b) => a.category.localeCompare(b.category));
+    }
+
+    return list;
   });
 
   const categories = [
@@ -294,7 +424,19 @@
     try {
       await navigator.clipboard.writeText(report.target_url);
       copiedUrl = true;
+      showToast("Target URL copied to clipboard", "success");
       setTimeout(() => (copiedUrl = false), 2000);
+    } catch {}
+  }
+
+  async function copyCurlCommand() {
+    if (!report) return;
+    try {
+      const curlCmd = `curl -i -s -k -L -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) VulnRadar/1.0" "${report.target_url}"`;
+      await navigator.clipboard.writeText(curlCmd);
+      copiedCurl = true;
+      showToast("cURL command copied to clipboard", "success");
+      setTimeout(() => (copiedCurl = false), 2000);
     } catch {}
   }
 
@@ -302,6 +444,7 @@
     try {
       await navigator.clipboard.writeText(`${host}:${port}`);
       copiedPort = port;
+      showToast(`Port address ${host}:${port} copied`, "success");
       setTimeout(() => (copiedPort = null), 2000);
     } catch {}
   }
@@ -349,6 +492,7 @@
   onOpenHistory={() => (isHistoryOpen = true)}
   onOpenExport={openExportModal}
   onOpenExecutiveReport={() => (isExecutiveReportOpen = true)}
+  onOpenShortcuts={() => (isShortcutsOpen = true)}
 />
 
 <!-- Watchdog Alert Banner -->
@@ -446,6 +590,21 @@
             <span class="text-xs text-neutral-400 font-mono">
               Audited at {new Date(report.scanned_at).toLocaleTimeString()}
             </span>
+
+            {#if previousScan}
+              <span class="text-xs text-neutral-600">•</span>
+              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono {report.security_score >= previousScan.security_score ? 'bg-emerald-950/30 text-emerald-300 border border-emerald-800/30' : 'bg-rose-950/30 text-rose-300 border border-rose-800/30'}">
+                {#if report.security_score > previousScan.security_score}
+                  <TrendingUp class="w-3 h-3 text-emerald-400" />
+                  <span>+{report.security_score - previousScan.security_score} pts vs previous</span>
+                {:else if report.security_score < previousScan.security_score}
+                  <TrendingDown class="w-3 h-3 text-rose-400" />
+                  <span>-{previousScan.security_score - report.security_score} pts vs previous</span>
+                {:else}
+                  <span>Score unchanged</span>
+                {/if}
+              </div>
+            {/if}
           </div>
 
           <div class="flex items-center gap-2.5">
@@ -453,18 +612,32 @@
               <Globe class="w-5 h-5 text-neutral-400 flex-shrink-0" />
               <span class="truncate">{report.target_url}</span>
             </h1>
-            <button
-              type="button"
-              onclick={copyTargetUrl}
-              class="p-1 text-neutral-400 hover:text-white hover:bg-[#282828] rounded cursor-pointer transition-colors"
-              title="Copy URL"
-            >
-              {#if copiedUrl}
-                <CheckCircle2 class="w-3.5 h-3.5 text-emerald-400" />
-              {:else}
-                <Search class="w-3.5 h-3.5" />
-              {/if}
-            </button>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onclick={copyTargetUrl}
+                class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded cursor-pointer transition-colors"
+                title="Copy URL"
+              >
+                {#if copiedUrl}
+                  <CheckCircle2 class="w-3.5 h-3.5 text-emerald-400" />
+                {:else}
+                  <Search class="w-3.5 h-3.5" />
+                {/if}
+              </button>
+              <button
+                type="button"
+                onclick={copyCurlCommand}
+                class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded cursor-pointer transition-colors"
+                title="Copy cURL reproduction command"
+              >
+                {#if copiedCurl}
+                  <Check class="w-3.5 h-3.5 text-emerald-400" />
+                {:else}
+                  <Terminal class="w-3.5 h-3.5" />
+                {/if}
+              </button>
+            </div>
           </div>
 
           <!-- Detected Tech Stack Tags -->
@@ -567,18 +740,43 @@
       <!-- TAB 1: Findings View -->
       {#if activeTab === "findings"}
         <!-- Search & Filter Controls -->
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
-          <div class="relative w-full md:w-80">
-            <Search class="w-3.5 h-3.5 text-neutral-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
-            <input
-              type="text"
-              bind:value={searchQuery}
-              placeholder="Search findings, CVEs, OWASP..."
-              class="w-full pl-8 pr-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-200 placeholder-neutral-500 font-mono focus:outline-none"
-            />
+        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-xl flex flex-col lg:flex-row items-center justify-between gap-3">
+          <div class="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto flex-1">
+            <div class="relative w-full sm:w-72">
+              <Search class="w-3.5 h-3.5 text-neutral-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
+              <input
+                type="text"
+                bind:value={searchQuery}
+                placeholder="Search findings, CVEs, OWASP..."
+                class="w-full pl-8 pr-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-200 placeholder-neutral-500 font-mono focus:outline-none"
+              />
+            </div>
+
+            <!-- Category Filter Dropdown -->
+            <select
+              bind:value={selectedCategory}
+              class="w-full sm:w-auto px-2.5 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
+            >
+              {#each categories as cat}
+                <option value={cat.id}>{cat.label}</option>
+              {/each}
+            </select>
+
+            <!-- Sort By Dropdown -->
+            <div class="flex items-center gap-1 w-full sm:w-auto">
+              <ArrowUpDown class="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <select
+                bind:value={sortFindingsBy}
+                class="w-full sm:w-auto px-2 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
+              >
+                <option value="severity">Sort: Severity</option>
+                <option value="title">Sort: Title (A-Z)</option>
+                <option value="category">Sort: Category</option>
+              </select>
+            </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-1 w-full md:w-auto">
+          <div class="flex flex-wrap items-center gap-1 w-full lg:w-auto justify-start lg:justify-end">
             <button
               type="button"
               onclick={() => (selectedSeverity = "all")}
@@ -589,28 +787,28 @@
             <button
               type="button"
               onclick={() => (selectedSeverity = "critical")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'critical' ? 'bg-red-950 text-red-200 border border-red-800' : 'bg-red-950/20 text-red-400 hover:bg-red-950/40'}"
+              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'critical' ? 'bg-red-950 text-red-200 border border-red-800 font-semibold' : 'bg-red-950/20 text-red-400 hover:bg-red-950/40'}"
             >
               Critical ({report.critical_count})
             </button>
             <button
               type="button"
               onclick={() => (selectedSeverity = "high")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'high' ? 'bg-orange-950 text-orange-200 border border-orange-800' : 'bg-orange-950/20 text-orange-400 hover:bg-orange-950/40'}"
+              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'high' ? 'bg-orange-950 text-orange-200 border border-orange-800 font-semibold' : 'bg-orange-950/20 text-orange-400 hover:bg-orange-950/40'}"
             >
               High ({report.high_count})
             </button>
             <button
               type="button"
               onclick={() => (selectedSeverity = "medium")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'medium' ? 'bg-amber-950 text-amber-200 border border-amber-800' : 'bg-amber-950/20 text-amber-400 hover:bg-amber-950/40'}"
+              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'medium' ? 'bg-amber-950 text-amber-200 border border-amber-800 font-semibold' : 'bg-amber-950/20 text-amber-400 hover:bg-amber-950/40'}"
             >
               Med ({report.medium_count})
             </button>
             <button
               type="button"
               onclick={() => (selectedSeverity = "low")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'low' ? 'bg-blue-950 text-blue-200 border border-blue-800' : 'bg-blue-950/20 text-blue-400 hover:bg-blue-950/40'}"
+              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'low' ? 'bg-blue-950 text-blue-200 border border-blue-800 font-semibold' : 'bg-blue-950/20 text-blue-400 hover:bg-blue-950/40'}"
             >
               Low ({report.low_count})
             </button>
@@ -1146,5 +1344,19 @@
     handleScan(url);
   }}
   onClose={() => (isMonitorsOpen = false)}
+/>
+
+<!-- Keyboard Shortcuts Helper Modal -->
+<ShortcutsModal
+  isOpen={isShortcutsOpen}
+  onClose={() => (isShortcutsOpen = false)}
+/>
+
+<!-- Toast Notifications -->
+<Toast
+  message={toastMessage}
+  type={toastType}
+  visible={toastVisible}
+  onDismiss={() => (toastVisible = false)}
 />
 

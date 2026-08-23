@@ -304,7 +304,7 @@ pub fn analyze_headers(headers: &HeaderMap, is_https: bool) -> Vec<Finding> {
         });
     }
 
-    // 8. CORS Wildcard Check
+    // 8. CORS Wildcard & Null Origin Checks
     if let Some(cors_origin) = headers.get("access-control-allow-origin").and_then(|h| h.to_str().ok()) {
         if cors_origin == "*" {
             let allow_creds = headers
@@ -326,6 +326,40 @@ pub fn analyze_headers(headers: &HeaderMap, is_https: bool) -> Vec<Finding> {
                     references: vec!["https://portswigger.net/web-security/cors".to_string()],
                 });
             }
+        } else if cors_origin.trim().eq_ignore_ascii_case("null") {
+            findings.push(Finding {
+                id: "cors-null-origin-allowed".to_string(),
+                title: "Insecure CORS Policy: 'null' Origin Permitted".to_string(),
+                severity: Severity::High,
+                category: Category::CorsMisconfiguration,
+                description: "The server trusts the 'null' origin in Access-Control-Allow-Origin. Sandboxed iframes and local file exploits can generate a 'null' Origin to bypass CORS.".to_string(),
+                impact: "Attackers can use sandboxed iframes or data: URIs to steal sensitive cross-origin data.".to_string(),
+                remediation: "Avoid trusting the 'null' origin. Validate against an explicit whitelist of trusted HTTPS origins.".to_string(),
+                evidence: Some("Access-Control-Allow-Origin: null".to_string()),
+                owasp_category: "A01:2021-Broken Access Control".to_string(),
+                cve_id: None,
+                references: vec!["https://portswigger.net/web-security/cors".to_string()],
+            });
+        }
+    }
+
+    // 9. Cross-Origin-Opener-Policy (COOP) & Cross-Origin-Embedder-Policy (COEP)
+    if is_https {
+        let has_coop = headers.get("cross-origin-opener-policy").is_some();
+        if !has_coop {
+            findings.push(Finding {
+                id: "missing-coop".to_string(),
+                title: "Missing Cross-Origin-Opener-Policy (COOP) Header".to_string(),
+                severity: Severity::Info,
+                category: Category::SecurityHeaders,
+                description: "No Cross-Origin-Opener-Policy (COOP) header detected. COOP isolates your top-level browsing context from cross-origin documents.".to_string(),
+                impact: "Without COOP, cross-origin popups or window.opener references can interact with your window, facilitating XS-Leaks and Spectre-based attacks.".to_string(),
+                remediation: "Set 'Cross-Origin-Opener-Policy: same-origin' or 'same-origin-allow-popups'.".to_string(),
+                evidence: None,
+                owasp_category: "A05:2021-Security Misconfiguration".to_string(),
+                cve_id: None,
+                references: vec!["https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy".to_string()],
+            });
         }
     }
 
