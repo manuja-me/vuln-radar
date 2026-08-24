@@ -58,7 +58,7 @@
           <span
             class="px-1.5 py-0.2 text-[10px] font-mono bg-neutral-800 text-neutral-400 border border-neutral-700/60 rounded"
           >
-            v0.4.1
+            v0.5.0
           </span>
         </div>
         <p class="text-[11px] text-neutral-400">

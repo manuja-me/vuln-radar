@@ -85,7 +85,7 @@
           <div>
             <div class="flex items-center gap-2">
               <span class="text-white print:text-neutral-900 font-bold text-lg tracking-tight">VulnRadar</span>
-              <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#282828] print:bg-neutral-100 text-neutral-400 print:text-neutral-700 rounded border border-[#383838] print:border-neutral-300">v0.4.1</span>
+              <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#282828] print:bg-neutral-100 text-neutral-400 print:text-neutral-700 rounded border border-[#383838] print:border-neutral-300">v0.5.0</span>
             </div>
             <h1 class="text-xl font-bold text-white print:text-black mt-1">Web Security Posture Audit</h1>
             <p class="text-xs text-neutral-400 print:text-neutral-600 font-mono mt-0.5">Target: {report.target_url}</p>
