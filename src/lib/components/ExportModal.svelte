@@ -1,16 +1,18 @@
 <script lang="ts">
   import type { ScanReport } from "$lib/types";
-  import { X, Download, Copy, Check, FileText, Code2, Table, Terminal } from "lucide-svelte";
+  import { X, Download, Copy, Check, FileText, Code2, Table, Terminal, Printer } from "lucide-svelte";
 
   let {
     isOpen = false,
     report,
     markdownContent = "",
+    onOpenExecutiveReport,
     onClose,
   }: {
     isOpen: boolean;
     report: ScanReport | null;
     markdownContent: string;
+    onOpenExecutiveReport?: () => void;
     onClose: () => void;
   } = $props();
 
@@ -112,60 +114,64 @@
 
 {#if isOpen && report}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
     onclick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") onClose();
+    }}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
-    <div class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden text-[#e3e2e0]">
+    <div class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-[#e3e2e0]">
       <!-- Header -->
-      <div class="p-4 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
+      <div class="p-4 border-b border-[#2e2e2e] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#191919]">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
             <FileText class="w-4 h-4" />
           </div>
           <div>
-            <h2 class="text-sm font-semibold text-white">Export Security Report</h2>
-            <p class="text-[11px] text-neutral-400 font-mono">{report.target_url}</p>
+            <h2 class="text-sm font-semibold text-white">Export & Share Security Report</h2>
+            <p class="text-[11px] text-neutral-400 font-mono truncate max-w-xs">{report.target_url}</p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 self-end sm:self-auto">
           <!-- Format Tabs -->
           <div class="flex bg-[#141414] p-0.5 rounded-lg border border-[#2e2e2e]">
             <button
               type="button"
               onclick={() => (activeTab = "markdown")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'markdown' ? 'bg-[#2a2a2a] text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'markdown' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
             >
               <FileText class="w-3.5 h-3.5" />
-              Markdown
+              <span>Markdown</span>
             </button>
             <button
               type="button"
               onclick={() => (activeTab = "json")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'json' ? 'bg-[#2a2a2a] text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'json' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
             >
               <Code2 class="w-3.5 h-3.5" />
-              JSON
+              <span>JSON</span>
             </button>
             <button
               type="button"
               onclick={() => (activeTab = "csv")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'csv' ? 'bg-[#2a2a2a] text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'csv' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
             >
               <Table class="w-3.5 h-3.5" />
-              CSV
+              <span>CSV</span>
             </button>
             <button
               type="button"
               onclick={() => (activeTab = "curl")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'curl' ? 'bg-[#2a2a2a] text-white font-semibold' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'curl' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
             >
               <Terminal class="w-3.5 h-3.5" />
-              cURL
+              <span>cURL</span>
             </button>
           </div>
 
@@ -173,6 +179,7 @@
             type="button"
             onclick={onClose}
             class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
+            aria-label="Close export dialog"
           >
             <X class="w-4 h-4" />
           </button>
@@ -185,16 +192,32 @@
       </div>
 
       <!-- Footer / Actions -->
-      <div class="p-3.5 border-t border-[#2e2e2e] bg-[#191919] flex items-center justify-between">
-        <div class="text-xs text-neutral-400">
-          Format: <strong class="text-white uppercase font-mono">{activeTab}</strong> • {report.total_findings} findings discovered
+      <div class="p-3.5 border-t border-[#2e2e2e] bg-[#191919] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-neutral-400">
+            Format: <strong class="text-white uppercase font-mono">{activeTab}</strong> • {report.total_findings} findings
+          </div>
+
+          {#if onOpenExecutiveReport}
+            <button
+              type="button"
+              onclick={() => {
+                onClose();
+                onOpenExecutiveReport?.();
+              }}
+              class="px-2.5 py-1 bg-[#252525] hover:bg-[#303030] text-neutral-300 hover:text-white border border-[#333] rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Printer class="w-3.5 h-3.5 text-neutral-300" />
+              <span>Executive PDF View</span>
+            </button>
+          {/if}
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 self-end sm:self-auto">
           <button
             type="button"
             onclick={copyToClipboard}
-            class="px-3 py-1.5 bg-[#252525] hover:bg-[#2c2c2c] text-neutral-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+            class="px-3 py-1.5 bg-[#252525] hover:bg-[#2c2c2c] text-neutral-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-[#333]"
           >
             {#if copied}
               <Check class="w-3.5 h-3.5 text-emerald-400" />

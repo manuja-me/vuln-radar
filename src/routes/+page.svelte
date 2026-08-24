@@ -19,6 +19,7 @@
   import ScanOptionsModal from "$lib/components/ScanOptionsModal.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
+  import SettingsModal from "$lib/components/SettingsModal.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     ShieldCheck,
@@ -64,6 +65,8 @@
   });
 
   // Modal States
+  let isSettingsOpen = $state(false);
+  let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data">("params");
   let isHistoryOpen = $state(false);
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
@@ -145,6 +148,7 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
+      isSettingsOpen = false;
       isHistoryOpen = false;
       isExportOpen = false;
       isExecutiveReportOpen = false;
@@ -152,6 +156,12 @@
       isOptionsOpen = false;
       isMonitorsOpen = false;
       isShortcutsOpen = false;
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+      e.preventDefault();
+      isSettingsOpen = !isSettingsOpen;
       return;
     }
 
@@ -167,7 +177,8 @@
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
       e.preventDefault();
-      isBatchOpen = !isBatchOpen;
+      settingsTab = "batch";
+      isSettingsOpen = true;
       return;
     }
 
@@ -179,13 +190,15 @@
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
       e.preventDefault();
-      isMonitorsOpen = !isMonitorsOpen;
+      settingsTab = "watchdog";
+      isSettingsOpen = true;
       return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
       e.preventDefault();
-      isOptionsOpen = !isOptionsOpen;
+      settingsTab = "params";
+      isSettingsOpen = true;
       return;
     }
 
@@ -207,7 +220,8 @@
 
     if (e.key === "?" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
       e.preventDefault();
-      isShortcutsOpen = !isShortcutsOpen;
+      settingsTab = "shortcuts";
+      isSettingsOpen = true;
     }
   }
 
@@ -485,14 +499,14 @@
   {isScanning}
   hasReport={!!report}
   {hasCustomOptions}
+  activeMonitorsCount={monitors.filter((m) => m.is_active).length}
   onScan={() => handleScan()}
-  onOpenOptions={() => (isOptionsOpen = true)}
-  onOpenBatch={() => (isBatchOpen = true)}
-  onOpenMonitors={() => (isMonitorsOpen = true)}
   onOpenHistory={() => (isHistoryOpen = true)}
+  onOpenSettings={(tab) => {
+    if (tab) settingsTab = tab;
+    isSettingsOpen = true;
+  }}
   onOpenExport={openExportModal}
-  onOpenExecutiveReport={() => (isExecutiveReportOpen = true)}
-  onOpenShortcuts={() => (isShortcutsOpen = true)}
 />
 
 <!-- Watchdog Alert Banner -->
@@ -661,31 +675,118 @@
         </div>
       </div>
 
-      <!-- Severity Metrics Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">Total Issues</span>
-          <span class="text-xl font-bold text-white mt-0.5 font-mono">{report.total_findings}</span>
+      <!-- Compact Interactive Severity Distribution & Telemetry Bar -->
+      <div class="p-3.5 bg-[#202020] border border-[#2e2e2e] rounded-xl space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              Severity Distribution
+            </span>
+            <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#191919] text-neutral-300 border border-[#2e2e2e] rounded">
+              {report.total_findings} Total
+            </span>
+          </div>
+
+          {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
+            <button
+              type="button"
+              onclick={() => {
+                selectedSeverity = "all";
+                selectedCategory = "all";
+                searchQuery = "";
+              }}
+              class="text-[11px] text-neutral-400 hover:text-white underline cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          {/if}
         </div>
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-red-400 uppercase tracking-wider">Critical</span>
-          <span class="text-xl font-bold text-red-400 mt-0.5 font-mono">{report.critical_count}</span>
-        </div>
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-orange-400 uppercase tracking-wider">High</span>
-          <span class="text-xl font-bold text-orange-400 mt-0.5 font-mono">{report.high_count}</span>
-        </div>
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-amber-400 uppercase tracking-wider">Medium</span>
-          <span class="text-xl font-bold text-amber-400 mt-0.5 font-mono">{report.medium_count}</span>
-        </div>
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-blue-400 uppercase tracking-wider">Low</span>
-          <span class="text-xl font-bold text-blue-400 mt-0.5 font-mono">{report.low_count}</span>
-        </div>
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-lg flex flex-col">
-          <span class="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">Info</span>
-          <span class="text-xl font-bold text-neutral-300 mt-0.5 font-mono">{report.info_count}</span>
+
+        <!-- Proportional Colored Bar -->
+        {#if report.total_findings > 0}
+          <div class="w-full h-2 bg-[#161616] rounded-full overflow-hidden flex gap-0.5 p-0.5 border border-[#2a2a2a]">
+            {#if report.critical_count > 0}
+              <div
+                class="bg-rose-500 h-full rounded-full transition-all duration-300"
+                style="width: {(report.critical_count / report.total_findings) * 100}%"
+                title="Critical: {report.critical_count}"
+              ></div>
+            {/if}
+            {#if report.high_count > 0}
+              <div
+                class="bg-orange-500 h-full rounded-full transition-all duration-300"
+                style="width: {(report.high_count / report.total_findings) * 100}%"
+                title="High: {report.high_count}"
+              ></div>
+            {/if}
+            {#if report.medium_count > 0}
+              <div
+                class="bg-amber-500 h-full rounded-full transition-all duration-300"
+                style="width: {(report.medium_count / report.total_findings) * 100}%"
+                title="Medium: {report.medium_count}"
+              ></div>
+            {/if}
+            {#if report.low_count > 0}
+              <div
+                class="bg-blue-500 h-full rounded-full transition-all duration-300"
+                style="width: {(report.low_count / report.total_findings) * 100}%"
+                title="Low: {report.low_count}"
+              ></div>
+            {/if}
+            {#if report.info_count > 0}
+              <div
+                class="bg-neutral-500 h-full rounded-full transition-all duration-300"
+                style="width: {(report.info_count / report.total_findings) * 100}%"
+                title="Info: {report.info_count}"
+              ></div>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Interactive Filter Chips -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "all")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'all' ? 'bg-white text-neutral-950 font-bold shadow-xs' : 'bg-[#191919] text-neutral-400 hover:text-white border border-[#2e2e2e]'}"
+          >
+            All ({report.total_findings})
+          </button>
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "critical")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'critical' ? 'bg-rose-950 text-rose-200 border border-rose-700 font-bold' : 'bg-rose-950/20 text-rose-400 hover:bg-rose-950/40 border border-rose-900/30'}"
+          >
+            Critical ({report.critical_count})
+          </button>
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "high")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'high' ? 'bg-orange-950 text-orange-200 border border-orange-700 font-bold' : 'bg-orange-950/20 text-orange-400 hover:bg-orange-950/40 border border-orange-900/30'}"
+          >
+            High ({report.high_count})
+          </button>
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "medium")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'medium' ? 'bg-amber-950 text-amber-200 border border-amber-700 font-bold' : 'bg-amber-950/20 text-amber-400 hover:bg-amber-950/40 border border-amber-900/30'}"
+          >
+            Med ({report.medium_count})
+          </button>
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "low")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'low' ? 'bg-blue-950 text-blue-200 border border-blue-700 font-bold' : 'bg-blue-950/20 text-blue-400 hover:bg-blue-950/40 border border-blue-900/30'}"
+          >
+            Low ({report.low_count})
+          </button>
+          <button
+            type="button"
+            onclick={() => (selectedSeverity = "info")}
+            class="px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer {selectedSeverity === 'info' ? 'bg-neutral-700 text-white font-bold' : 'bg-[#191919] text-neutral-400 hover:text-white border border-[#2e2e2e]'}"
+          >
+            Info ({report.info_count})
+          </button>
         </div>
       </div>
 
@@ -740,18 +841,18 @@
       <!-- TAB 1: Findings View -->
       {#if activeTab === "findings"}
         <!-- Search & Filter Controls -->
-        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-xl flex flex-col lg:flex-row items-center justify-between gap-3">
-          <div class="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto flex-1">
-            <div class="relative w-full sm:w-72">
-              <Search class="w-3.5 h-3.5 text-neutral-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
-              <input
-                type="text"
-                bind:value={searchQuery}
-                placeholder="Search findings, CVEs, OWASP..."
-                class="w-full pl-8 pr-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-200 placeholder-neutral-500 font-mono focus:outline-none"
-              />
-            </div>
+        <div class="p-3 bg-[#202020] border border-[#2e2e2e] rounded-xl flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div class="relative w-full sm:flex-1">
+            <Search class="w-3.5 h-3.5 text-neutral-500 absolute inset-y-0 left-3 my-auto pointer-events-none" />
+            <input
+              type="text"
+              bind:value={searchQuery}
+              placeholder="Search findings, CVEs, OWASP categories..."
+              class="w-full pl-8 pr-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-200 placeholder-neutral-500 font-mono focus:outline-none"
+            />
+          </div>
 
+          <div class="flex items-center gap-2 w-full sm:w-auto">
             <!-- Category Filter Dropdown -->
             <select
               bind:value={selectedCategory}
@@ -763,55 +864,17 @@
             </select>
 
             <!-- Sort By Dropdown -->
-            <div class="flex items-center gap-1 w-full sm:w-auto">
+            <div class="flex items-center gap-1">
               <ArrowUpDown class="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
               <select
                 bind:value={sortFindingsBy}
-                class="w-full sm:w-auto px-2 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
+                class="px-2 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
               >
-                <option value="severity">Sort: Severity</option>
-                <option value="title">Sort: Title (A-Z)</option>
-                <option value="category">Sort: Category</option>
+                <option value="severity">Severity</option>
+                <option value="title">Title (A-Z)</option>
+                <option value="category">Category</option>
               </select>
             </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-1 w-full lg:w-auto justify-start lg:justify-end">
-            <button
-              type="button"
-              onclick={() => (selectedSeverity = "all")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'all' ? 'bg-white text-neutral-950 font-semibold' : 'bg-[#191919] text-neutral-400 hover:text-neutral-200'}"
-            >
-              All ({report.total_findings})
-            </button>
-            <button
-              type="button"
-              onclick={() => (selectedSeverity = "critical")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'critical' ? 'bg-red-950 text-red-200 border border-red-800 font-semibold' : 'bg-red-950/20 text-red-400 hover:bg-red-950/40'}"
-            >
-              Critical ({report.critical_count})
-            </button>
-            <button
-              type="button"
-              onclick={() => (selectedSeverity = "high")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'high' ? 'bg-orange-950 text-orange-200 border border-orange-800 font-semibold' : 'bg-orange-950/20 text-orange-400 hover:bg-orange-950/40'}"
-            >
-              High ({report.high_count})
-            </button>
-            <button
-              type="button"
-              onclick={() => (selectedSeverity = "medium")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'medium' ? 'bg-amber-950 text-amber-200 border border-amber-800 font-semibold' : 'bg-amber-950/20 text-amber-400 hover:bg-amber-950/40'}"
-            >
-              Med ({report.medium_count})
-            </button>
-            <button
-              type="button"
-              onclick={() => (selectedSeverity = "low")}
-              class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors {selectedSeverity === 'low' ? 'bg-blue-950 text-blue-200 border border-blue-800 font-semibold' : 'bg-blue-950/20 text-blue-400 hover:bg-blue-950/40'}"
-            >
-              Low ({report.low_count})
-            </button>
           </div>
         </div>
 
@@ -1028,7 +1091,8 @@
                 type="button"
                 onclick={() => {
                   scanOptions.enable_port_scan = true;
-                  isOptionsOpen = true;
+                  settingsTab = "ports";
+                  isSettingsOpen = true;
                 }}
                 class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs transition-colors cursor-pointer inline-flex items-center gap-2 shadow-sm"
               >
@@ -1179,21 +1243,16 @@
 
   <!-- Empty Initial Dashboard Landing -->
   {:else}
-    <div class="my-auto py-12 flex flex-col items-center justify-center text-center max-w-2xl mx-auto animate-fade-in">
-      <div class="w-12 h-12 rounded-xl bg-[#262626] border border-[#333333] flex items-center justify-center text-neutral-200 mb-4">
+    <div class="my-auto py-16 flex flex-col items-center justify-center text-center max-w-xl mx-auto animate-fade-in">
+      <div class="w-12 h-12 rounded-2xl bg-[#222222] border border-[#333333] flex items-center justify-center text-white mb-5 shadow-lg">
         <ShieldCheck class="w-6 h-6 text-white" />
       </div>
 
-      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-[#252525] border border-[#333] text-neutral-400 text-[11px] font-medium mb-3">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-        <span>Passive Web Security & Reconnaissance</span>
-      </div>
-
-      <h1 class="text-3xl font-bold text-white tracking-tight sm:text-4xl leading-tight">
+      <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">
         Web Security Posture Scanner
       </h1>
       <p class="text-xs text-neutral-400 mt-2 max-w-md leading-relaxed">
-        Perform real-time passive reconnaissance across HTTP headers, TLS ciphers, cookies, Certificate Transparency subdomains, open TCP ports, and known CVE dependencies.
+        Passive reconnaissance, HTTP headers, TLS ciphers, cookie flags, and port discovery.
       </p>
 
       <!-- Center-Stage Instant Scan Input -->
@@ -1203,21 +1262,21 @@
             e.preventDefault();
             handleScan();
           }}
-          class="flex items-center gap-1.5 p-1 bg-[#202020] border border-[#2e2e2e] focus-within:border-neutral-500 rounded-lg shadow-sm"
+          class="flex items-center gap-1.5 p-1 bg-[#202020] border border-[#2e2e2e] focus-within:border-neutral-400 rounded-xl shadow-md transition-all"
         >
-          <div class="pl-2.5 text-neutral-500">
+          <div class="pl-3 text-neutral-500">
             <Search class="w-3.5 h-3.5" />
           </div>
           <input
             type="text"
             bind:value={targetUrl}
-            placeholder="Enter target domain or URL (e.g. example.com)..."
-            class="w-full py-1.5 bg-transparent text-xs font-mono text-white placeholder-neutral-500 focus:outline-none"
+            placeholder="Enter target domain (e.g. example.com)..."
+            class="w-full py-2 bg-transparent text-xs font-mono text-white placeholder-neutral-500 focus:outline-none"
           />
           <button
             type="submit"
             disabled={!targetUrl.trim() || isScanning}
-            class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold text-xs rounded-md transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
+            class="px-4 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold text-xs rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0 shadow-sm"
           >
             Audit
           </button>
@@ -1226,68 +1285,70 @@
 
       <!-- Quick presets -->
       <div class="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-        <span class="text-xs text-neutral-500 font-medium mr-1">Presets:</span>
-        <button
-          type="button"
-          onclick={() => {
-            targetUrl = "https://example.com";
-            handleScan("https://example.com");
-          }}
-          class="px-2.5 py-0.5 bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] rounded text-xs font-mono text-neutral-300 transition-colors cursor-pointer"
-        >
-          example.com
-        </button>
-        <button
-          type="button"
-          onclick={() => {
-            targetUrl = "http://testphp.vulnweb.com";
-            handleScan("http://testphp.vulnweb.com");
-          }}
-          class="px-2.5 py-0.5 bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] rounded text-xs font-mono text-neutral-300 transition-colors cursor-pointer"
-        >
-          testphp.vulnweb.com
-        </button>
-        <button
-          type="button"
-          onclick={() => {
-            targetUrl = "https://httpbin.org";
-            handleScan("https://httpbin.org");
-          }}
-          class="px-2.5 py-0.5 bg-[#202020] hover:bg-[#262626] border border-[#2e2e2e] rounded text-xs font-mono text-neutral-300 transition-colors cursor-pointer"
-        >
-          httpbin.org
-        </button>
+        <span class="text-[11px] text-neutral-500 font-mono mr-1">Presets:</span>
+        {#each ["example.com", "httpbin.org", "testphp.vulnweb.com"] as preset}
+          <button
+            type="button"
+            onclick={() => {
+              const url = preset.startsWith("http") ? preset : `https://${preset}`;
+              targetUrl = url;
+              handleScan(url);
+            }}
+            class="px-2.5 py-0.5 bg-[#1e1e1e] hover:bg-[#282828] border border-[#2e2e2e] rounded-md text-xs font-mono text-neutral-400 hover:text-white transition-colors cursor-pointer"
+          >
+            {preset}
+          </button>
+        {/each}
       </div>
 
-      <!-- Feature Badges -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-10 w-full text-left">
-        <div class="p-4 bg-[#202020] border border-[#2e2e2e] rounded-xl">
-          <div class="w-7 h-7 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300 mb-2">
-            <Globe class="w-3.5 h-3.5" />
-          </div>
-          <div class="text-white text-xs font-semibold mb-0.5">Recon & Subdomains</div>
-          <p class="text-xs text-neutral-400 leading-relaxed">Asset mapping via Certificate Transparency logs and SPF/DMARC anti-spoofing.</p>
+      <!-- Subtle Keyboard Hints -->
+      <div class="mt-12 flex flex-wrap items-center justify-center gap-4 text-[11px] text-neutral-500 font-mono">
+        <div class="flex items-center gap-1">
+          <kbd class="px-1.5 py-0.5 bg-[#1b1b1b] border border-[#2e2e2e] rounded text-neutral-300">⌘K</kbd>
+          <span>Focus input</span>
         </div>
-
-        <div class="p-4 bg-[#202020] border border-[#2e2e2e] rounded-xl">
-          <div class="w-7 h-7 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300 mb-2">
-            <Server class="w-3.5 h-3.5" />
-          </div>
-          <div class="text-white text-xs font-semibold mb-0.5">TCP Port Probing</div>
-          <p class="text-xs text-neutral-400 leading-relaxed">Asynchronous port discovery and banner grabbing for exposed risky databases and services.</p>
+        <div class="flex items-center gap-1">
+          <kbd class="px-1.5 py-0.5 bg-[#1b1b1b] border border-[#2e2e2e] rounded text-neutral-300">⌘,</kbd>
+          <span>Settings</span>
         </div>
-
-        <div class="p-4 bg-[#202020] border border-[#2e2e2e] rounded-xl">
-          <div class="w-7 h-7 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300 mb-2">
-            <Activity class="w-3.5 h-3.5" />
-          </div>
-          <div class="text-white text-xs font-semibold mb-0.5">Watchdog Automation</div>
-          <p class="text-xs text-neutral-400 leading-relaxed">Continuous scheduled monitoring with score change alerts and archive snapshots.</p>
+        <div class="flex items-center gap-1">
+          <kbd class="px-1.5 py-0.5 bg-[#1b1b1b] border border-[#2e2e2e] rounded text-neutral-300">⌘H</kbd>
+          <span>History</span>
         </div>
       </div>
     </div>
   {/if}
 </main>
+
+<!-- Unified Settings Hub Modal -->
+<SettingsModal
+  isOpen={isSettingsOpen}
+  activeTab={settingsTab}
+  options={scanOptions}
+  {monitors}
+  historyCount={history.length}
+  onApplyOptions={(newOpts) => {
+    scanOptions = newOpts;
+    showToast("Audit parameters applied", "success");
+  }}
+  onAddMonitor={handleAddMonitor}
+  onDeleteMonitor={handleDeleteMonitor}
+  onToggleMonitor={handleToggleMonitor}
+  onScanTarget={(url) => {
+    targetUrl = url;
+    handleScan(url);
+  }}
+  onClearHistory={handleClearAllHistory}
+  onOpenHistory={() => {
+    isSettingsOpen = false;
+    isHistoryOpen = true;
+  }}
+  onSelectBatchReport={(rep) => {
+    report = rep;
+    targetUrl = rep.target_url;
+  }}
+  onClose={() => (isSettingsOpen = false)}
+/>
 
 <!-- History Drawer Modal -->
 <HistoryModal
@@ -1304,6 +1365,7 @@
   isOpen={isExportOpen}
   {report}
   markdownContent={exportMarkdown}
+  onOpenExecutiveReport={() => (isExecutiveReportOpen = true)}
   onClose={() => (isExportOpen = false)}
 />
 
@@ -1314,7 +1376,7 @@
   onClose={() => (isExecutiveReportOpen = false)}
 />
 
-<!-- Batch Fleet Scanner Modal -->
+<!-- Batch Fleet Scanner Modal (Standalone shortcut target) -->
 <BatchScanModal
   isOpen={isBatchOpen}
   options={scanOptions}
@@ -1325,7 +1387,7 @@
   onClose={() => (isBatchOpen = false)}
 />
 
-<!-- Scan Options & Custom Headers Modal -->
+<!-- Scan Options Modal (Standalone shortcut target) -->
 <ScanOptionsModal
   isOpen={isOptionsOpen}
   options={scanOptions}
@@ -1336,7 +1398,7 @@
   onClose={() => (isOptionsOpen = false)}
 />
 
-<!-- Continuous Monitor Modal -->
+<!-- Continuous Monitor Modal (Standalone shortcut target) -->
 <MonitorModal
   isOpen={isMonitorsOpen}
   {monitors}
@@ -1350,7 +1412,7 @@
   onClose={() => (isMonitorsOpen = false)}
 />
 
-<!-- Keyboard Shortcuts Helper Modal -->
+<!-- Keyboard Shortcuts Helper Modal (Standalone shortcut target) -->
 <ShortcutsModal
   isOpen={isShortcutsOpen}
   onClose={() => (isShortcutsOpen = false)}

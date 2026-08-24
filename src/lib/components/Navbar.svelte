@@ -5,11 +5,7 @@
     Loader2,
     History,
     FileDown,
-    Layers,
-    Activity,
-    Sliders,
-    Printer,
-    Keyboard,
+    Settings,
   } from "lucide-svelte";
 
   let {
@@ -17,27 +13,21 @@
     isScanning = false,
     hasReport = false,
     hasCustomOptions = false,
+    activeMonitorsCount = 0,
     onScan,
-    onOpenOptions,
-    onOpenBatch,
-    onOpenMonitors,
     onOpenHistory,
+    onOpenSettings,
     onOpenExport,
-    onOpenExecutiveReport,
-    onOpenShortcuts,
   }: {
     targetUrl: string;
     isScanning: boolean;
     hasReport: boolean;
     hasCustomOptions?: boolean;
+    activeMonitorsCount?: number;
     onScan: () => void;
-    onOpenOptions: () => void;
-    onOpenBatch: () => void;
-    onOpenMonitors: () => void;
     onOpenHistory: () => void;
+    onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data") => void;
     onOpenExport: () => void;
-    onOpenExecutiveReport: () => void;
-    onOpenShortcuts?: () => void;
   } = $props();
 
   function handleSubmit(e: Event) {
@@ -68,7 +58,7 @@
           <span
             class="px-1.5 py-0.2 text-[10px] font-mono bg-neutral-800 text-neutral-400 border border-neutral-700/60 rounded"
           >
-            v0.3.0
+            v0.4.1
           </span>
         </div>
         <p class="text-[11px] text-neutral-400">
@@ -102,21 +92,6 @@
         </div>
       </div>
 
-      <!-- Scan Configuration / Options Trigger -->
-      <button
-        type="button"
-        onclick={onOpenOptions}
-        class="p-2 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer relative"
-        title="Scan Options & Parameters"
-      >
-        <Sliders class="w-3.5 h-3.5 text-neutral-300" />
-        {#if hasCustomOptions}
-          <span
-            class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full"
-          ></span>
-        {/if}
-      </button>
-
       <!-- Scan Button -->
       <button
         type="submit"
@@ -132,28 +107,9 @@
       </button>
     </form>
 
-    <!-- Navigation & Feature Actions -->
+    <!-- Minimalist Navigation & Feature Actions -->
     <div class="flex flex-wrap items-center gap-1.5 self-end lg:self-auto">
-      <button
-        type="button"
-        onclick={onOpenBatch}
-        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-        title="Batch Fleet Scanner"
-      >
-        <Layers class="w-3.5 h-3.5 text-neutral-400" />
-        <span>Batch</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={onOpenMonitors}
-        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-        title="Continuous Monitoring Watchdog"
-      >
-        <Activity class="w-3.5 h-3.5 text-neutral-400" />
-        <span>Watchdog</span>
-      </button>
-
+      <!-- History Quick Access -->
       <button
         type="button"
         onclick={onOpenHistory}
@@ -164,39 +120,35 @@
         <span>History</span>
       </button>
 
-      {#if onOpenShortcuts}
-        <button
-          type="button"
-          onclick={onOpenShortcuts}
-          class="p-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-400 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer"
-          title="Keyboard Shortcuts (⌘K / ?)"
-        >
-          <Keyboard class="w-3.5 h-3.5" />
-        </button>
-      {/if}
-
+      <!-- Unified Export & Share (Available when an active report exists) -->
       {#if hasReport}
         <button
           type="button"
-          onclick={onOpenExecutiveReport}
-          class="px-2.5 py-1.5 bg-[#262626] hover:bg-[#303030] text-neutral-200 border border-[#383838] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Executive PDF Report"
-        >
-          <Printer class="w-3.5 h-3.5 text-neutral-300" />
-          <span>Report</span>
-        </button>
-
-        <button
-          type="button"
           onclick={onOpenExport}
-          class="p-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg transition-colors cursor-pointer"
-          title="Export Markdown/JSON"
+          class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Export, Print & Share Report (Ctrl+E)"
         >
           <FileDown class="w-3.5 h-3.5 text-neutral-400" />
+          <span>Export</span>
         </button>
       {/if}
+
+      <!-- Unified Settings Hub Button -->
+      <button
+        type="button"
+        onclick={() => onOpenSettings()}
+        class="px-2.5 py-1.5 bg-[#202020] hover:bg-[#2a2a2a] text-neutral-300 hover:text-white border border-[#2e2e2e] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer relative"
+        title="Settings & Configuration (⌘,)"
+      >
+        <Settings class="w-3.5 h-3.5 text-neutral-400" />
+        <span>Settings</span>
+        {#if hasCustomOptions || activeMonitorsCount > 0}
+          <span
+            class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full"
+            title="Custom configurations or monitors active"
+          ></span>
+        {/if}
+      </button>
     </div>
   </div>
 </header>
-
-
