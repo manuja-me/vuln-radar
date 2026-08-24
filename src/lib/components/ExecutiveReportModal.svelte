@@ -42,7 +42,14 @@
 </script>
 
 {#if isOpen && report}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 print:p-0 print:bg-white print:static animate-fade-in overflow-y-auto">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 print:p-0 print:bg-white print:static animate-fade-in overflow-y-auto"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) onClose();
+    }}
+    role="dialog"
+    aria-modal="true"
+  >
     <div class="bg-[#202020] border border-[#333333] print:border-none print:bg-white print:text-black rounded-xl w-full max-w-4xl max-h-[90vh] print:max-h-none flex flex-col shadow-xl overflow-hidden print:overflow-visible my-auto text-[#e3e2e0]">
       
       <!-- Top Action Bar (hidden when printing) -->

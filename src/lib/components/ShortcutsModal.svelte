@@ -22,7 +22,14 @@
 </script>
 
 {#if isOpen}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) onClose();
+    }}
+    role="dialog"
+    aria-modal="true"
+  >
     <div class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-md shadow-2xl overflow-hidden text-[#e3e2e0]">
       <!-- Header -->
       <div class="p-4 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">

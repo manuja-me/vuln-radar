@@ -1328,7 +1328,11 @@
 <!-- Scan Options & Custom Headers Modal -->
 <ScanOptionsModal
   isOpen={isOptionsOpen}
-  bind:options={scanOptions}
+  options={scanOptions}
+  onApply={(newOpts) => {
+    scanOptions = newOpts;
+    showToast("Audit parameters applied", "success");
+  }}
   onClose={() => (isOptionsOpen = false)}
 />
 

@@ -1,46 +1,48 @@
 <script lang="ts">
   import type { ScanOptions } from "$lib/types";
-  import { X, Plus, Trash2, Sliders, Server, Globe, Cpu, Radio, Shield } from "lucide-svelte";
+  import { X, Plus, Trash2, Sliders, Server, Globe } from "lucide-svelte";
 
   let {
     isOpen = false,
-    options = $bindable(),
+    options,
+    onApply,
     onClose,
   }: {
     isOpen: boolean;
     options: ScanOptions;
+    onApply?: (newOptions: ScanOptions) => void;
     onClose: () => void;
   } = $props();
 
-  let headerRows = $state<{ key: string; value: string }[]>([]);
-  let userAgentInput = $state(options.user_agent || "");
-  let timeoutSeconds = $state(options.timeout_seconds || 15);
-  let includeSubdomains = $state(options.include_subdomains ?? true);
+  let headerRows = $state<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+  let userAgentInput = $state("");
+  let timeoutSeconds = $state(15);
+  let includeSubdomains = $state(true);
 
   // Port Scanning Config
-  let enablePortScan = $state(options.enable_port_scan ?? false);
-  let portScanProfile = $state(options.port_scan_profile || "top20");
-  let customPortsInput = $state(options.custom_ports || "21, 22, 80, 443, 3000-3005, 8080, 8443");
-  let portTimeoutMs = $state(options.port_timeout_ms || 800);
+  let enablePortScan = $state(false);
+  let portScanProfile = $state("top20");
+  let customPortsInput = $state("21, 22, 80, 443, 3000-3005, 8080, 8443");
+  let portTimeoutMs = $state(800);
 
+  // Synchronize internal state only when opening the modal
+  let previousIsOpen = false;
   $effect(() => {
-    if (isOpen) {
-      headerRows = (options.custom_headers || []).map(([key, value]) => ({
-        key,
-        value,
-      }));
-      if (headerRows.length === 0) {
-        headerRows = [{ key: "", value: "" }];
-      }
-      userAgentInput = options.user_agent || "";
-      timeoutSeconds = options.timeout_seconds || 15;
-      includeSubdomains = options.include_subdomains ?? true;
+    if (isOpen && !previousIsOpen) {
+      headerRows =
+        options && options.custom_headers && options.custom_headers.length > 0
+          ? options.custom_headers.map(([key, value]) => ({ key, value }))
+          : [{ key: "", value: "" }];
+      userAgentInput = options?.user_agent || "";
+      timeoutSeconds = options?.timeout_seconds || 15;
+      includeSubdomains = options?.include_subdomains ?? true;
 
-      enablePortScan = options.enable_port_scan ?? false;
-      portScanProfile = options.port_scan_profile || "top20";
-      customPortsInput = options.custom_ports || "21, 22, 80, 443, 3000-3005, 8080, 8443";
-      portTimeoutMs = options.port_timeout_ms || 800;
+      enablePortScan = options?.enable_port_scan ?? false;
+      portScanProfile = options?.port_scan_profile || "top20";
+      customPortsInput = options?.custom_ports || "21, 22, 80, 443, 3000-3005, 8080, 8443";
+      portTimeoutMs = options?.port_timeout_ms || 800;
     }
+    previousIsOpen = isOpen;
   });
 
   function addHeaderRow() {
@@ -54,12 +56,12 @@
     }
   }
 
-  function saveOptions() {
+  function handleSave() {
     const validHeaders = headerRows
       .filter((r) => r.key.trim().length > 0)
       .map((r) => [r.key.trim(), r.value.trim()] as [string, string]);
 
-    options = {
+    const newOptions: ScanOptions = {
       custom_headers: validHeaders.length > 0 ? validHeaders : undefined,
       user_agent: userAgentInput.trim() ? userAgentInput.trim() : undefined,
       timeout_seconds: Number(timeoutSeconds) || 15,
@@ -69,13 +71,23 @@
       custom_ports: customPortsInput.trim() ? customPortsInput.trim() : undefined,
       port_timeout_ms: Number(portTimeoutMs) || 800,
     };
+
+    if (onApply) {
+      onApply(newOptions);
+    }
     onClose();
   }
 </script>
 
 {#if isOpen}
+  <!-- Backdrop (Clicking outside closes modal) -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) onClose();
+    }}
+    role="dialog"
+    aria-modal="true"
   >
     <div
       class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden text-[#e3e2e0]"
@@ -95,6 +107,7 @@
           type="button"
           onclick={onClose}
           class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
+          aria-label="Close dialog"
         >
           <X class="w-4 h-4" />
         </button>
@@ -324,7 +337,7 @@
         </button>
         <button
           type="button"
-          onclick={saveOptions}
+          onclick={handleSave}
           class="px-4 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs transition-colors cursor-pointer shadow-sm"
         >
           Apply Parameters
