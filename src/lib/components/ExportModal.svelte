@@ -86,7 +86,13 @@
             ? "text/csv;charset=utf-8"
             : "text/x-sh;charset=utf-8";
 
-    const host = new URL(report.target_url).hostname.replace(/[^a-zA-Z0-9.-]/g, "_");
+    let host = "target";
+    try {
+      const urlToParse = report.target_url.startsWith("http") ? report.target_url : `https://${report.target_url}`;
+      host = new URL(urlToParse).hostname.replace(/[^a-zA-Z0-9.-]/g, "_");
+    } catch {
+      host = report.target_url.replace(/[^a-zA-Z0-9.-]/g, "_");
+    }
     const filename = `vulnradar-${host}-${new Date().toISOString().slice(0, 10)}.${ext}`;
 
     const blob = new Blob([currentContent], { type: mime });
