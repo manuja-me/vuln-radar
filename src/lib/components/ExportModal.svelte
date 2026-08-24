@@ -21,7 +21,12 @@
     if (!rep) return "";
     const escapeCsv = (str: string | null | undefined) => {
       if (!str) return '""';
-      return `"${str.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+      let clean = str;
+      // Prevent CSV / Excel Formula Injection (CWE-1236)
+      if (/^[=+\-@\t\r]/.test(clean)) {
+        clean = `'${clean}`;
+      }
+      return `"${clean.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
     };
 
     const header = ["ID", "Title", "Severity", "Category", "OWASP Category", "CVE", "Description", "Impact", "Remediation", "Evidence"].join(",");

@@ -26,11 +26,18 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     };
 
     let parsed_url = Url::parse(&formatted_url).map_err(|e| format!("Invalid URL format: {}", e))?;
-    let is_https = parsed_url.scheme() == "https";
+    
+    // Strict URL scheme restriction - only HTTP and HTTPS are permitted
+    let scheme = parsed_url.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err(format!("Unsupported URL scheme '{}'. Only HTTP and HTTPS are permitted.", scheme));
+    }
+
+    let is_https = scheme == "https";
     let domain = parsed_url.host_str().unwrap_or_default().to_string();
 
     // 2. Build HTTP client with custom options
-    let timeout_secs = opts.timeout_seconds.unwrap_or(15);
+    let timeout_secs = opts.timeout_seconds.unwrap_or(15).clamp(2, 120);
     let user_agent_str = opts.user_agent.unwrap_or_else(|| {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 VulnRadar/1.0".to_string()
     });
@@ -73,7 +80,18 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         }
     }
 
-    let html_body = response.text().await.unwrap_or_default();
+    // Protect against OOM / decompression bombs (Cap HTML body parsing to 5MB)
+    let content_len = response.content_length().unwrap_or(0);
+    if content_len > 10 * 1024 * 1024 {
+        return Err("Target response payload exceeds safe 10MB limit.".to_string());
+    }
+
+    let raw_text = response.text().await.unwrap_or_default();
+    let html_body = if raw_text.len() > 5 * 1024 * 1024 {
+        raw_text[..5 * 1024 * 1024].to_string()
+    } else {
+        raw_text
+    };
 
     // 4. Run Core Analysis Modules
     let mut all_findings: Vec<Finding> = Vec::new();

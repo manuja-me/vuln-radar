@@ -24,6 +24,9 @@ pub fn parse_port_input(input: &str) -> Vec<u16> {
                 for p in min_p..=max_p {
                     if p > 0 {
                         ports.insert(p);
+                        if ports.len() >= 1000 {
+                            break;
+                        }
                     }
                 }
             }
@@ -32,9 +35,12 @@ pub fn parse_port_input(input: &str) -> Vec<u16> {
                 ports.insert(p);
             }
         }
+        if ports.len() >= 1000 {
+            break;
+        }
     }
 
-    ports.into_iter().collect()
+    ports.into_iter().take(1000).collect()
 }
 
 pub fn get_preset_ports(profile: &str, custom_input: Option<&str>) -> Vec<u16> {
