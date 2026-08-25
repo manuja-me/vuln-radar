@@ -17,7 +17,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.0-38B2AC?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
 
-[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Architecture](#-architecture) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Ethics & Security](#-security--ethics-disclaimer)
+[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Architecture](#-architecture) • [Browser Mode](#-running-in-browser-localhost-mode) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Ethics & Security](#-security--ethics-disclaimer)
 
 </div>
 
@@ -163,6 +163,32 @@ npm run tauri build
 ```
 
 Production installers will be output to `src-tauri/target/release/bundle/`.
+
+---
+
+## 🌐 Running in Browser (Localhost / Headless CLI Mode)
+
+If you prefer to access VulnRadar through your standard web browser (Chrome, Edge, Firefox, Brave, Safari) without launching the native desktop window, you can run the local web server directly via CLI:
+
+```bash
+# 1. Install frontend dependencies (if not already installed)
+npm install
+
+# 2. Spin up local development server and open in default browser
+npm run web
+
+# Alternatively, using standard npm/vite flags:
+npm run dev -- --open
+```
+
+The interactive dashboard will be served locally at **`http://localhost:5173`**.
+
+> [!TIP]
+> **LAN / Remote Network Access**:
+> To access the dashboard from other machines or mobile devices across your local network:
+> ```bash
+> npm run dev -- --host --open
+> ```
 
 ---
 
