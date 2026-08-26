@@ -1469,7 +1469,7 @@
             <input
               type="text"
               bind:value={targetUrl}
-              placeholder="Enter target domain or URL (e.g. example.com)..."
+              placeholder="Enter domain or backend URL (e.g. example.com or http://localhost:8000)..."
               class="w-full py-2 bg-transparent text-xs font-mono text-white placeholder-neutral-500 focus:outline-none"
             />
             <button
@@ -1484,11 +1484,15 @@
           <!-- Quick Presets -->
           <div class="flex flex-wrap items-center justify-center gap-1.5 pt-1">
             <span class="text-[11px] text-neutral-500 font-mono mr-1">Quick Target:</span>
-            {#each ["example.com", "httpbin.org", "testphp.vulnweb.com"] as preset}
+            {#each ["example.com", "httpbin.org", "testphp.vulnweb.com", "localhost:8000"] as preset}
               <button
                 type="button"
                 onclick={() => {
-                  const url = preset.startsWith("http") ? preset : `https://${preset}`;
+                  const url = preset.startsWith("http")
+                    ? preset
+                    : preset.includes("localhost") || preset.includes("127.0.0.1")
+                    ? `http://${preset}`
+                    : `https://${preset}`;
                   targetUrl = url;
                   handleScan(url);
                 }}

@@ -91,7 +91,7 @@
       <input
         type="text"
         bind:value={targetUrl}
-        placeholder="Enter target domain or URL (e.g. example.com)..."
+        placeholder="Enter domain or backend URL (e.g. example.com or http://localhost:8000)..."
         disabled={isScanning}
         class="w-full pl-8 pr-12 py-1.5 bg-[#1a1b22] hover:bg-[#20222a] border border-white/[0.1] focus:border-cyan-500/80 rounded-md text-xs text-neutral-100 placeholder-neutral-500 font-mono transition-all disabled:opacity-60 focus:outline-none shadow-inner"
       />
