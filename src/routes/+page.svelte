@@ -1507,7 +1507,7 @@
           <div class="grid grid-cols-3 gap-2.5 max-w-md mx-auto pt-4 text-left">
             <div class="p-3 bg-[#13141a] border border-white/[0.06] rounded-lg space-y-1">
               <div class="text-[10px] font-mono uppercase text-neutral-400">Scanner Engine</div>
-              <div class="text-xs font-bold font-mono text-cyan-300">Rust Core v0.6.0</div>
+              <div class="text-xs font-bold font-mono text-cyan-300">Rust Core v0.6.1</div>
             </div>
             <div class="p-3 bg-[#13141a] border border-white/[0.06] rounded-lg space-y-1">
               <div class="text-[10px] font-mono uppercase text-neutral-400">Port Probing</div>
@@ -1530,7 +1530,7 @@
     <div class="flex items-center gap-3">
       <span class="flex items-center gap-1.5 text-cyan-300">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        VulnRadar v0.6.0 (Native Core)
+        VulnRadar v0.6.1 (Native Core)
       </span>
       <span class="text-neutral-600">|</span>
       <span>SQLite: WAL Mode</span>
