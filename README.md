@@ -122,6 +122,12 @@ vuln-radar/
 
 ## 📦 Release Changelog
 
+### 🚀 [v0.6.2] — Antigravity AI Remediation Engine & 1-Click Prompt Generator
+- ✨ **"Fix These with AI" Action Bar**: Added a dynamic, dedicated AI remediation action button directly on the Severity Breakdown card that automatically stays hidden/disabled when 0 findings exist.
+- 🤖 **Interactive AI Remediation Modal (`AiFixModal`)**: Generates structured, Antigravity/LLM-ready prompts incorporating full finding contexts (OWASP, CVE, evidence, HTTP telemetry, remediation diffs) with stack selection pills (*Auto-Detect*, *Node/Express*, *Next.js*, *Python/FastAPI*, *Django*, *Nginx*, *SvelteKit*).
+- 📋 **1-Click AI Prompt Copy**: Added instant clipboard copying with visual feedback so developers can paste full remediation tasks directly into Antigravity or AI coding assistants.
+- 🔍 **Per-Card "Fix with AI" Button**: Added individual AI prompt generators directly within each finding card's remediation section for targeted, single-issue fixes.
+
 ### 🚀 [v0.6.1] — Backend API Auditing & Smart Protocol Fallback
 - 🌐 **Backend & Local API Support**: Seamlessly audit local development servers (`localhost:8000`, `127.0.0.1:5000`), microservices, Docker containers, and internal LAN targets.
 - ⚡ **Smart Protocol Selection & Auto-Fallback**: Automatically defaults to `http://` for local/port-based targets and retries on `http://` if initial `https://` handshake fails.
