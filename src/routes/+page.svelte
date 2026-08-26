@@ -20,6 +20,7 @@
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
+  import AiFixModal from "$lib/components/AiFixModal.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     ShieldCheck,
@@ -88,6 +89,7 @@
   let isOptionsOpen = $state(false);
   let isMonitorsOpen = $state(false);
   let isShortcutsOpen = $state(false);
+  let isAiFixOpen = $state(false);
   let exportMarkdown = $state("");
 
   // Toast Notification System
@@ -1296,7 +1298,7 @@
 
           <!-- Severity Distribution & Filter Bar -->
           <div class="p-3 bg-[#14151b] border border-white/[0.08] rounded-xl space-y-2">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
                   Severity Breakdown
@@ -1305,19 +1307,35 @@
                   {report.total_findings} Findings
                 </span>
               </div>
-              {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
-                <button
-                  type="button"
-                  onclick={() => {
-                    selectedSeverity = "all";
-                    selectedCategory = "all";
-                    searchQuery = "";
-                  }}
-                  class="text-[11px] text-cyan-400 hover:underline cursor-pointer"
-                >
-                  Reset Filters
-                </button>
-              {/if}
+
+              <div class="flex items-center gap-2">
+                <!-- Fix These with AI Button (Only visible/active when there are findings to fix) -->
+                {#if report.total_findings > 0}
+                  <button
+                    type="button"
+                    onclick={() => (isAiFixOpen = true)}
+                    class="px-2.5 py-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs rounded-md flex items-center gap-1.5 shadow-sm shadow-cyan-500/20 transition-all cursor-pointer active:scale-95 flex-shrink-0"
+                    title="Generate ready-to-use Antigravity AI fixing prompt"
+                  >
+                    <Sparkles class="w-3.5 h-3.5" />
+                    <span>Fix These with AI</span>
+                  </button>
+                {/if}
+
+                {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      selectedSeverity = "all";
+                      selectedCategory = "all";
+                      searchQuery = "";
+                    }}
+                    class="text-[11px] text-cyan-400 hover:underline cursor-pointer"
+                  >
+                    Reset Filters
+                  </button>
+                {/if}
+              </div>
             </div>
 
             <!-- Proportional Colored Bar -->
@@ -1653,6 +1671,12 @@
 <ShortcutsModal
   isOpen={isShortcutsOpen}
   onClose={() => (isShortcutsOpen = false)}
+/>
+
+<AiFixModal
+  isOpen={isAiFixOpen}
+  {report}
+  onClose={() => (isAiFixOpen = false)}
 />
 
 <!-- Toast Notifications -->

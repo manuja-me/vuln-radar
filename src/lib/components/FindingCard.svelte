@@ -11,15 +11,39 @@
     CheckCircle2,
     Copy,
     Check,
+    Sparkles,
   } from "lucide-svelte";
 
   let { finding }: { finding: Finding } = $props();
   let expanded = $state(false);
   let copied = $state(false);
   let copiedRemediationText = $state(false);
+  let copiedAiPrompt = $state(false);
 
   function toggle() {
     expanded = !expanded;
+  }
+
+  async function copyAiPrompt(e: MouseEvent) {
+    e.stopPropagation();
+    const prompt = `Please fix this security vulnerability discovered by VulnRadar in our application:
+- Finding: [${finding.severity.toUpperCase()}] ${finding.title}
+- Category: ${finding.category} (${finding.owasp_category})
+${finding.cve_id ? `- CVE: ${finding.cve_id}` : ""}
+- Description: ${finding.description}
+- Security Impact: ${finding.impact}
+- Recommended Remediation: ${finding.remediation}
+${finding.evidence ? `- Evidence / Context:\n${finding.evidence}` : ""}
+
+Please inspect our codebase, identify the relevant server or configuration file, and provide the exact hardened code diff to resolve this vulnerability.`;
+
+    try {
+      await navigator.clipboard.writeText(prompt);
+      copiedAiPrompt = true;
+      setTimeout(() => (copiedAiPrompt = false), 2000);
+    } catch {
+      // ignore
+    }
   }
 
   async function copyEvidence(e: MouseEvent) {
@@ -155,20 +179,37 @@
                 <CheckCircle2 class="w-3.5 h-3.5" />
                 <span>Remediation</span>
               </div>
-              <button
-                type="button"
-                onclick={copyRemediation}
-                class="px-1.5 py-0.5 text-[10px] font-mono text-emerald-400/80 hover:text-emerald-200 flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/40 rounded cursor-pointer transition-colors"
-                title="Copy remediation guidance"
-              >
-                {#if copiedRemediationText}
-                  <Check class="w-2.5 h-2.5 text-emerald-400" />
-                  <span>Copied</span>
-                {:else}
-                  <Copy class="w-2.5 h-2.5" />
-                  <span>Copy</span>
-                {/if}
-              </button>
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  onclick={copyAiPrompt}
+                  class="px-2 py-0.5 text-[10px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/50 hover:border-cyan-600 rounded cursor-pointer transition-colors"
+                  title="Copy AI/Antigravity fixing prompt for this issue"
+                >
+                  {#if copiedAiPrompt}
+                    <Check class="w-2.5 h-2.5 text-cyan-400" />
+                    <span>Copied Prompt!</span>
+                  {:else}
+                    <Sparkles class="w-2.5 h-2.5 text-cyan-400" />
+                    <span>Fix with AI</span>
+                  {/if}
+                </button>
+
+                <button
+                  type="button"
+                  onclick={copyRemediation}
+                  class="px-1.5 py-0.5 text-[10px] font-mono text-emerald-400/80 hover:text-emerald-200 flex items-center gap-1 bg-emerald-950/40 border border-emerald-800/40 rounded cursor-pointer transition-colors"
+                  title="Copy remediation guidance"
+                >
+                  {#if copiedRemediationText}
+                    <Check class="w-2.5 h-2.5 text-emerald-400" />
+                    <span>Copied</span>
+                  {:else}
+                    <Copy class="w-2.5 h-2.5" />
+                    <span>Copy</span>
+                  {/if}
+                </button>
+              </div>
             </div>
             <p class="text-emerald-200/90 text-xs leading-relaxed">
               {finding.remediation}
