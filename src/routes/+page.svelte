@@ -20,7 +20,6 @@
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
-  import AiFixModal from "$lib/components/AiFixModal.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     ShieldCheck,
@@ -89,7 +88,6 @@
   let isOptionsOpen = $state(false);
   let isMonitorsOpen = $state(false);
   let isShortcutsOpen = $state(false);
-  let isAiFixOpen = $state(false);
   let exportMarkdown = $state("");
 
   // Toast Notification System
@@ -1298,7 +1296,7 @@
 
           <!-- Severity Distribution & Filter Bar -->
           <div class="p-3 bg-[#14151b] border border-white/[0.08] rounded-xl space-y-2">
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
                   Severity Breakdown
@@ -1307,35 +1305,19 @@
                   {report.total_findings} Findings
                 </span>
               </div>
-
-              <div class="flex items-center gap-2">
-                <!-- Fix These with AI Button (Only visible/active when there are findings to fix) -->
-                {#if report.total_findings > 0}
-                  <button
-                    type="button"
-                    onclick={() => (isAiFixOpen = true)}
-                    class="px-2.5 py-1 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs rounded-md flex items-center gap-1.5 shadow-sm shadow-cyan-500/20 transition-all cursor-pointer active:scale-95 flex-shrink-0"
-                    title="Generate ready-to-use Antigravity AI fixing prompt"
-                  >
-                    <Sparkles class="w-3.5 h-3.5" />
-                    <span>Fix These with AI</span>
-                  </button>
-                {/if}
-
-                {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
-                  <button
-                    type="button"
-                    onclick={() => {
-                      selectedSeverity = "all";
-                      selectedCategory = "all";
-                      searchQuery = "";
-                    }}
-                    class="text-[11px] text-cyan-400 hover:underline cursor-pointer"
-                  >
-                    Reset Filters
-                  </button>
-                {/if}
-              </div>
+              {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
+                <button
+                  type="button"
+                  onclick={() => {
+                    selectedSeverity = "all";
+                    selectedCategory = "all";
+                    searchQuery = "";
+                  }}
+                  class="text-[11px] text-cyan-400 hover:underline cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              {/if}
             </div>
 
             <!-- Proportional Colored Bar -->
@@ -1525,7 +1507,7 @@
           <div class="grid grid-cols-3 gap-2.5 max-w-md mx-auto pt-4 text-left">
             <div class="p-3 bg-[#13141a] border border-white/[0.06] rounded-lg space-y-1">
               <div class="text-[10px] font-mono uppercase text-neutral-400">Scanner Engine</div>
-              <div class="text-xs font-bold font-mono text-cyan-300">Rust Core v0.6.2</div>
+              <div class="text-xs font-bold font-mono text-cyan-300">Rust Core v0.6.3</div>
             </div>
             <div class="p-3 bg-[#13141a] border border-white/[0.06] rounded-lg space-y-1">
               <div class="text-[10px] font-mono uppercase text-neutral-400">Port Probing</div>
@@ -1548,7 +1530,7 @@
     <div class="flex items-center gap-3">
       <span class="flex items-center gap-1.5 text-cyan-300">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        VulnRadar v0.6.2 (Native Core)
+        VulnRadar v0.6.3 (Native Core)
       </span>
       <span class="text-neutral-600">|</span>
       <span>SQLite: WAL Mode</span>
@@ -1671,12 +1653,6 @@
 <ShortcutsModal
   isOpen={isShortcutsOpen}
   onClose={() => (isShortcutsOpen = false)}
-/>
-
-<AiFixModal
-  isOpen={isAiFixOpen}
-  {report}
-  onClose={() => (isAiFixOpen = false)}
 />
 
 <!-- Toast Notifications -->

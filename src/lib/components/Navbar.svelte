@@ -61,7 +61,7 @@
           <span
             class="px-1 py-0.5 text-[9px] font-mono bg-white/[0.06] text-neutral-400 border border-white/[0.08] rounded"
           >
-            v0.6.2
+            v0.6.3
           </span>
         </div>
         <span class="text-[10px] text-neutral-400 font-mono tracking-tight mt-0.5">

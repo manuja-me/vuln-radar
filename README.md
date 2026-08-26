@@ -122,6 +122,10 @@ vuln-radar/
 
 ## 📦 Release Changelog
 
+### 🚀 [v0.6.3] — Streamlined Native Workspace & UI Refinements
+- 🧹 **Streamlined Interface**: Cleaned up the Posture Audit view and findings dashboard to maintain a distraction-free, focused security auditing workspace.
+- ⚡ **Performance & Core Stability**: Refined component tree and optimized telemetry rendering for desktop builds.
+
 ### 🚀 [v0.6.2] — Antigravity AI Remediation Engine & 1-Click Prompt Generator
 - ✨ **"Fix These with AI" Action Bar**: Added a dynamic, dedicated AI remediation action button directly on the Severity Breakdown card that automatically stays hidden/disabled when 0 findings exist.
 - 🤖 **Interactive AI Remediation Modal (`AiFixModal`)**: Generates structured, Antigravity/LLM-ready prompts incorporating full finding contexts (OWASP, CVE, evidence, HTTP telemetry, remediation diffs) with stack selection pills (*Auto-Detect*, *Node/Express*, *Next.js*, *Python/FastAPI*, *Django*, *Nginx*, *SvelteKit*).
