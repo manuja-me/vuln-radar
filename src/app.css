@@ -2,13 +2,20 @@
 
 @layer base {
   :root {
-    --font-sans: "Google Sans", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-sans: "Plus Jakarta Sans", "Google Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
     font-family: var(--font-sans);
-    @apply bg-[#191919] text-[#e3e2e0] min-h-screen antialiased selection:bg-neutral-700 selection:text-white;
+    @apply bg-[#0d0e11] text-[#e2e4e9] antialiased selection:bg-cyan-500/30 selection:text-white;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   code, pre, kbd, samp {
@@ -16,19 +23,34 @@
   }
 }
 
-/* Notion-style subtle scrollbars */
+/* Native Titlebar & Desktop Drag Regions */
+.titlebar-drag {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.desktop-select-none {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Desktop Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.2);
 }
 

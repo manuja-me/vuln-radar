@@ -165,10 +165,10 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         endpoints::audit_endpoints(&client, &parsed_url).await
     };
 
-    let port_scan_enabled = opts.enable_port_scan.unwrap_or(false);
+    let port_scan_enabled = opts.enable_port_scan.unwrap_or(true);
     let port_profile = opts.port_scan_profile.clone().unwrap_or_else(|| "top20".to_string());
     let custom_ports_str = opts.custom_ports.clone();
-    let port_timeout = opts.port_timeout_ms;
+    let port_timeout = opts.port_timeout_ms.or(Some(600));
 
     let ports_fut = async {
         if port_scan_enabled && !domain.is_empty() {

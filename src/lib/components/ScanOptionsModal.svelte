@@ -20,10 +20,10 @@
   let includeSubdomains = $state(true);
 
   // Port Scanning Config
-  let enablePortScan = $state(false);
+  let enablePortScan = $state(true);
   let portScanProfile = $state("top20");
   let customPortsInput = $state("21, 22, 80, 443, 3000-3005, 8080, 8443");
-  let portTimeoutMs = $state(800);
+  let portTimeoutMs = $state(600);
 
   // Synchronize internal state only when opening the modal
   let previousIsOpen = false;
@@ -37,10 +37,10 @@
       timeoutSeconds = options?.timeout_seconds || 15;
       includeSubdomains = options?.include_subdomains ?? true;
 
-      enablePortScan = options?.enable_port_scan ?? false;
+      enablePortScan = options?.enable_port_scan ?? true;
       portScanProfile = options?.port_scan_profile || "top20";
       customPortsInput = options?.custom_ports || "21, 22, 80, 443, 3000-3005, 8080, 8443";
-      portTimeoutMs = options?.port_timeout_ms || 800;
+      portTimeoutMs = options?.port_timeout_ms || 600;
     }
     previousIsOpen = isOpen;
   });
