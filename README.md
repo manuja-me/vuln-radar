@@ -17,7 +17,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.0-38B2AC?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
 
-[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Architecture](#-architecture) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Ethics & Security](#-security--ethics-disclaimer)
+[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Changelog](#-release-changelog) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Architecture](#-architecture) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Ethics & Security](#-security--ethics-disclaimer)
 
 </div>
 
@@ -117,6 +117,28 @@ vuln-radar/
         ├── db/                           # Embedded SQLite persistence (WAL mode & caching)
         └── lib.rs                        # Tauri IPC command handlers & Tokio background worker
 ```
+
+---
+
+## 📦 Release Changelog
+
+### 🚀 [v0.6.0] — Native Desktop Workstation & Auto Port Scanner
+- 🖥️ **Native Desktop Workstation Architecture**: Replaced generic web styling with an ultra-sleek, acrylic left activity sidebar and dedicated workspaces (`Posture Audit`, `Port Matrix`, `DNS & Anti-Spoof`, `Surface Recon`, `Fleet Batch`, `Watchdog Daemon`, `Scan Logs`, and `Settings Hub`).
+- 🪟 **Native Window Titlebar & Drag Region**: Added native header toolbar with `-webkit-app-region: drag` (`data-tauri-drag-region`), application badge, active port status pill, and instant command palette (`⌘K`).
+- 🔌 **Automatic Default Port Scanning**: TCP Port Scanner is now enabled by default with the lowest/fastest preset (`Top 20`, 600ms timeout) without requiring manual configuration.
+- 📊 **Native Live Status Bar**: Bottom 24px desktop status bar providing real-time telemetry (Rust Core version, SQLite WAL mode, Port Engine profile, Active monitors, Response latency, Keyboard shortcut hints).
+- 🎨 **Desktop Density & Window Containment**: Viewport locked to `h-screen w-screen overflow-hidden` with zero browser scrolling, system native fonts, hairline borders, and disabled chrome text selection (`desktop-select-none`).
+
+### ⚡ [v0.5.0] — Unified Settings Hub & Multi-Format Export
+- ⚙️ **Unified Settings Hub (`⌘,`)**: Centralized scan parameters, custom HTTP headers, auth tokens, port scan profiles, scheduled monitors, and SQLite storage management into a single modal drawer.
+- ⌨️ **Comprehensive Keyboard Navigation**: Added global shortcuts (`Ctrl+K`, `Ctrl+B`, `Ctrl+M`, `Ctrl+H`, `Ctrl+O`, `Ctrl+E`, `Ctrl+P`, `?`).
+- 📄 **Multi-Format Export & Print**: Added JSON, CSV (formula injection-safe), Markdown, and cURL export capabilities.
+
+### 🌐 [v0.4.1] — Multi-Source Subdomain Reconnaissance
+- 🔍 Integrated Certificate Transparency logs (`crt.sh`) and HackerTarget with active DNS resolver verification.
+
+### 🔌 [v0.4.0] — High-Speed TCP Port Discovery
+- ⚡ Asynchronous TCP port scanner with service banner grabbing, preset profiles (`Top 20`, `Databases`, `Top 100`, `Custom`), and risk classification.
 
 ---
 
