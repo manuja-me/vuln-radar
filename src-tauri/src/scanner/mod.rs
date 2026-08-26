@@ -15,28 +15,71 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 use url::Url;
 
+fn is_local_or_private(host: &str) -> bool {
+    let h = host.to_lowercase();
+    let hostname = h.split(':').next().unwrap_or(&h);
+    hostname == "localhost"
+        || hostname == "127.0.0.1"
+        || hostname == "0.0.0.0"
+        || hostname == "::1"
+        || hostname.starts_with("192.168.")
+        || hostname.starts_with("10.")
+        || hostname.starts_with("172.16.")
+        || hostname.starts_with("172.17.")
+        || hostname.starts_with("172.18.")
+        || hostname.starts_with("172.19.")
+        || hostname.starts_with("172.20.")
+        || hostname.starts_with("172.21.")
+        || hostname.starts_with("172.22.")
+        || hostname.starts_with("172.23.")
+        || hostname.starts_with("172.24.")
+        || hostname.starts_with("172.25.")
+        || hostname.starts_with("172.26.")
+        || hostname.starts_with("172.27.")
+        || hostname.starts_with("172.28.")
+        || hostname.starts_with("172.29.")
+        || hostname.starts_with("172.30.")
+        || hostname.starts_with("172.31.")
+        || hostname.ends_with(".local")
+        || hostname.ends_with(".internal")
+        || hostname.ends_with(".lan")
+}
+
 pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<ScanReport, String> {
     let opts = options.unwrap_or_default();
+    let trimmed = target_url.trim();
 
-    // 1. Normalize and parse URL
-    let formatted_url = if !target_url.starts_with("http://") && !target_url.starts_with("https://") {
-        format!("https://{}", target_url)
+    if trimmed.is_empty() {
+        return Err("Target URL cannot be empty.".to_string());
+    }
+
+    let had_explicit_scheme = trimmed.starts_with("http://") || trimmed.starts_with("https://");
+
+    // 1. Normalize and parse candidate URL
+    let mut candidate_url = if !had_explicit_scheme {
+        let lower = trimmed.to_lowercase();
+        // If it starts with localhost, private IP, or contains port (e.g. :3000, :8000), default to http://
+        if is_local_or_private(&lower) || lower.contains(':') {
+            format!("http://{}", trimmed)
+        } else {
+            format!("https://{}", trimmed)
+        }
     } else {
-        target_url.to_string()
+        trimmed.to_string()
     };
 
-    let parsed_url = Url::parse(&formatted_url).map_err(|e| format!("Invalid URL format: {}", e))?;
+    let mut parsed_url = Url::parse(&candidate_url).map_err(|e| format!("Invalid URL format: {}", e))?;
     
     // Strict URL scheme restriction - only HTTP and HTTPS are permitted
-    let scheme = parsed_url.scheme();
+    let mut scheme = parsed_url.scheme().to_string();
     if scheme != "http" && scheme != "https" {
         return Err(format!("Unsupported URL scheme '{}'. Only HTTP and HTTPS are permitted.", scheme));
     }
 
-    let is_https = scheme == "https";
+    let mut is_https = scheme == "https";
     let domain = parsed_url.host_str().unwrap_or_default().to_string();
 
-    // 2. Build HTTP client with custom options
+    // 2. Build HTTP client with custom options & support self-signed backend certs
     let timeout_secs = opts.timeout_seconds.unwrap_or(15).clamp(2, 120);
     let user_agent_str = opts.user_agent.unwrap_or_else(|| {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 VulnRadar/1.0".to_string()
@@ -56,15 +99,43 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         .user_agent(user_agent_str)
         .default_headers(custom_header_map)
         .redirect(reqwest::redirect::Policy::limited(5))
+        .danger_accept_invalid_certs(true) // Allows auditing backend microservices and self-signed dev/staging servers
         .build()
         .map_err(|e| format!("Failed to initialize HTTP client: {}", e))?;
 
-    let start_time = Instant::now();
-    let response = client
-        .get(parsed_url.as_str())
-        .send()
-        .await
-        .map_err(|e| format!("Failed to connect to target {}: {}", formatted_url, e))?;
+    let mut start_time = Instant::now();
+    let response_result = client.get(parsed_url.as_str()).send().await;
+
+    let response = match response_result {
+        Ok(resp) => resp,
+        Err(err) => {
+            // If the connection failed on https:// and user did not explicitly force https://,
+            // retry on http:// (essential for backend servers, local APIs, and microservices)
+            if !had_explicit_scheme && candidate_url.starts_with("https://") {
+                candidate_url = format!("http://{}", trimmed);
+                if let Ok(fallback_url) = Url::parse(&candidate_url) {
+                    parsed_url = fallback_url;
+                    scheme = parsed_url.scheme().to_string();
+                    is_https = scheme == "https";
+                    start_time = Instant::now();
+
+                    client.get(parsed_url.as_str()).send().await.map_err(|e| {
+                        format!(
+                            "Failed to connect to target {}: {}\n\nTip: For local backend services or REST APIs, ensure the server process is running, listening, and that the port is accessible.",
+                            candidate_url, e
+                        )
+                    })?
+                } else {
+                    return Err(format!("Failed to connect to target {}: {}", candidate_url, err));
+                }
+            } else {
+                return Err(format!(
+                    "Failed to connect to target {}: {}\n\nTip: Verify the host and port are reachable. For local or backend services, specify the protocol (e.g., http://localhost:8000) and ensure the service is currently running.",
+                    candidate_url, err
+                ));
+            }
+        }
+    };
 
     let duration_ms = start_time.elapsed().as_millis() as u64;
     let status_code = response.status().as_u16();
@@ -145,8 +216,10 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     all_findings.extend(leak_findings);
 
     // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter, Port Scanner)
+    let is_private = is_local_or_private(&domain);
+
     let subdomains_fut = async {
-        if opts.include_subdomains.unwrap_or(true) && !domain.is_empty() {
+        if opts.include_subdomains.unwrap_or(true) && !domain.is_empty() && !is_private {
             subdomains::discover_subdomains(&client, &domain).await
         } else {
             Vec::new()
@@ -154,7 +227,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     };
 
     let dns_fut = async {
-        if !domain.is_empty() {
+        if !domain.is_empty() && !is_private {
             dns::audit_dns_and_email_security(&client, &domain).await
         } else {
             (Default::default(), Vec::new())
@@ -232,7 +305,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
 
     Ok(ScanReport {
         id: scan_id,
-        target_url: formatted_url,
+        target_url: parsed_url.to_string(),
         scanned_at: Utc::now().to_rfc3339(),
         status_code,
         response_time_ms: duration_ms,
