@@ -2,9 +2,9 @@
 
 # 🛡️ VulnRadar
 
-**Enterprise-Grade Desktop Web Security Posture & Passive Vulnerability Scanner**
+**Enterprise-Grade Desktop Web Security Posture & Vulnerability Scanner**
 
-*Perform non-intrusive security audits, front-end software composition analysis (SCA), port discovery, email/DNS anti-spoofing verification, and continuous posture monitoring.*
+*High-performance, non-intrusive security audits, RCE risk heuristics, front-end software composition analysis (SCA), TCP port discovery, email/DNS anti-spoofing verification, and continuous posture monitoring.*
 
 [![Release](https://img.shields.io/github/v/release/manuja-me/vuln-radar?style=for-the-badge&color=06B6D4&label=Latest%20Release)](https://github.com/manuja-me/vuln-radar/releases)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/manuja-me/vuln-radar/release.yml?style=for-the-badge&label=Build)](https://github.com/manuja-me/vuln-radar/actions)
@@ -17,7 +17,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4.0-38B2AC?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL%20Mode-003B57?logo=sqlite&logoColor=white&style=flat-square)](https://sqlite.org)
 
-[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Changelog](#-release-changelog) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Architecture](#-architecture) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Ethics & Security](#-security--ethics-disclaimer)
+[Key Capabilities](#-key-value-propositions) • [Feature Matrix](#-feature-matrix) • [Architecture](#-architecture) • [Workspaces](#-workspaces--navigation) • [Keyboard Shortcuts](#-keyboard-shortcuts) • [Installation](#-installation--downloads) • [Building from Source](#-building-from-source) • [Changelog](#-release-changelog) • [Ethics & Security](#-security--ethics-disclaimer)
 
 </div>
 
@@ -25,19 +25,21 @@
 
 ## 🚀 Executive Summary
 
-**VulnRadar** is a high-performance, native desktop application engineered for security teams, DevSecOps practitioners, and web developers to evaluate organizational security posture in real time.
+**VulnRadar** is a native, privacy-first desktop security workstation engineered for DevSecOps engineers, security researchers, and developers to evaluate web application posture in real time.
 
-Unlike intrusive, active vulnerability scanners that can trigger Web Application Firewall (WAF) blocks, destabilize production infrastructure, or require complex testing agreements, VulnRadar conducts **intelligent, purely passive audits**. It synthesizes HTTP header verification, SSL/TLS cryptographic parameters, cookie hygiene, client-side Software Composition Analysis (SCA for CVEs), Certificate Transparency subdomain reconnaissance, DNS-over-HTTPS (DoH) email validation, and network port analysis into a unified **Security Posture Score (0–100)** with actionable, OWASP-aligned remediation steps.
+Unlike invasive scanners that send disruptive payloads, trigger Web Application Firewall (WAF) IP bans, or destabilize production databases, VulnRadar conducts **intelligent, non-intrusive audits**. It synthesizes HTTP security header validation, RCE risk parameter heuristics, SSL/TLS cryptographic health, cookie hygiene, client-side Software Composition Analysis (SCA for known CVEs), Certificate Transparency subdomain enumeration, DNS-over-HTTPS (DoH) email validation, and network port analysis into an actionable **Security Posture Score (0–100)** with OWASP-mapped remediation guidelines.
 
 ---
 
 ## ⚡ Key Value Propositions
 
-- 🛡️ **Safe & Passive Auditing**: Evaluates security misconfigurations and exposure surfaces without sending dangerous exploit payloads or disrupting target services.
-- ⚡ **Native Performance & Minimal Footprint**: Built with a multi-threaded asynchronous Rust core and Tauri v2 native Webview bindings, providing sub-second scan execution with ultra-low memory overhead.
-- 🔒 **Zero Telemetry & 100% Local Privacy**: All scan histories, monitored domains, and audit reports are strictly stored on your local machine in an embedded SQLite database (`WAL` mode). No external telemetry or cloud dependencies.
-- 🎯 **Actionable Scoring & OWASP Mapping**: Every vulnerability finding is graded by severity (Critical, High, Medium, Low, Info) and paired with exploit impact analysis, standard references, and copy-paste remediation code.
-- ⏰ **Automated Continuous Watchdog**: Background daemon continuously monitors scheduled targets (hourly, daily, weekly) and delivers native desktop notifications upon security grade degradation or newly introduced critical flaws.
+- 🛡️ **Safe & Non-Destructive**: Audits misconfigurations, dangerous parameters, and exposure surfaces without sending destructive exploit payloads or degrading target services.
+- ⚡ **Multi-Threaded Rust Core**: Native asynchronous Tokio runtime paired with lightweight Tauri v2 Webview bindings delivers sub-second scan execution with minimal memory footprint.
+- 🎯 **RCE Risk & Parameter Heuristics**: Inspects target query strings for command execution (`?cmd=`, `?exec=`) and file/template inclusion (`?tpl=`, `?include=`) entry points, correlates server banners with known CVEs, and safely probes unauthenticated debug consoles.
+- 🤖 **AI-Powered 1-Click Remediation**: Generates structured, copy-paste prompts tailored for AI coding assistants (Antigravity, Claude, ChatGPT) containing full finding context, OWASP definitions, and tech-stack-specific patches.
+- 🔒 **Zero Telemetry & 100% Local Privacy**: All scan histories, monitored targets, and executive audit reports are stored entirely on your local machine in an embedded SQLite database (`WAL` mode). No external analytics or cloud dependencies.
+- ⏰ **Continuous Watchdog Daemon**: Background daemon monitors target URLs on custom intervals (1h, 6h, 12h, 24h, 7d) and fires native OS notifications upon security grade degradation or newly detected flaws.
+- 📊 **Executive & Multi-Format Reports**: Export compliance audits instantly to PDF/Print, Markdown, JSON, CSV (formula-injection safe), or reproducible cURL command strings.
 
 ---
 
@@ -45,6 +47,7 @@ Unlike intrusive, active vulnerability scanners that can trigger Web Application
 
 | Security Module | Technical Inspection Details | Standard / Reference |
 |---|---|---|
+| **💥 RCE Risk & Attack Surface** | Inspects URL query strings for command execution/evaluation keywords (`cmd`, `exec`, `eval`, `run`) and template/file inclusion (`tpl`, `include`, `page`); matches server banners against known critical RCE CVEs (Apache `CVE-2021-41773`, PHP `CVE-2024-4577`, PHP 8.1.0-dev backdoor, Jenkins `CVE-2024-23897`, Webmin `CVE-2019-15107`); probes unauthenticated Spring Actuators (`/actuator/env`), Jenkins Groovy console (`/script`), and Solr Admin. | OWASP A03:2021 (Injection) / OWASP A06:2021 (Vulnerable Components) |
 | **🛡️ HTTP Security Headers** | Audits Content-Security-Policy (CSP `unsafe-inline`, `unsafe-eval`, wildcards), HSTS, Clickjacking (`X-Frame-Options` / `frame-ancestors`), MIME sniffing (`X-Content-Type-Options`), Referrer-Policy, Permissions-Policy, COOP, and COEP. | OWASP A05:2021 (Security Misconfiguration) |
 | **🍪 Cookie Hardening** | Inspects all `Set-Cookie` directives for missing `HttpOnly`, `Secure`, and strict `SameSite` (`Lax`/`Strict`/`None`) flags. | OWASP A01:2021 (Broken Access Control) |
 | **🌐 Subdomain Reconnaissance** | Multi-source subdomain discovery querying Certificate Transparency logs (`crt.sh`) and HackerTarget with active DNS resolution. | Surface Attack Management & OSINT |
@@ -53,6 +56,7 @@ Unlike intrusive, active vulnerability scanners that can trigger Web Application
 | **📦 Front-End SCA & CVE Audit** | Fingerprints client-side JavaScript frameworks and libraries (jQuery, Angular, Bootstrap, Lodash, Moment.js) with known public CVE listings. | OWASP A06:2021 (Vulnerable Components) |
 | **🔑 Secret & Leak Detection** | Scans client payloads for leaked cloud API keys (AWS, Google Cloud, Slack), JWT tokens, cleartext password forms, and developer comments. | OWASP A04:2021 (Insecure Design) |
 | **🔌 Network Port Discovery** | High-speed TCP port scanner with service banner grabbing, preset profiles (`Top 20`, `Databases`, `Top 100`, `Custom`), and risk classification (e.g. exposed Telnet, SMB, RDP, Docker, Database engines). | Network Perimeter Hardening |
+| **🤖 AI Remediation Prompts** | Generates context-rich remediation prompts with stack selection pills (*Auto-Detect*, *Node/Express*, *Next.js*, *Python/FastAPI*, *Django*, *Nginx*, *SvelteKit*) for 1-click clipboard copying. | AI-Assisted DevSecOps |
 | **📑 Executive PDF Reports** | Generates executive audit summaries with visual score gauges, severity breakdowns, and one-click print / PDF export. | Compliance & Stakeholder Reporting |
 | **📁 Fleet Batch Scanner** | Concurrently audits multiple target URLs from a list with real-time progress, individual report drill-downs, and aggregate score reporting. | Fleet & Infrastructure Auditing |
 | **⚙️ Custom Parameters & Auth** | Configure custom request headers (`Authorization: Bearer <token>`, custom session cookies), User-Agent signatures, and timeouts. | Authenticated & Staging Audits |
@@ -60,13 +64,28 @@ Unlike intrusive, active vulnerability scanners that can trigger Web Application
 
 ---
 
+## 🖥️ Workspaces & Navigation
+
+VulnRadar is designed as a native desktop security workstation featuring 8 specialized workspaces:
+
+1. **🛡️ Posture Audit**: Primary reactive dashboard with the dynamic security score gauge, severity breakdown, finding filter pills, and AI remediation action bar.
+2. **🔌 Port Matrix**: Visual TCP port grid detailing open ports, service banners, protocols, and exposure risk ratings.
+3. **📧 DNS & Anti-Spoof**: Real-time inspection of SPF alignment, DMARC quarantine/reject policy enforcement, and DNSSEC validation.
+4. **🌐 Surface Recon**: Subdomain enumeration feed correlating Certificate Transparency log history and DNS records.
+5. **📁 Fleet Batch**: Concurrent bulk scanner for auditing fleets of domain URLs with CSV import/export.
+6. **⏰ Watchdog Daemon**: Continuous background monitoring schedule manager with configurable scan frequencies.
+7. **📜 Scan History**: Local SQLite scan history drawer with one-click report reloading, deletion, and comparison.
+8. **⚙️ Settings Hub**: Centralized configuration drawer for custom HTTP headers, auth tokens, port profiles, and database maintenance.
+
+---
+
 ## ⌨️ Keyboard Shortcuts
 
-VulnRadar features power-user keyboard navigation for seamless operational workflows:
+VulnRadar features power-user keyboard shortcuts for fluid navigation:
 
 | Shortcut | Action | Scope |
 |---|---|---|
-| <kbd>Ctrl</kbd> + <kbd>K</kbd> / <kbd>Cmd</kbd> + <kbd>K</kbd> | Focus Target URL Bar | Global |
+| <kbd>Ctrl</kbd> + <kbd>K</kbd> / <kbd>Cmd</kbd> + <kbd>K</kbd> | Focus Target URL Input Bar | Global |
 | <kbd>Ctrl</kbd> + <kbd>,</kbd> / <kbd>Cmd</kbd> + <kbd>,</kbd> | Open Unified Settings Hub | Global |
 | <kbd>Ctrl</kbd> + <kbd>H</kbd> / <kbd>Cmd</kbd> + <kbd>H</kbd> | Open Scan History Drawer | Global |
 | <kbd>Ctrl</kbd> + <kbd>B</kbd> / <kbd>Cmd</kbd> + <kbd>B</kbd> | Open Batch Fleet Scanner | Global |
@@ -105,6 +124,7 @@ vuln-radar/
     └── src/
         ├── models.rs                     # Security findings, report models & DTOs
         ├── scanner/                      # Modular analysis engine
+        │   ├── rce.rs                    # RCE risk heuristics & known CVE correlation
         │   ├── headers.rs                # HTTP security header verification
         │   ├── cookies.rs                # Cookie policy inspection
         │   ├── dependencies.rs           # Front-end CVE detection & SCA
@@ -216,7 +236,7 @@ Production installers will be output to `src-tauri/target/release/bundle/`.
 
 VulnRadar is designed specifically for **defensive posture evaluation, DevSecOps compliance audits, and authorized penetration testing**. 
 
-The scanning engine conducts purely passive inspection against publicly accessible HTTP, TLS, and DNS endpoints and does not transmit destructive payloads. Users are responsible for ensuring appropriate testing authorization when evaluating target domains and network assets.
+The scanning engine conducts purely non-destructive inspection against publicly accessible HTTP, TLS, and DNS endpoints and does not transmit destructive exploit payloads. Users are responsible for ensuring appropriate testing authorization when evaluating target domains and network assets.
 
 ---
 
