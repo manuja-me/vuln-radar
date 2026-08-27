@@ -11,7 +11,8 @@ export type Category =
   | "dom_security"
   | "dns_email_security"
   | "endpoint_exposure"
-  | "port_exposure";
+  | "port_exposure"
+  | "rce_risk";
 
 export interface Finding {
   id: string;

@@ -57,6 +57,7 @@
     dns_email_security: "DNS & Email",
     endpoint_exposure: "Endpoint / Recon",
     port_exposure: "Port / Network",
+    rce_risk: "RCE & Injection Risk",
   };
 
   const severityBorders: Record<string, string> = {

@@ -5,6 +5,7 @@ pub mod endpoints;
 pub mod headers;
 pub mod leaks;
 pub mod ports;
+pub mod rce;
 pub mod subdomains;
 
 use crate::models::{Finding, ScanOptions, ScanReport, Severity};
@@ -251,13 +252,18 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         }
     };
 
+    let rce_fut = async {
+        rce::audit_rce_risks(&client, &parsed_url, &resp_headers, &detected_tech).await
+    };
+
     // Run async recon concurrently
-    let (subdomains_list, (dns_report, dns_findings), (endpoint_report, endpoint_findings), (port_report, port_findings)) =
-        tokio::join!(subdomains_fut, dns_fut, endpoints_fut, ports_fut);
+    let (subdomains_list, (dns_report, dns_findings), (endpoint_report, endpoint_findings), (port_report, port_findings), rce_findings) =
+        tokio::join!(subdomains_fut, dns_fut, endpoints_fut, ports_fut, rce_fut);
 
     all_findings.extend(dns_findings);
     all_findings.extend(endpoint_findings);
     all_findings.extend(port_findings);
+    all_findings.extend(rce_findings);
 
     // 6. Calculate Metrics & Security Score
     let mut critical_count = 0;
@@ -372,6 +378,34 @@ mod tests {
         let ids: Vec<String> = findings.into_iter().map(|f| f.id).collect();
         assert!(ids.contains(&"password-form-method-get".to_string()));
         assert!(ids.iter().any(|id| id.contains("sensitive-comment")));
+    }
+
+    #[test]
+    fn test_rce_parameter_heuristics() {
+        let url = Url::parse("https://example.com/api?cmd=whoami&file=report.pdf").unwrap();
+        let mut findings = Vec::new();
+        rce::audit_url_parameters(&url, &mut findings);
+        let ids: Vec<String> = findings.into_iter().map(|f| f.id).collect();
+        assert!(ids.contains(&"rce-risk-command-param-surface".to_string()));
+        assert!(ids.contains(&"rce-risk-template-inclusion-param-surface".to_string()));
+    }
+
+    #[test]
+    fn test_rce_server_version_cves() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "server",
+            HeaderValue::from_static("Apache/2.4.49 (Unix)"),
+        );
+        headers.insert(
+            "x-powered-by",
+            HeaderValue::from_static("PHP/8.1.0-dev"),
+        );
+        let mut findings = Vec::new();
+        rce::audit_version_cves(&headers, &[], &mut findings);
+        let ids: Vec<String> = findings.into_iter().map(|f| f.id).collect();
+        assert!(ids.contains(&"rce-cve-2021-41773-apache".to_string()));
+        assert!(ids.contains(&"rce-php-8-1-0-dev-backdoor".to_string()));
     }
 }
 

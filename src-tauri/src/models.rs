@@ -24,6 +24,7 @@ pub enum Category {
     DnsEmailSecurity,
     EndpointExposure,
     PortExposure,
+    RceRisk,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

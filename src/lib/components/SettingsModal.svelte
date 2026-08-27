@@ -980,7 +980,7 @@
                       <ShieldCheck class="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <div class="text-xs font-bold text-white">VulnRadar Desktop v0.6.3</div>
+                      <div class="text-xs font-bold text-white">VulnRadar Desktop v0.7.0</div>
                       <div class="text-[11px] text-neutral-400 font-mono">Tauri v2 • Svelte 5 • Rust 2021 Engine</div>
                     </div>
                   </div>
