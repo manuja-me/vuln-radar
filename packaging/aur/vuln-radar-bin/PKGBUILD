@@ -16,17 +16,17 @@ depends=(
     'glib2'
     'pango'
 )
-provides=("vuln-radar=")
+provides=("vuln-radar=${pkgver}")
 conflicts=('vuln-radar')
-source_x86_64=("-.deb::https://github.com/manuja-me/vuln-radar/releases/download/v/vuln-radar__amd64.deb")
+source_x86_64=("${pkgname}-${pkgver}.deb::https://github.com/manuja-me/vuln-radar/releases/download/v${pkgver}/VulnRadar_${pkgver}_amd64.deb")
 sha256sums_x86_64=('SKIP')
 
 package() {
     # Extract package contents from Debian archive
-    bsdtar -xf "data.tar.xz" -C "/" 2>/dev/null || \
-    bsdtar -xf "data.tar.gz" -C "/" 2>/dev/null || \
-    bsdtar -xf "data.tar.zst" -C "/"
+    bsdtar -xf "data.tar.xz" -C "${pkgdir}/" 2>/dev/null || \
+    bsdtar -xf "data.tar.gz" -C "${pkgdir}/" 2>/dev/null || \
+    bsdtar -xf "data.tar.zst" -C "${pkgdir}/"
 
     # Install license
-    install -Dm644 "/usr/share/doc/vuln-radar/copyright" "/usr/share/licenses//LICENSE" 2>/dev/null || true
+    install -Dm644 "${pkgdir}/usr/share/doc/vuln-radar/copyright" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" 2>/dev/null || true
 }
