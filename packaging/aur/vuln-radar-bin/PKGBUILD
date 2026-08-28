@@ -1,0 +1,32 @@
+# Maintainer: manuja-me <https://github.com/manuja-me/vuln-radar>
+pkgname=vuln-radar-bin
+pkgver=0.7.0
+pkgrel=1
+pkgdesc="Desktop Web Vulnerability & Security Scanner (pre-compiled binary)"
+arch=('x86_64')
+url="https://github.com/manuja-me/vuln-radar"
+license=('MIT')
+depends=(
+    'webkit2gtk-4.1'
+    'gtk3'
+    'libayatana-appindicator'
+    'librsvg'
+    'openssl'
+    'cairo'
+    'glib2'
+    'pango'
+)
+provides=("vuln-radar=")
+conflicts=('vuln-radar')
+source_x86_64=("-.deb::https://github.com/manuja-me/vuln-radar/releases/download/v/vuln-radar__amd64.deb")
+sha256sums_x86_64=('SKIP')
+
+package() {
+    # Extract package contents from Debian archive
+    bsdtar -xf "data.tar.xz" -C "/" 2>/dev/null || \
+    bsdtar -xf "data.tar.gz" -C "/" 2>/dev/null || \
+    bsdtar -xf "data.tar.zst" -C "/"
+
+    # Install license
+    install -Dm644 "/usr/share/doc/vuln-radar/copyright" "/usr/share/licenses//LICENSE" 2>/dev/null || true
+}
