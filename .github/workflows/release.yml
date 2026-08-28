@@ -74,6 +74,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure Git Safe Directory
+        run: |
+          git config --global --add safe.directory '*'
+
       - name: Setup unprivileged build user
         run: |
           useradd -m builduser
@@ -85,6 +89,7 @@ jobs:
           TAG_NAME="${{ github.ref_name }}"
           VERSION="${TAG_NAME#v}"
           su builduser -c "
+            git config --global --add safe.directory '*'
             cd packaging/aur/vuln-radar-bin
             sed -i \"s/^pkgver=.*/pkgver=${VERSION}/\" PKGBUILD
             updpkgsums || true
@@ -95,12 +100,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PKG_PATH=$(find packaging/aur/vuln-radar-bin -name "*.pkg.tar.zst" | head -n 1)
+          git config --global --add safe.directory '*'
+          PKG_PATH=$(find packaging/aur/vuln-radar-bin -name "*.pkg.tar.zst" ! -name "*-debug-*" | head -n 1)
           if [ -n "$PKG_PATH" ]; then
             echo "Uploading Arch package: $PKG_PATH"
             gh release upload "${{ github.ref_name }}" "$PKG_PATH" --clobber
           else
-            echo "No .pkg.tar.zst file found!"
+            echo "No valid .pkg.tar.zst file found!"
             exit 1
           fi
 

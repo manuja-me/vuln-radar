@@ -18,6 +18,7 @@ depends=(
 )
 provides=("vuln-radar=${pkgver}")
 conflicts=('vuln-radar')
+options=(!debug !strip)
 source_x86_64=("${pkgname}-${pkgver}.deb::https://github.com/manuja-me/vuln-radar/releases/download/v${pkgver}/VulnRadar_${pkgver}_amd64.deb")
 sha256sums_x86_64=('SKIP')
 
