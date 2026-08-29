@@ -102,6 +102,10 @@ VulnRadar features power-user keyboard shortcuts for fluid navigation:
 
 ```
 vuln-radar/
+├── packaging/
+│   └── aur/
+│       └── vuln-radar-bin/
+│           └── PKGBUILD                  # Arch Linux package recipe (.pkg.tar.zst)
 ├── src/                                  # Frontend UI (Svelte 5 Runes + TypeScript + Tailwind CSS)
 │   ├── lib/
 │   │   ├── components/
@@ -147,6 +151,7 @@ vuln-radar/
 - 🎯 **URL Parameter Attack Surface Heuristics**: Automatically flags dangerous query parameters commonly abused for command injection (`?cmd=`, `?exec=`, `?run=`, `?eval=`) and dynamic template / file inclusion (`?tpl=`, `?template=`, `?include=`, `?page=`).
 - 🔍 **Software & Framework CVE Correlation**: Passively correlates response banners and technology stacks against critical RCE CVEs (Apache 2.4.49/50 `CVE-2021-41773`, PHP 8.1.0-dev backdoor, EOL PHP CGI `CVE-2024-4577`, Jenkins `CVE-2024-23897`, Webmin `CVE-2019-15107`, Spring4Shell).
 - 🚨 **High-Risk Management Endpoint Probing**: Safely audits unauthenticated management endpoints including Spring Boot Actuators (`/actuator/env`, `/actuator/gateway/routes`, `/actuator/jolokia`), Jenkins script console (`/script`), Apache Solr (`/solr/admin/cores`), and server status consoles.
+- 📦 **Arch Linux Packaging & `.pkg.tar.zst` Releases**: Automated native Arch Linux package building in GitHub Actions CI releases with `PKGBUILD` in `packaging/aur/vuln-radar-bin/` for pacman and AUR installation.
 - 🏷️ **UI & Reporting Integration**: Tagged with OWASP `A03:2021-Injection` and `A06:2021-Vulnerable Components`, CVE badges, filterable under `"RCE & Injection Risks"` across UI dashboards and exported audit reports.
 
 ### 🚀 [v0.6.3] — Streamlined Native Workspace & UI Refinements
@@ -194,7 +199,38 @@ Pre-compiled production binaries are available for major operating systems on th
 |---|---|---|
 | **Windows** | x86_64 (64-bit) | Installer (`.exe`), Windows Installer (`.msi`) |
 | **macOS** | Universal Binary (Apple Silicon & Intel) | Disk Image (`.dmg`) |
-| **Linux** | x86_64 (64-bit) | AppImage (`.AppImage`), Debian Package (`.deb`) |
+| **Linux (Universal)** | x86_64 (64-bit) | AppImage (`.AppImage`) |
+| **Linux (Debian / Ubuntu)** | x86_64 (64-bit) | Debian Package (`.deb`) |
+| **Linux (Arch Linux / Manjaro)** | x86_64 (64-bit) | Pacman Package (`.pkg.tar.zst`), AUR (`vuln-radar-bin`) |
+
+### 🐧 Linux Installation
+
+#### Arch Linux (`.pkg.tar.zst`)
+Download the `.pkg.tar.zst` asset from the [Releases](https://github.com/manuja-me/vuln-radar/releases) page and install via `pacman`:
+
+```bash
+sudo pacman -U vuln-radar-bin-<version>-1-x86_64.pkg.tar.zst
+```
+
+Or build and install locally from the included PKGBUILD:
+
+```bash
+cd packaging/aur/vuln-radar-bin
+makepkg -si
+```
+
+#### Debian / Ubuntu (`.deb`)
+```bash
+sudo dpkg -i VulnRadar_<version>_amd64.deb
+# or
+sudo apt install ./VulnRadar_<version>_amd64.deb
+```
+
+#### Standalone Linux (`.AppImage`)
+```bash
+chmod +x VulnRadar_<version>_amd64.AppImage
+./VulnRadar_<version>_amd64.AppImage
+```
 
 > [!NOTE]
 > **Windows Defender Notice**:
@@ -229,6 +265,16 @@ npm run tauri build
 ```
 
 Production installers will be output to `src-tauri/target/release/bundle/`.
+
+### Building Arch Linux Package (`.pkg.tar.zst`)
+
+To package the Arch Linux `.pkg.tar.zst` release bundle locally:
+
+```bash
+cd packaging/aur/vuln-radar-bin
+updpkgsums   # Updates SHA256 checksums if necessary
+makepkg -si  # Builds package and installs dependencies
+```
 
 ---
 
