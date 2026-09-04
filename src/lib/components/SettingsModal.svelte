@@ -165,11 +165,11 @@
   }
 
   function getScoreBadge(score?: number | null) {
-    if (score === undefined || score === null) return "bg-neutral-800 text-neutral-400";
-    if (score >= 85) return "bg-emerald-950/40 text-emerald-300 border-emerald-800/50";
-    if (score >= 70) return "bg-blue-950/40 text-blue-300 border-blue-800/50";
-    if (score >= 50) return "bg-amber-950/40 text-amber-300 border-amber-800/50";
-    return "bg-rose-950/40 text-rose-300 border-rose-800/50";
+    if (score === undefined || score === null) return "bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none";
+    if (score >= 85) return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-none";
+    if (score >= 70) return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded-none";
+    if (score >= 50) return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-none";
+    return "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 rounded-none";
   }
 
   // --- Batch Scanner Local State ---
@@ -252,7 +252,7 @@
 {#if isOpen}
   <!-- Backdrop -->
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4 animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 animate-fade-in"
     onclick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}
@@ -264,29 +264,29 @@
     tabindex="-1"
   >
     <div
-      class="bg-[#202020] border border-[#333333] rounded-2xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden text-[#e3e2e0]"
+      class="bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden text-[var(--color-text-body)]"
     >
       <!-- Modal Header -->
-      <div class="px-5 py-3.5 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
+      <div class="px-5 py-3.5 border-b border-[var(--color-hairline)] flex items-center justify-between bg-[var(--color-surface)]">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-200">
-            <Sliders class="w-4 h-4 text-white" />
+          <div class="w-8 h-8 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] flex items-center justify-center text-[var(--color-signal-red)]">
+            <Sliders class="w-4 h-4" />
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-sm font-semibold text-white tracking-tight">Settings & Engine Configuration</h2>
-              <span class="px-1.5 py-0.2 text-[10px] bg-[#282828] text-neutral-400 rounded font-mono border border-[#383838]">
-                VulnRadar
+              <h2 class="text-xs font-black text-[var(--color-text-headline)] uppercase tracking-tight font-mono">Settings & Engine Configuration</h2>
+              <span class="px-1.5 py-0.2 text-[10px] bg-[var(--color-canvas)] text-[var(--color-text-muted)] rounded-none font-mono border border-[var(--color-hairline)] uppercase font-bold">
+                VULNRADAR
               </span>
             </div>
-            <p class="text-[11px] text-neutral-400">Manage audit parameters, active watchdog, scanner profiles, and preferences</p>
+            <p class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">Manage audit parameters, active watchdog, scanner profiles, and preferences</p>
           </div>
         </div>
 
         <button
           type="button"
           onclick={onClose}
-          class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
+          class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
           aria-label="Close settings dialog"
         >
           <X class="w-4 h-4" />
@@ -297,46 +297,46 @@
       <div class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
         
         <!-- Left Sidebar Tabs -->
-        <nav class="w-full md:w-56 bg-[#181818] border-b md:border-b-0 md:border-r border-[#2a2a2a] p-3 flex md:flex-col gap-1 overflow-x-auto md:overflow-y-auto flex-shrink-0">
+        <nav class="w-full md:w-56 bg-[var(--color-surface)] border-b md:border-b-0 md:border-r border-[var(--color-hairline)] p-3 flex md:flex-col gap-1 overflow-x-auto md:overflow-y-auto flex-shrink-0 font-mono">
           <button
             type="button"
             onclick={() => (currentTab = "params")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'params' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'params' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Sliders class="w-3.5 h-3.5 {currentTab === 'params' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Scan Parameters</span>
+              <Sliders class="w-3.5 h-3.5" />
+              <span>01/PARAMETERS</span>
             </div>
             {#if hasCustomParams}
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-400" title="Custom parameters active"></span>
+              <span class="w-1.5 h-1.5 rounded-none bg-[var(--color-signal-red)]" title="Custom parameters active"></span>
             {/if}
           </button>
 
           <button
             type="button"
             onclick={() => (currentTab = "ports")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'ports' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'ports' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Server class="w-3.5 h-3.5 {currentTab === 'ports' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Port Scanner</span>
+              <Server class="w-3.5 h-3.5" />
+              <span>02/PORTS</span>
             </div>
             {#if enablePortScan}
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Port scanner enabled"></span>
+              <span class="w-1.5 h-1.5 rounded-none bg-emerald-500" title="Port scanner enabled"></span>
             {/if}
           </button>
 
           <button
             type="button"
             onclick={() => (currentTab = "watchdog")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'watchdog' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'watchdog' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Activity class="w-3.5 h-3.5 {currentTab === 'watchdog' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Watchdog</span>
+              <Activity class="w-3.5 h-3.5" />
+              <span>03/WATCHDOG</span>
             </div>
             {#if activeMonitorsCount > 0}
-              <span class="px-1.5 py-0.2 text-[10px] font-mono rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+              <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none bg-[var(--color-canvas)] text-[var(--color-text-headline)] border border-[var(--color-hairline)]">
                 {activeMonitorsCount}
               </span>
             {/if}
@@ -345,45 +345,45 @@
           <button
             type="button"
             onclick={() => (currentTab = "batch")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'batch' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'batch' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Layers class="w-3.5 h-3.5 {currentTab === 'batch' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Batch Fleet</span>
+              <Layers class="w-3.5 h-3.5" />
+              <span>04/BATCH</span>
             </div>
           </button>
 
           <button
             type="button"
             onclick={() => (currentTab = "shortcuts")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'shortcuts' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'shortcuts' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Keyboard class="w-3.5 h-3.5 {currentTab === 'shortcuts' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Shortcuts</span>
+              <Keyboard class="w-3.5 h-3.5" />
+              <span>05/SHORTCUTS</span>
             </div>
-            <kbd class="text-[10px] font-mono text-neutral-500">⌘K</kbd>
+            <kbd class="text-[10px] font-mono opacity-70">⌘K</kbd>
           </button>
 
-          <div class="hidden md:block my-2 border-t border-[#2a2a2a]"></div>
+          <div class="hidden md:block my-2 border-t border-[var(--color-hairline)]"></div>
 
           <button
             type="button"
             onclick={() => (currentTab = "data")}
-            class="px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer {currentTab === 'data' ? 'bg-[#282828] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]'}"
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'data' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
-              <Database class="w-3.5 h-3.5 {currentTab === 'data' ? 'text-white' : 'text-neutral-400'}" />
-              <span>Storage & About</span>
+              <Database class="w-3.5 h-3.5" />
+              <span>06/STORAGE</span>
             </div>
             {#if historyCount > 0}
-              <span class="text-[10px] font-mono text-neutral-500">{historyCount}</span>
+              <span class="text-[10px] font-mono text-[var(--color-text-muted)]">{historyCount}</span>
             {/if}
           </button>
         </nav>
 
         <!-- Right Content Body -->
-        <div class="flex-1 flex flex-col min-h-0 bg-[#202020]">
+        <div class="flex-1 flex flex-col min-h-0 bg-[var(--color-surface)]">
           
           <div class="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
 
@@ -391,18 +391,18 @@
             {#if currentTab === "params"}
               <div class="space-y-5 animate-fade-in">
                 <div>
-                  <h3 class="text-sm font-semibold text-white">Scan & Request Parameters</h3>
-                  <p class="text-xs text-neutral-400 mt-0.5">Control HTTP timeouts, custom headers, tokens, and subdomain discovery</p>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Scan & Request Parameters</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Control HTTP timeouts, custom headers, tokens, and subdomain discovery</p>
                 </div>
 
                 <!-- Subdomain Recon Option -->
-                <div class="p-4 bg-[#191919] border border-[#2e2e2e] rounded-xl flex items-center justify-between">
+                <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between">
                   <div>
-                    <div class="text-xs font-medium text-neutral-200 flex items-center gap-2">
-                      <Globe class="w-3.5 h-3.5 text-neutral-400" />
+                    <div class="text-xs font-bold text-[var(--color-text-headline)] flex items-center gap-2 font-mono uppercase">
+                      <Globe class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
                       <span>Subdomain Mapping (crt.sh Certificate Logs)</span>
                     </div>
-                    <p class="text-[11px] text-neutral-400 mt-0.5">
+                    <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-mono">
                       Query Certificate Transparency logs for public subdomains belonging to the target domain.
                     </p>
                   </div>
@@ -412,13 +412,13 @@
                       bind:checked={includeSubdomains}
                       class="sr-only peer"
                     />
-                    <div class="w-9 h-5 bg-[#333333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white peer-checked:after:bg-neutral-950"></div>
+                    <div class="w-9 h-5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--color-text-muted)] after:rounded-none after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[var(--color-text-headline)] peer-checked:after:bg-[var(--color-canvas)]"></div>
                   </label>
                 </div>
 
                 <!-- HTTP Timeout Selector -->
                 <div class="space-y-2">
-                  <label for="timeout-select" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                  <label for="timeout-select" class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                     HTTP Request Socket Timeout
                   </label>
                   <div class="grid grid-cols-4 gap-2" id="timeout-select">
@@ -426,9 +426,9 @@
                       <button
                         type="button"
                         onclick={() => (timeoutSeconds = sec)}
-                        class="py-2 text-xs font-mono font-medium rounded-lg border transition-colors cursor-pointer {timeoutSeconds === sec ? 'bg-[#2a2a2a] text-white border-neutral-400 shadow-xs' : 'bg-[#191919] text-neutral-400 border-[#2e2e2e] hover:border-[#3a3a3a]'}"
+                        class="py-2 text-xs font-mono font-bold rounded-none border transition-colors cursor-pointer {timeoutSeconds === sec ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] border-[var(--color-hairline)] hover:text-[var(--color-text-headline)]'}"
                       >
-                        {sec}s
+                        {sec}S
                       </button>
                     {/each}
                   </div>
@@ -438,7 +438,7 @@
                 <div class="space-y-1.5">
                   <label
                     for="settings-user-agent"
-                    class="block text-xs font-medium text-neutral-400 uppercase tracking-wider"
+                    class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono"
                   >
                     Custom User-Agent Signature
                   </label>
@@ -446,8 +446,8 @@
                     id="settings-user-agent"
                     type="text"
                     bind:value={userAgentInput}
-                    placeholder="Default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) VulnRadar/1.0"
-                    class="w-full px-3 py-2 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                    placeholder="DEFAULT: MOZILLA/5.0 ... VULNRADAR/1.0"
+                    class="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] uppercase focus:outline-none"
                   />
                 </div>
 
@@ -455,15 +455,15 @@
                 <div class="space-y-2.5">
                   <div class="flex items-center justify-between">
                     <div>
-                      <span class="block text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                      <span class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                         Custom HTTP Headers & Auth Tokens
                       </span>
-                      <p class="text-[11px] text-neutral-500">Injected into all active and passive requests</p>
+                      <p class="text-[11px] text-[var(--color-text-muted)] font-mono">Injected into all active and passive requests</p>
                     </div>
                     <button
                       type="button"
                       onclick={addHeaderRow}
-                      class="px-2.5 py-1 bg-[#252525] hover:bg-[#2f2f2f] text-neutral-300 hover:text-white rounded-lg text-xs flex items-center gap-1 font-medium cursor-pointer transition-colors border border-[#333]"
+                      class="px-2.5 py-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] rounded-none text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition-colors border border-[var(--color-hairline)]"
                     >
                       <Plus class="w-3.5 h-3.5" />
                       <span>Add Header</span>
@@ -476,19 +476,19 @@
                         <input
                           type="text"
                           bind:value={row.key}
-                          placeholder="Header (e.g. Authorization or X-API-Key)"
-                          class="flex-1 px-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                          placeholder="HEADER (E.G. AUTHORIZATION)"
+                          class="flex-1 px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] uppercase focus:outline-none"
                         />
                         <input
                           type="text"
                           bind:value={row.value}
-                          placeholder="Value (e.g. Bearer eyJhbGci...)"
-                          class="flex-1 px-3 py-1.5 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                          placeholder="VALUE (E.G. BEARER EYJHBGC...)"
+                          class="flex-1 px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] focus:outline-none"
                         />
                         <button
                           type="button"
                           onclick={() => removeHeaderRow(i)}
-                          class="p-1.5 text-neutral-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                          class="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 rounded-none transition-colors cursor-pointer"
                           aria-label="Remove header row"
                         >
                           <Trash2 class="w-4 h-4" />
@@ -503,18 +503,18 @@
             {:else if currentTab === "ports"}
               <div class="space-y-5 animate-fade-in">
                 <div>
-                  <h3 class="text-sm font-semibold text-white">Network Port Scanner (Nmap Engine)</h3>
-                  <p class="text-xs text-neutral-400 mt-0.5">Asynchronous TCP port discovery, socket banner grabbing, and exposed database inspection</p>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Network Port Scanner (Nmap Engine)</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Asynchronous TCP port discovery, socket banner grabbing, and exposed database inspection</p>
                 </div>
 
                 <!-- Main Toggle -->
-                <div class="p-4 bg-[#191919] border border-[#2e2e2e] rounded-xl flex items-center justify-between">
+                <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between">
                   <div>
-                    <div class="text-xs font-medium text-neutral-200 flex items-center gap-2">
-                      <Server class="w-3.5 h-3.5 text-neutral-400" />
+                    <div class="text-xs font-bold text-[var(--color-text-headline)] flex items-center gap-2 font-mono uppercase">
+                      <Server class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
                       <span>Enable TCP Port Scanner Probes</span>
                     </div>
-                    <p class="text-[11px] text-neutral-400 mt-0.5">
+                    <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-mono">
                       Probes the resolved host IP address for listening services, sensitive administrative ports, and remote databases.
                     </p>
                   </div>
@@ -524,7 +524,7 @@
                       bind:checked={enablePortScan}
                       class="sr-only peer"
                     />
-                    <div class="w-9 h-5 bg-[#333333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white peer-checked:after:bg-neutral-950"></div>
+                    <div class="w-9 h-5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] peer-focus:outline-none rounded-none peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--color-text-muted)] after:rounded-none after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[var(--color-text-headline)] peer-checked:after:bg-[var(--color-canvas)]"></div>
                   </label>
                 </div>
 
@@ -532,41 +532,41 @@
                   <div class="space-y-4 pt-1">
                     <!-- Port Profiles -->
                     <div class="space-y-2">
-                      <span class="block text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                      <span class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                         Port Target Profile
                       </span>
                       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button
                           type="button"
                           onclick={() => (portScanProfile = "top20")}
-                          class="p-2.5 rounded-lg border text-left transition-colors cursor-pointer {portScanProfile === 'top20' ? 'bg-[#2a2a2a] border-neutral-400 text-white' : 'bg-[#191919] border-[#2e2e2e] text-neutral-400 hover:border-[#3a3a3a]'}"
+                          class="p-2.5 rounded-none border text-left transition-colors cursor-pointer {portScanProfile === 'top20' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent font-bold' : 'bg-[var(--color-canvas)] border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
                         >
-                          <div class="text-xs font-medium">Top 20 Ports</div>
-                          <div class="text-[10px] text-neutral-400 mt-0.5">Fast web & core infra</div>
+                          <div class="text-xs font-mono font-bold uppercase">Top 20 Ports</div>
+                          <div class="text-[10px] opacity-80 mt-0.5 font-mono uppercase">Fast web & core</div>
                         </button>
                         <button
                           type="button"
                           onclick={() => (portScanProfile = "top100")}
-                          class="p-2.5 rounded-lg border text-left transition-colors cursor-pointer {portScanProfile === 'top100' ? 'bg-[#2a2a2a] border-neutral-400 text-white' : 'bg-[#191919] border-[#2e2e2e] text-neutral-400 hover:border-[#3a3a3a]'}"
+                          class="p-2.5 rounded-none border text-left transition-colors cursor-pointer {portScanProfile === 'top100' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent font-bold' : 'bg-[var(--color-canvas)] border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
                         >
-                          <div class="text-xs font-medium">Top 100 Ports</div>
-                          <div class="text-[10px] text-neutral-400 mt-0.5">Standard Nmap set</div>
+                          <div class="text-xs font-mono font-bold uppercase">Top 100 Ports</div>
+                          <div class="text-[10px] opacity-80 mt-0.5 font-mono uppercase">Standard Nmap set</div>
                         </button>
                         <button
                           type="button"
                           onclick={() => (portScanProfile = "databases")}
-                          class="p-2.5 rounded-lg border text-left transition-colors cursor-pointer {portScanProfile === 'databases' ? 'bg-[#2a2a2a] border-neutral-400 text-white' : 'bg-[#191919] border-[#2e2e2e] text-neutral-400 hover:border-[#3a3a3a]'}"
+                          class="p-2.5 rounded-none border text-left transition-colors cursor-pointer {portScanProfile === 'databases' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent font-bold' : 'bg-[var(--color-canvas)] border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
                         >
-                          <div class="text-xs font-medium">Databases</div>
-                          <div class="text-[10px] text-neutral-400 mt-0.5">MySQL, Redis, Mongo</div>
+                          <div class="text-xs font-mono font-bold uppercase">Databases</div>
+                          <div class="text-[10px] opacity-80 mt-0.5 font-mono uppercase">MySQL, Redis, Mongo</div>
                         </button>
                         <button
                           type="button"
                           onclick={() => (portScanProfile = "custom")}
-                          class="p-2.5 rounded-lg border text-left transition-colors cursor-pointer {portScanProfile === 'custom' ? 'bg-[#2a2a2a] border-neutral-400 text-white' : 'bg-[#191919] border-[#2e2e2e] text-neutral-400 hover:border-[#3a3a3a]'}"
+                          class="p-2.5 rounded-none border text-left transition-colors cursor-pointer {portScanProfile === 'custom' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent font-bold' : 'bg-[var(--color-canvas)] border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
                         >
-                          <div class="text-xs font-medium">Custom List</div>
-                          <div class="text-[10px] text-neutral-400 mt-0.5">Specify ranges</div>
+                          <div class="text-xs font-mono font-bold uppercase">Custom List</div>
+                          <div class="text-[10px] opacity-80 mt-0.5 font-mono uppercase">Specify ranges</div>
                         </button>
                       </div>
                     </div>
@@ -574,7 +574,7 @@
                     <!-- Custom Port Input -->
                     {#if portScanProfile === "custom"}
                       <div class="space-y-1.5">
-                        <label for="settings-custom-ports" class="block text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                        <label for="settings-custom-ports" class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                           Custom Ports & Ranges (e.g. 21, 22, 80, 443, 3000-3005, 8080)
                         </label>
                         <input
@@ -582,22 +582,22 @@
                           type="text"
                           bind:value={customPortsInput}
                           placeholder="80, 443, 3000-3005, 8080, 8443"
-                          class="w-full px-3 py-2 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                          class="w-full px-3 py-2 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] focus:outline-none"
                         />
                       </div>
                     {/if}
 
                     <!-- Socket Timeout Per Probe -->
                     <div class="space-y-1.5">
-                      <span class="block text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                      <span class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                         Port Probe Socket Timeout
                       </span>
                       <div class="grid grid-cols-3 gap-2">
-                        {#each [{ label: "Fast (500ms)", ms: 500 }, { label: "Balanced (800ms)", ms: 800 }, { label: "Thorough (1500ms)", ms: 1500 }] as t}
+                        {#each [{ label: "FAST (500MS)", ms: 500 }, { label: "BALANCED (800MS)", ms: 800 }, { label: "THOROUGH (1500MS)", ms: 1500 }] as t}
                           <button
                             type="button"
                             onclick={() => (portTimeoutMs = t.ms)}
-                            class="py-2 text-xs font-mono rounded-lg border transition-colors cursor-pointer {portTimeoutMs === t.ms ? 'bg-[#2a2a2a] text-white border-neutral-400 font-medium' : 'bg-[#191919] text-neutral-400 border-[#2e2e2e] hover:border-[#3a3a3a]'}"
+                            class="py-2 text-xs font-mono font-bold rounded-none border transition-colors cursor-pointer {portTimeoutMs === t.ms ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] border-[var(--color-hairline)] hover:text-[var(--color-text-headline)]'}"
                           >
                             {t.label}
                           </button>
@@ -613,30 +613,30 @@
               <div class="space-y-5 animate-fade-in">
                 <div class="flex items-center justify-between">
                   <div>
-                    <h3 class="text-sm font-semibold text-white">Continuous Security Watchdog</h3>
-                    <p class="text-xs text-neutral-400 mt-0.5">Automated background re-scanning with score degradation notifications</p>
+                    <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Continuous Security Watchdog</h3>
+                    <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Automated background re-scanning with score degradation notifications</p>
                   </div>
-                  <span class="px-2 py-0.5 text-xs font-mono bg-[#191919] border border-[#2e2e2e] text-neutral-300 rounded">
-                    {monitors.length} Monitored Domains
+                  <span class="px-2 py-0.5 text-xs font-mono bg-[var(--color-canvas)] border border-[var(--color-hairline)] text-[var(--color-text-headline)] rounded-none font-bold uppercase">
+                    {monitors.length} MONITORED DOMAINS
                   </span>
                 </div>
 
                 <!-- Add Watchdog Form -->
-                <div class="p-4 bg-[#191919] border border-[#2e2e2e] rounded-xl space-y-3">
-                  <div class="flex items-center gap-1.5 text-xs font-medium text-neutral-300">
-                    <BellRing class="w-3.5 h-3.5 text-neutral-400" />
+                <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-3">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">
+                    <BellRing class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
                     <span>Schedule New Domain Watchdog</span>
                   </div>
                   <div class="flex flex-col sm:flex-row items-center gap-2">
                     <input
                       type="text"
                       bind:value={newWatchdogUrl}
-                      placeholder="https://example.com"
-                      class="w-full sm:flex-1 px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                      placeholder="HTTPS://EXAMPLE.COM"
+                      class="w-full sm:flex-1 px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] uppercase focus:outline-none"
                     />
                     <select
                       bind:value={selectedInterval}
-                      class="w-full sm:w-auto px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-medium text-neutral-300 focus:outline-none cursor-pointer"
+                      class="w-full sm:w-auto px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
                     >
                       <option value={1}>Every 1 hour</option>
                       <option value={6}>Every 6 hours</option>
@@ -648,7 +648,7 @@
                       type="button"
                       onclick={handleAddWatchdog}
                       disabled={!newWatchdogUrl.trim() || isAddingWatchdog}
-                      class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0 shadow-sm"
+                      class="w-full sm:w-auto px-3.5 py-1.5 bg-[var(--color-text-headline)] hover:opacity-90 disabled:opacity-50 text-[var(--color-canvas)] font-mono font-bold uppercase rounded-none text-xs flex items-center justify-center gap-1.5 transition-opacity cursor-pointer flex-shrink-0"
                     >
                       <Plus class="w-3.5 h-3.5" />
                       <span>Add Target</span>
@@ -659,16 +659,16 @@
                 <!-- Configured Domains List -->
                 <div class="space-y-2.5">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                    <span class="text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
                       Active Watchdog Fleet ({monitors.length})
                     </span>
                   </div>
 
                   {#if monitors.length === 0}
-                    <div class="py-12 text-center text-neutral-500 bg-[#191919] border border-[#2e2e2e] rounded-xl">
-                      <Activity class="w-8 h-8 mx-auto mb-2 opacity-30 text-neutral-400" />
-                      <p class="text-xs font-medium text-neutral-300">No continuous monitors configured</p>
-                      <p class="text-[11px] text-neutral-500 mt-0.5 max-w-sm mx-auto">
+                    <div class="py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none font-mono">
+                      <Activity class="w-8 h-8 mx-auto mb-2 opacity-30 text-[var(--color-text-muted)]" />
+                      <p class="text-xs font-bold text-[var(--color-text-headline)] uppercase">No continuous monitors configured</p>
+                      <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 max-w-sm mx-auto">
                         Add web properties above to track and alert on score changes and new CVEs.
                       </p>
                     </div>
@@ -676,25 +676,25 @@
                     <div class="space-y-2 max-h-72 overflow-y-auto">
                       {#each monitors as item}
                         <div
-                          class="p-3 bg-[#191919] border border-[#2e2e2e] rounded-lg flex items-center justify-between gap-3"
+                          class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-3"
                         >
                           <div class="flex items-center gap-3 min-w-0 flex-1">
                             <div
-                              class="w-2 h-2 rounded-full flex-shrink-0 {item.is_active ? 'bg-emerald-400' : 'bg-neutral-600'}"
+                              class="w-2 h-2 rounded-none flex-shrink-0 {item.is_active ? 'bg-emerald-500' : 'bg-[var(--color-text-muted)]'}"
                               title={item.is_active ? 'Active Watchdog' : 'Paused Watchdog'}
                             ></div>
 
                             <div class="min-w-0 flex-1">
                               <div class="flex items-center gap-2">
-                                <span class="text-xs font-medium text-neutral-200 font-mono truncate">
+                                <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono truncate">
                                   {item.target_url}
                                 </span>
-                                <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#282828] text-neutral-400 rounded border border-[#383838]">
+                                <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[var(--color-canvas)] text-[var(--color-text-muted)] rounded-none border border-[var(--color-hairline)] uppercase font-bold">
                                   Every {item.interval_hours}h
                                 </span>
                               </div>
 
-                              <div class="flex flex-wrap items-center gap-2 text-[11px] text-neutral-400 font-mono mt-0.5">
+                              <div class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-muted)] font-mono mt-0.5 uppercase">
                                 <span>Last: {formatWatchdogDate(item.last_scanned_at)}</span>
                                 <span>•</span>
                                 <span>Next: {formatWatchdogDate(item.next_scan_at)}</span>
@@ -705,7 +705,7 @@
                           <div class="flex items-center gap-1.5 flex-shrink-0">
                             {#if item.last_score !== null && item.last_score !== undefined}
                               <span
-                                class="px-2 py-0.5 text-xs font-mono rounded border {getScoreBadge(item.last_score)}"
+                                class="px-2 py-0.5 text-xs font-mono font-bold uppercase rounded-none border {getScoreBadge(item.last_score)}"
                               >
                                 {item.last_score} pts
                               </span>
@@ -718,7 +718,7 @@
                                   onScanTarget?.(item.target_url);
                                   onClose();
                                 }}
-                                class="p-1.5 text-neutral-300 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
+                                class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
                                 title="Run Audit Now"
                               >
                                 <RotateCw class="w-3.5 h-3.5" />
@@ -729,7 +729,7 @@
                               <button
                                 type="button"
                                 onclick={() => onToggleMonitor?.(item.id)}
-                                class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
+                                class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
                                 title={item.is_active ? 'Pause Watchdog' : 'Resume Watchdog'}
                               >
                                 {#if item.is_active}
@@ -744,7 +744,7 @@
                               <button
                                 type="button"
                                 onclick={() => onDeleteMonitor?.(item.id)}
-                                class="p-1.5 text-neutral-500 hover:text-red-400 rounded-md transition-colors cursor-pointer"
+                                class="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 rounded-none transition-colors cursor-pointer"
                                 title="Delete Watchdog"
                               >
                                 <Trash2 class="w-3.5 h-3.5" />
@@ -762,8 +762,8 @@
             {:else if currentTab === "batch"}
               <div class="space-y-5 animate-fade-in">
                 <div>
-                  <h3 class="text-sm font-semibold text-white">Batch Fleet Security Scanner</h3>
-                  <p class="text-xs text-neutral-400 mt-0.5">Audit multiple endpoints in sequence to evaluate entire domain portfolios</p>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Batch Fleet Security Scanner</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Audit multiple endpoints in sequence to evaluate entire domain portfolios</p>
                 </div>
 
                 {#if !isBatchRunning && batchItems.length === 0}
@@ -772,30 +772,30 @@
                       <div class="flex items-center justify-between mb-1.5">
                         <label
                           for="settings-batch-urls"
-                          class="block text-xs font-medium text-neutral-400 uppercase tracking-wider"
+                          class="block text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono"
                         >
                           Target Inventory (One URL Per Line)
                         </label>
-                        <span class="text-[11px] text-neutral-500 font-mono">Supports HTTP & HTTPS</span>
+                        <span class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">Supports HTTP & HTTPS</span>
                       </div>
                       <textarea
                         id="settings-batch-urls"
                         bind:value={batchRawUrls}
                         rows="5"
                         placeholder="https://example.com&#10;https://api.example.com&#10;https://staging.example.com"
-                        class="w-full p-3 bg-[#191919] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+                        class="w-full p-3 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] focus:outline-none"
                       ></textarea>
                     </div>
 
-                    <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div class="text-xs text-neutral-400">
-                        <span class="font-medium text-neutral-200">Sequential Fleet Queue:</span>
+                    <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div class="text-xs text-[var(--color-text-muted)] font-mono">
+                        <span class="font-bold text-[var(--color-text-headline)] uppercase">Sequential Fleet Queue:</span>
                         Targets are scanned sequentially using active audit parameters.
                       </div>
                       <button
                         type="button"
                         onclick={startBatchScan}
-                        class="px-4 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-sm flex-shrink-0"
+                        class="px-4 py-1.5 bg-[var(--color-signal-red)] hover:opacity-90 text-white font-mono font-bold uppercase rounded-none text-xs flex items-center gap-2 transition-opacity cursor-pointer flex-shrink-0"
                       >
                         <Play class="w-3.5 h-3.5 fill-current" />
                         <span>Launch Fleet Audit</span>
@@ -807,11 +807,11 @@
                   <div class="space-y-4">
                     <div class="flex items-center justify-between">
                       <div>
-                        <h4 class="text-xs font-semibold text-white">
+                        <h4 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase">
                           {isBatchRunning ? "Auditing Fleet Surface..." : "Fleet Assessment Completed"}
                         </h4>
-                        <p class="text-xs text-neutral-400 font-mono mt-0.5">
-                          Progress: <strong class="text-white">{batchCompletedCount}</strong> of {batchItems.length} audited
+                        <p class="text-xs text-[var(--color-text-muted)] font-mono mt-0.5 uppercase">
+                          PROGRESS: <strong class="text-[var(--color-text-headline)] font-bold">{batchCompletedCount}</strong> OF {batchItems.length} AUDITED
                         </p>
                       </div>
 
@@ -819,7 +819,7 @@
                         <button
                           type="button"
                           onclick={() => (batchItems = [])}
-                          class="px-3 py-1 bg-[#262626] hover:bg-[#303030] text-neutral-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                          class="px-3 py-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-colors"
                         >
                           New Batch
                         </button>
@@ -827,9 +827,9 @@
                     </div>
 
                     <!-- Progress Bar -->
-                    <div class="w-full bg-[#161616] border border-[#2e2e2e] rounded-full h-2 overflow-hidden p-0.5">
+                    <div class="w-full bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none h-2 overflow-hidden">
                       <div
-                        class="bg-blue-500 h-full rounded-full transition-all duration-300"
+                        class="bg-[var(--color-signal-red)] h-full transition-all duration-300 rounded-none"
                         style="width: {batchItems.length > 0 ? (batchCompletedCount / batchItems.length) * 100 : 0}%"
                       ></div>
                     </div>
@@ -838,30 +838,30 @@
                     <div class="space-y-2 max-h-60 overflow-y-auto">
                       {#each batchItems as item}
                         <div
-                          class="p-2.5 bg-[#191919] border border-[#2e2e2e] rounded-lg flex items-center justify-between gap-3"
+                          class="p-2.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-3"
                         >
                           <div class="flex items-center gap-2.5 min-w-0 flex-1">
                             {#if item.status === "scanning"}
-                              <Loader2 class="w-3.5 h-3.5 text-blue-400 animate-spin flex-shrink-0" />
+                              <Loader2 class="w-3.5 h-3.5 text-blue-500 animate-spin flex-shrink-0" />
                             {:else if item.status === "completed"}
-                              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                             {:else}
-                              <AlertOctagon class="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                              <AlertOctagon class="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
                             {/if}
 
                             <div class="min-w-0 flex-1">
-                              <div class="text-xs font-medium text-neutral-200 truncate font-mono">
+                              <div class="text-xs font-bold text-[var(--color-text-headline)] truncate font-mono">
                                 {item.url}
                               </div>
                               {#if item.error}
-                                <div class="text-[10px] text-red-400 font-mono mt-0.5 truncate">
+                                <div class="text-[10px] text-red-500 font-mono mt-0.5 truncate">
                                   {item.error}
                                 </div>
                               {:else if item.report}
-                                <div class="text-[10px] text-neutral-400 font-mono mt-0.5 flex items-center gap-2">
+                                <div class="text-[10px] text-[var(--color-text-muted)] font-mono mt-0.5 flex items-center gap-2 uppercase">
                                   <span>{item.report.total_findings} findings</span>
                                   {#if item.report.critical_count > 0}
-                                    <span class="text-red-400 font-medium">({item.report.critical_count} critical)</span>
+                                    <span class="text-red-500 font-bold">({item.report.critical_count} critical)</span>
                                   {/if}
                                 </div>
                               {/if}
@@ -871,7 +871,7 @@
                           {#if item.report}
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <span
-                                class="px-2 py-0.5 text-xs font-mono rounded border {getScoreBadge(item.report.security_score)}"
+                                class="px-2 py-0.5 text-xs font-mono font-bold uppercase rounded-none border {getScoreBadge(item.report.security_score)}"
                               >
                                 {item.report.security_score} pts
                               </span>
@@ -884,7 +884,7 @@
                                       onClose();
                                     }
                                   }}
-                                  class="px-2 py-1 bg-[#262626] hover:bg-[#303030] text-neutral-200 border border-[#383838] rounded text-xs font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                                  class="px-2 py-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase flex items-center gap-1 cursor-pointer transition-colors"
                                 >
                                   <span>Inspect</span>
                                   <ArrowRight class="w-3 h-3" />
@@ -903,15 +903,15 @@
             {:else if currentTab === "shortcuts"}
               <div class="space-y-4 animate-fade-in">
                 <div>
-                  <h3 class="text-sm font-semibold text-white">Keyboard Shortcuts & Commands</h3>
-                  <p class="text-xs text-neutral-400 mt-0.5">Quick hotkeys for high-velocity navigation and scanning</p>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Keyboard Shortcuts & Commands</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Quick hotkeys for high-velocity navigation and scanning</p>
                 </div>
 
-                <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-xl divide-y divide-[#282828]">
+                <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none divide-y divide-[var(--color-hairline)]">
                   {#each shortcutsList as sc}
                     <div class="flex items-center justify-between py-2 first:pt-0 last:pb-0">
-                      <span class="text-xs text-neutral-300">{sc.description}</span>
-                      <kbd class="px-2 py-0.5 bg-[#141414] border border-[#303030] rounded text-[11px] font-mono text-neutral-200 shadow-xs">
+                      <span class="text-xs font-mono text-[var(--color-text-body)]">{sc.description}</span>
+                      <kbd class="px-2 py-0.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none text-[11px] font-mono font-bold text-[var(--color-text-headline)]">
                         {sc.key}
                       </kbd>
                     </div>
@@ -923,15 +923,15 @@
             {:else if currentTab === "data"}
               <div class="space-y-5 animate-fade-in">
                 <div>
-                  <h3 class="text-sm font-semibold text-white">Storage, Diagnostics & About</h3>
-                  <p class="text-xs text-neutral-400 mt-0.5">Local SQLite database state and system build information</p>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Storage, Diagnostics & About</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Local SQLite database state and system build information</p>
                 </div>
 
                 <!-- Database Metrics -->
                 <div class="grid grid-cols-2 gap-3">
-                  <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-xl space-y-1">
-                    <span class="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">Persisted Scans</span>
-                    <div class="text-lg font-bold font-mono text-white flex items-center justify-between">
+                  <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
+                    <span class="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider font-mono">Persisted Scans</span>
+                    <div class="text-lg font-bold font-mono text-[var(--color-text-headline)] flex items-center justify-between">
                       <span>{historyCount} Snapshots</span>
                       {#if onOpenHistory}
                         <button
@@ -940,7 +940,7 @@
                             onClose();
                             onOpenHistory?.();
                           }}
-                          class="text-xs text-neutral-300 hover:text-white font-normal underline cursor-pointer"
+                          class="text-xs text-[var(--color-signal-red)] hover:underline font-mono uppercase cursor-pointer"
                         >
                           View Archive
                         </button>
@@ -948,9 +948,9 @@
                     </div>
                   </div>
 
-                  <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-xl space-y-1">
-                    <span class="text-[11px] font-medium text-neutral-400 uppercase tracking-wider">Watchdog Domains</span>
-                    <div class="text-lg font-bold font-mono text-white">
+                  <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
+                    <span class="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider font-mono">Watchdog Domains</span>
+                    <div class="text-lg font-bold font-mono text-[var(--color-text-headline)]">
                       {monitors.length} Configured
                     </div>
                   </div>
@@ -958,15 +958,15 @@
 
                 <!-- Clear History Action -->
                 {#if onClearHistory && historyCount > 0}
-                  <div class="p-4 bg-red-950/20 border border-red-900/30 rounded-xl flex items-center justify-between gap-4">
+                  <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-none flex items-center justify-between gap-4">
                     <div>
-                      <div class="text-xs font-semibold text-red-300">Clear Local Scan Archive</div>
-                      <p class="text-[11px] text-red-400/80 mt-0.5">Permanently delete all historical audit reports stored in the local SQLite database.</p>
+                      <div class="text-xs font-bold text-red-600 dark:text-red-400 font-mono uppercase">Clear Local Scan Archive</div>
+                      <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 font-mono">Permanently delete all historical audit reports stored in the local SQLite database.</p>
                     </div>
                     <button
                       type="button"
                       onclick={onClearHistory}
-                      class="px-3 py-1.5 bg-red-950 hover:bg-red-900 text-red-200 border border-red-800 rounded-lg text-xs font-medium cursor-pointer transition-colors flex-shrink-0"
+                      class="px-3 py-1.5 bg-[var(--color-signal-red)] hover:opacity-90 text-white rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-opacity flex-shrink-0"
                     >
                       Clear History
                     </button>
@@ -974,17 +974,17 @@
                 {/if}
 
                 <!-- About Card -->
-                <div class="p-4 bg-[#191919] border border-[#2e2e2e] rounded-xl space-y-2.5">
+                <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2.5">
                   <div class="flex items-center gap-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
-                      <ShieldCheck class="w-4 h-4 text-white" />
+                    <div class="w-7 h-7 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] flex items-center justify-center text-[var(--color-signal-red)]">
+                      <ShieldCheck class="w-4 h-4" />
                     </div>
                     <div>
-                      <div class="text-xs font-bold text-white">VulnRadar Desktop v0.7.0</div>
-                      <div class="text-[11px] text-neutral-400 font-mono">Tauri v2 • Svelte 5 • Rust 2021 Engine</div>
+                      <div class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">VulnRadar Desktop v0.7.0</div>
+                      <div class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">Tauri v2 • Svelte 5 • Rust 2021 Engine</div>
                     </div>
                   </div>
-                  <p class="text-xs text-neutral-400 leading-relaxed">
+                  <p class="text-xs text-[var(--color-text-muted)] leading-relaxed font-mono">
                     Lightweight passive reconnaissance, HTTP security posture verification, TLS cipher audit, DNS SPF/DMARC alignment, and asynchronous TCP port scanner.
                   </p>
                 </div>
@@ -995,22 +995,22 @@
 
           <!-- Modal Footer (Shown for editable parameter tabs) -->
           {#if currentTab === "params" || currentTab === "ports"}
-            <div class="px-5 py-3 border-t border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
-              <div class="text-[11px] text-neutral-400">
+            <div class="px-5 py-3 border-t border-[var(--color-hairline)] flex items-center justify-between bg-[var(--color-surface)]">
+              <div class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">
                 Changes apply immediately to subsequent security audits.
               </div>
               <div class="flex items-center gap-2">
                 <button
                   type="button"
                   onclick={onClose}
-                  class="px-3 py-1.5 bg-[#252525] hover:bg-[#2e2e2e] text-neutral-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                  class="px-3 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onclick={handleSaveParameters}
-                  class="px-4 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs transition-colors cursor-pointer shadow-sm"
+                  class="px-4 py-1.5 bg-[var(--color-text-headline)] hover:opacity-90 text-[var(--color-canvas)] font-mono font-bold uppercase rounded-none text-xs transition-opacity cursor-pointer"
                 >
                   Apply Parameters
                 </button>

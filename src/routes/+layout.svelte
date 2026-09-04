@@ -3,6 +3,6 @@
   let { children } = $props();
 </script>
 
-<div class="h-screen w-screen overflow-hidden flex flex-col bg-[#0d0e11] text-[#e2e4e9]">
+<div class="h-screen w-screen overflow-hidden flex flex-col bg-[var(--color-canvas)] text-[var(--color-text-body)] transition-colors duration-150">
   {@render children?.()}
 </div>

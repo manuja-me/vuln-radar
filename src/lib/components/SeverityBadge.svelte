@@ -1,46 +1,62 @@
 <script lang="ts">
   import type { Severity } from "$lib/types";
 
-  let { severity, count = undefined }: { severity: Severity; count?: number } = $props();
+  let { severity, count = undefined }: { severity: Severity | "pass"; count?: number } = $props();
 
-  const config = {
+  const config: Record<string, { border: string; bg: string; text: string; dot: string; label: string }> = {
     critical: {
-      bg: "bg-red-950/40 text-red-300 border-red-800/50 hover:bg-red-950/60",
-      dot: "bg-red-400",
-      label: "Critical",
+      border: "border-red-500/40 dark:border-red-500/40",
+      bg: "bg-red-500/5 dark:bg-red-950/30",
+      text: "text-red-600 dark:text-red-400",
+      dot: "bg-red-500",
+      label: "CRITICAL",
     },
     high: {
-      bg: "bg-orange-950/40 text-orange-300 border-orange-800/50 hover:bg-orange-950/60",
-      dot: "bg-orange-400",
-      label: "High",
+      border: "border-orange-500/40 dark:border-orange-500/40",
+      bg: "bg-orange-500/5 dark:bg-orange-950/30",
+      text: "text-orange-600 dark:text-orange-400",
+      dot: "bg-orange-500",
+      label: "HIGH",
     },
     medium: {
-      bg: "bg-amber-950/40 text-amber-300 border-amber-800/50 hover:bg-amber-950/60",
-      dot: "bg-amber-400",
-      label: "Medium",
+      border: "border-amber-500/40 dark:border-amber-500/40",
+      bg: "bg-amber-500/5 dark:bg-amber-950/30",
+      text: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
+      label: "MEDIUM",
     },
     low: {
-      bg: "bg-blue-950/40 text-blue-300 border-blue-800/50 hover:bg-blue-950/60",
-      dot: "bg-blue-400",
-      label: "Low",
+      border: "border-blue-500/40 dark:border-blue-500/40",
+      bg: "bg-blue-500/5 dark:bg-blue-950/30",
+      text: "text-blue-600 dark:text-blue-400",
+      dot: "bg-blue-500",
+      label: "LOW",
     },
     info: {
-      bg: "bg-neutral-800/60 text-neutral-300 border-neutral-700/60 hover:bg-neutral-800",
-      dot: "bg-neutral-400",
-      label: "Info",
+      border: "border-zinc-400/40 dark:border-zinc-700/50",
+      bg: "bg-zinc-500/5 dark:bg-zinc-900/40",
+      text: "text-zinc-600 dark:text-zinc-400",
+      dot: "bg-zinc-400 dark:bg-zinc-500",
+      label: "INFO",
+    },
+    pass: {
+      border: "border-emerald-500/40 dark:border-emerald-500/40",
+      bg: "bg-emerald-500/5 dark:bg-emerald-950/30",
+      text: "text-emerald-600 dark:text-emerald-400",
+      dot: "bg-emerald-500",
+      label: "PASS",
     },
   };
 </script>
 
 <span
-  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors {config[severity].bg}"
+  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none border text-[10px] font-mono font-bold tracking-wider uppercase transition-colors {config[severity]?.border ?? config.info.border} {config[severity]?.bg ?? config.info.bg} {config[severity]?.text ?? config.info.text}"
 >
-  <span class="w-1.5 h-1.5 rounded-full {config[severity].dot}"></span>
-  <span>{config[severity].label}</span>
+  <span class="w-1.5 h-1.5 rounded-none {config[severity]?.dot ?? config.info.dot}"></span>
+  <span>{config[severity]?.label ?? severity}</span>
   {#if count !== undefined}
-    <span class="ml-1 px-1.5 py-0.2 rounded bg-black/30 text-[10px] font-mono">
+    <span class="ml-1 pl-1.5 border-l border-current/30 text-[10px] font-mono tabular-nums font-semibold">
       {count}
     </span>
   {/if}
 </span>
-

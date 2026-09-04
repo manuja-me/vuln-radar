@@ -131,3 +131,9 @@ export interface BatchScanItem {
   error?: string | null;
 }
 
+export type SwissTheme = "swiss-dark" | "swiss-light";
+
+export interface ThemeState {
+  current: SwissTheme;
+}
+

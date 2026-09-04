@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    --font-sans: "Plus Jakarta Sans", "Google Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  :root, [data-theme="swiss-dark"] {
+    --font-sans: "Inter", "Helvetica Neue", Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Swiss Dark (Workstation Mode) */
+    --color-canvas: #09090b;
+    --color-surface: #121215;
+    --color-surface-hover: #1c1d22;
+    --color-hairline: #27272a;
+    --color-hairline-strong: #3f3f46;
+    --color-text-headline: #ffffff;
+    --color-text-body: #e4e4e7;
+    --color-text-muted: #71717a;
+
+    /* Swiss Signal Accents */
+    --color-signal-red: #ef4444;
+    --color-signal-orange: #f97316;
+    --color-signal-amber: #f59e0b;
+    --color-signal-blue: #3b82f6;
+    --color-signal-green: #10b981;
+    --color-signal-zinc: #a1a1aa;
+
+    --selection-bg: rgba(239, 68, 68, 0.25);
+    --selection-text: #ffffff;
+  }
+
+  [data-theme="swiss-light"] {
+    --font-sans: "Inter", "Helvetica Neue", Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Swiss Light (Poster / Print Mode) */
+    --color-canvas: #ffffff;
+    --color-surface: #f4f4f6;
+    --color-surface-hover: #e8e8ed;
+    --color-hairline: #18181b;
+    --color-hairline-strong: #09090b;
+    --color-text-headline: #09090b;
+    --color-text-body: #27272a;
+    --color-text-muted: #52525b;
+
+    /* Swiss Signal Accents (Slightly deeper for light paper contrast) */
+    --color-signal-red: #dc2626;
+    --color-signal-orange: #ea580c;
+    --color-signal-amber: #d97706;
+    --color-signal-blue: #2563eb;
+    --color-signal-green: #059669;
+    --color-signal-zinc: #52525b;
+
+    --selection-bg: rgba(220, 38, 38, 0.2);
+    --selection-text: #09090b;
   }
 
   html, body {
     height: 100%;
     overflow: hidden;
+    background-color: var(--color-canvas);
+    color: var(--color-text-body);
   }
 
   body {
     font-family: var(--font-sans);
-    @apply bg-[#0d0e11] text-[#e2e4e9] antialiased selection:bg-cyan-500/30 selection:text-white;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--selection-bg);
+    color: var(--selection-text);
   }
 
   code, pre, kbd, samp {
     font-family: var(--font-mono);
   }
+}
+
+/* Swiss Style Geometry & Layout Utilities */
+.swiss-hairline {
+  border-color: var(--color-hairline);
+}
+
+.swiss-hairline-strong {
+  border-color: var(--color-hairline-strong);
+}
+
+.swiss-surface {
+  background-color: var(--color-surface);
+}
+
+.swiss-canvas {
+  background-color: var(--color-canvas);
 }
 
 /* Native Titlebar & Desktop Drag Regions */
@@ -38,19 +108,17 @@
   -webkit-user-select: none;
 }
 
-/* Desktop Scrollbars */
+/* Minimalist Swiss Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 9999px;
+  background: var(--color-hairline-strong);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-text-muted);
 }
-

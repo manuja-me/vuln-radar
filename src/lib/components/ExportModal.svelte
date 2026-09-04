@@ -114,7 +114,7 @@
 
 {#if isOpen && report}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 animate-fade-in"
     onclick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}
@@ -125,34 +125,34 @@
     aria-modal="true"
     tabindex="-1"
   >
-    <div class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-[#e3e2e0]">
+    <div class="bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-[var(--color-text-body)]">
       <!-- Header -->
-      <div class="p-4 border-b border-[#2e2e2e] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#191919]">
+      <div class="p-4 border-b border-[var(--color-hairline)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--color-surface)]">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
+          <div class="w-8 h-8 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] flex items-center justify-center text-[var(--color-signal-red)]">
             <FileText class="w-4 h-4" />
           </div>
           <div>
-            <h2 class="text-sm font-semibold text-white">Export & Share Security Report</h2>
-            <p class="text-[11px] text-neutral-400 font-mono truncate max-w-xs">{report.target_url}</p>
+            <h2 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Export & Share Security Report</h2>
+            <p class="text-[11px] text-[var(--color-text-muted)] font-mono truncate max-w-xs uppercase">{report.target_url}</p>
           </div>
         </div>
 
         <div class="flex items-center gap-2 self-end sm:self-auto">
           <!-- Format Tabs -->
-          <div class="flex bg-[#141414] p-0.5 rounded-lg border border-[#2e2e2e]">
+          <div class="flex bg-[var(--color-canvas)] p-0.5 rounded-none border border-[var(--color-hairline)]">
             <button
               type="button"
               onclick={() => (activeTab = "markdown")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'markdown' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-mono font-bold uppercase rounded-none flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'markdown' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
             >
               <FileText class="w-3.5 h-3.5" />
-              <span>Markdown</span>
+              <span>MARKDOWN</span>
             </button>
             <button
               type="button"
               onclick={() => (activeTab = "json")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'json' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-mono font-bold uppercase rounded-none flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'json' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
             >
               <Code2 class="w-3.5 h-3.5" />
               <span>JSON</span>
@@ -160,7 +160,7 @@
             <button
               type="button"
               onclick={() => (activeTab = "csv")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'csv' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-mono font-bold uppercase rounded-none flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'csv' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
             >
               <Table class="w-3.5 h-3.5" />
               <span>CSV</span>
@@ -168,7 +168,7 @@
             <button
               type="button"
               onclick={() => (activeTab = "curl")}
-              class="px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'curl' ? 'bg-[#2a2a2a] text-white font-semibold shadow-xs' : 'text-neutral-400 hover:text-neutral-200'}"
+              class="px-2.5 py-1 text-xs font-mono font-bold uppercase rounded-none flex items-center gap-1.5 transition-colors cursor-pointer {activeTab === 'curl' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)]'}"
             >
               <Terminal class="w-3.5 h-3.5" />
               <span>cURL</span>
@@ -178,7 +178,7 @@
           <button
             type="button"
             onclick={onClose}
-            class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
+            class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
             aria-label="Close export dialog"
           >
             <X class="w-4 h-4" />
@@ -187,15 +187,15 @@
       </div>
 
       <!-- Preview Content -->
-      <div class="flex-1 overflow-hidden p-4 flex flex-col bg-[#161616]">
-        <pre class="flex-1 p-3.5 bg-[#141414] border border-[#2a2a2a] rounded-lg text-xs font-mono text-neutral-300 overflow-auto whitespace-pre-wrap">{currentContent}</pre>
+      <div class="flex-1 overflow-hidden p-4 flex flex-col bg-[var(--color-canvas)]">
+        <pre class="flex-1 p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none text-xs font-mono text-[var(--color-text-headline)] overflow-auto whitespace-pre-wrap">{currentContent}</pre>
       </div>
 
       <!-- Footer / Actions -->
-      <div class="p-3.5 border-t border-[#2e2e2e] bg-[#191919] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="p-3.5 border-t border-[var(--color-hairline)] bg-[var(--color-surface)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <div class="text-xs text-neutral-400">
-            Format: <strong class="text-white uppercase font-mono">{activeTab}</strong> • {report.total_findings} findings
+          <div class="text-xs font-mono text-[var(--color-text-muted)] uppercase">
+            FORMAT: <strong class="text-[var(--color-text-headline)] font-bold">{activeTab}</strong> • {report.total_findings} FINDINGS
           </div>
 
           {#if onOpenExecutiveReport}
@@ -205,10 +205,10 @@
                 onClose();
                 onOpenExecutiveReport?.();
               }}
-              class="px-2.5 py-1 bg-[#252525] hover:bg-[#303030] text-neutral-300 hover:text-white border border-[#333] rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              class="px-2.5 py-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Printer class="w-3.5 h-3.5 text-neutral-300" />
-              <span>Executive PDF View</span>
+              <Printer class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+              <span>EXECUTIVE PDF VIEW</span>
             </button>
           {/if}
         </div>
@@ -217,24 +217,24 @@
           <button
             type="button"
             onclick={copyToClipboard}
-            class="px-3 py-1.5 bg-[#252525] hover:bg-[#2c2c2c] text-neutral-300 hover:text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-[#333]"
+            class="px-3 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] rounded-none text-xs font-mono font-bold uppercase flex items-center gap-1.5 transition-colors cursor-pointer border border-[var(--color-hairline)]"
           >
             {#if copied}
-              <Check class="w-3.5 h-3.5 text-emerald-400" />
-              <span class="text-emerald-400">Copied</span>
+              <Check class="w-3.5 h-3.5 text-emerald-500" />
+              <span class="text-emerald-500">COPIED</span>
             {:else}
               <Copy class="w-3.5 h-3.5" />
-              <span>Copy</span>
+              <span>COPY</span>
             {/if}
           </button>
 
           <button
             type="button"
             onclick={downloadReport}
-            class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            class="px-3.5 py-1.5 bg-[var(--color-text-headline)] hover:opacity-90 text-[var(--color-canvas)] font-mono font-bold uppercase rounded-none text-xs flex items-center gap-1.5 transition-opacity cursor-pointer"
           >
             <Download class="w-3.5 h-3.5" />
-            <span>Download .{activeTab === "markdown" ? "md" : activeTab === "json" ? "json" : activeTab === "csv" ? "csv" : "sh"}</span>
+            <span>DOWNLOAD .{activeTab === "markdown" ? "MD" : activeTab === "json" ? "JSON" : activeTab === "csv" ? "CSV" : "SH"}</span>
           </button>
         </div>
       </div>

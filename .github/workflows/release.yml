@@ -110,3 +110,28 @@ jobs:
             exit 1
           fi
 
+  winget-release:
+    name: Publish to WinGet
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - name: Check WINGET_TOKEN availability
+        id: check-token
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.WINGET_TOKEN }}" ]; then
+            echo "::warning ::WINGET_TOKEN secret is not set. Skipping automated WinGet submission."
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Submit package to Windows Package Manager
+        if: steps.check-token.outputs.has_token == 'true'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: manuja-me.VulnRadar
+          installers-regex: 'VulnRadar_.*_x64-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+

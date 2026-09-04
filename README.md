@@ -31,15 +31,14 @@ Built on **Rust** and **Tauri v2**, VulnRadar performs sub-second, **non-intrusi
 
 ## ✨ Features
 
-- 🛡️ **Safe & Non-Destructive Scanning** — Audits misconfigurations, dangerous parameters, and exposure surfaces without sending disruptive payloads or destabilizing production databases.
-- 🎯 **RCE & Attack Surface Heuristics** — Inspects query strings for command execution (`?cmd=`, `?exec=`) and dynamic template inclusion (`?tpl=`, `?include=`), correlates server banners with known CVEs, and safely probes unauthenticated debug consoles.
-- 🔒 **Zero Telemetry & 100% Local Privacy** — All scan histories, monitored targets, and executive audit reports are stored locally in an embedded SQLite database (`WAL` mode). No external analytics or cloud dependencies.
-- 🔌 **High-Speed TCP Port Discovery** — Built-in asynchronous TCP scanner with service banner grabbing and preset profiles (`Top 20`, `Databases`, `Top 100`, `Custom`).
-- 📧 **DNS & Anti-Spoofing Verification** — Queries DNS-over-HTTPS (DoH) to inspect SPF records (`v=spf1`), DMARC enforcement policies (`p=reject`/`p=quarantine`), and DNSSEC integrity.
-- 🌐 **Subdomain Reconnaissance** — Multi-source discovery aggregating Certificate Transparency logs (`crt.sh`) and passive DNS resolution.
-- 🤖 **1-Click AI Remediation Prompts** — Generates context-rich remediation prompts tailored for AI coding assistants (Antigravity, Claude, ChatGPT) with stack presets (*Node.js*, *Next.js*, *FastAPI*, *Django*, *Nginx*, *SvelteKit*).
-- ⏰ **Continuous Watchdog Daemon** — Background monitor tracks target endpoints on custom intervals (1h, 6h, 12h, 24h, 7d) and triggers desktop notifications upon security grade degradation.
-- 📊 **Executive & Multi-Format Exports** — Export compliance audits instantly to PDF/Print, Markdown, JSON, CSV (formula injection safe), or reproducible cURL commands.
+- 🇨🇭 **Swiss Style Design System & Dual Themes**: Stark, objective International Typographic Style with zero-radius geometry, 1px hairlines, asymmetrical modular grid, and seamless live switching between **Swiss Dark** and **Swiss Light** with persistent local state.
+- 🛡️ **Safe & Non-Destructive**: Audits misconfigurations, dangerous parameters, and exposure surfaces without sending destructive exploit payloads or degrading target services.
+- ⚡ **Multi-Threaded Rust Core**: Native asynchronous Tokio runtime paired with lightweight Tauri v2 Webview bindings delivers sub-second scan execution with minimal memory footprint.
+- 🎯 **RCE Risk & Parameter Heuristics**: Inspects target query strings for command execution (`?cmd=`, `?exec=`) and file/template inclusion (`?tpl=`, `?include=`) entry points, correlates server banners with known CVEs, and safely probes unauthenticated debug consoles.
+- 🤖 **AI-Powered 1-Click Remediation**: Generates structured, copy-paste prompts tailored for AI coding assistants (Antigravity, Claude, ChatGPT) containing full finding context, OWASP definitions, and tech-stack-specific patches.
+- 🔒 **Zero Telemetry & 100% Local Privacy**: All scan histories, monitored targets, and executive audit reports are stored entirely on your local machine in an embedded SQLite database (`WAL` mode). Zero external CDN fonts or cloud dependencies.
+- ⏰ **Continuous Watchdog Daemon**: Background daemon monitors target URLs on custom intervals (1h, 6h, 12h, 24h, 7d) and fires native OS notifications upon security grade degradation or newly detected flaws.
+- 📊 **Executive & Multi-Format Reports**: Export compliance audits instantly to PDF/Print, Markdown, JSON, CSV (formula-injection safe), or reproducible cURL command strings.
 
 ---
 
@@ -143,6 +142,96 @@ vuln-radar/
         ├── db/                           # Embedded SQLite persistence (WAL mode)
         └── lib.rs                        # Tauri IPC command handlers & Tokio background worker
 ```
+
+---
+
+## 📦 Release Changelog
+
+### 🇨🇭 [v0.8.0] — Swiss Style UI Redesign & Dual-Theme Engine
+- 🎨 **Swiss Style Design System (International Typographic Style)**: Ground-up visual transformation prioritizing clarity, asymmetric modular grids, high information density, and sharp zero-radius geometry (`rounded-none`).
+- 🌗 **Dual-Theme Engine (Swiss Dark & Swiss Light)**:
+  - **Swiss Dark**: Pitch-black canvas (`#09090b`), sharp hairline dividers (`#27272a`), crisp white headline typography, and signal red accents.
+  - **Swiss Light**: Stark white poster aesthetic (`#ffffff`), jet-black high-contrast text, razor-sharp hairlines, and vivid signal indicators.
+  - **Live Nav Toggle**: Persistent instant toggle in the global navigation bar with zero flash of unstyled content (FOUC) and `localStorage` persistence.
+- 📊 **Typographic Posture Score & Calibrated Meter**: Replaced blurred circular gauges with an oversized, bold score numeral, `/100` meta label, and 10-tick geometric calibrated bar.
+- 📋 **Tabular Finding Inspector & Clean Evidence**: Findings render with flush-left severity strips, high-contrast monospace parameters, and clean tabular borders.
+- 🧭 **Unified Numbered Workspaces**: Restructured navigation tabs (`01/AUDIT`, `02/PORTS`, `03/DNS`, `04/RECON`, `05/FLEET`, `06/WATCHDOG`, `07/HISTORY`, `08/SETTINGS`) with consistent tabular metrics.
+- 🔒 **100% Offline / Local-First**: Zero external CDN font requests; powered purely by modern local system font stacks and CSS custom properties.
+
+### 🛡️ [v0.7.0] — RCE Risk Assessment & Parameter Heuristic Scanner
+- ⚡ **RCE (Remote Code Execution) Risk Engine**: Added a dedicated, non-intrusive RCE risk assessment scanner module (`rce.rs`) running concurrently in the Rust auditing core.
+- 🎯 **URL Parameter Attack Surface Heuristics**: Automatically flags dangerous query parameters commonly abused for command injection (`?cmd=`, `?exec=`, `?run=`, `?eval=`) and dynamic template / file inclusion (`?tpl=`, `?template=`, `?include=`, `?page=`).
+- 🔍 **Software & Framework CVE Correlation**: Passively correlates response banners and technology stacks against critical RCE CVEs (Apache 2.4.49/50 `CVE-2021-41773`, PHP 8.1.0-dev backdoor, EOL PHP CGI `CVE-2024-4577`, Jenkins `CVE-2024-23897`, Webmin `CVE-2019-15107`, Spring4Shell).
+- 🚨 **High-Risk Management Endpoint Probing**: Safely audits unauthenticated management endpoints including Spring Boot Actuators (`/actuator/env`, `/actuator/gateway/routes`, `/actuator/jolokia`), Jenkins script console (`/script`), Apache Solr (`/solr/admin/cores`), and server status consoles.
+- 🏷️ **UI & Reporting Integration**: Tagged with OWASP `A03:2021-Injection` and `A06:2021-Vulnerable Components`, CVE badges, filterable under `"RCE & Injection Risks"` across UI dashboards and exported audit reports.
+
+### 🚀 [v0.6.3] — Streamlined Native Workspace & UI Refinements
+- 🧹 **Streamlined Interface**: Cleaned up the Posture Audit view and findings dashboard to maintain a distraction-free, focused security auditing workspace.
+- ⚡ **Performance & Core Stability**: Refined component tree and optimized telemetry rendering for desktop builds.
+
+### 🚀 [v0.6.2] — Antigravity AI Remediation Engine & 1-Click Prompt Generator
+- ✨ **"Fix These with AI" Action Bar**: Added a dynamic, dedicated AI remediation action button directly on the Severity Breakdown card that automatically stays hidden/disabled when 0 findings exist.
+- 🤖 **Interactive AI Remediation Modal (`AiFixModal`)**: Generates structured, Antigravity/LLM-ready prompts incorporating full finding contexts (OWASP, CVE, evidence, HTTP telemetry, remediation diffs) with stack selection pills (*Auto-Detect*, *Node/Express*, *Next.js*, *Python/FastAPI*, *Django*, *Nginx*, *SvelteKit*).
+- 📋 **1-Click AI Prompt Copy**: Added instant clipboard copying with visual feedback so developers can paste full remediation tasks directly into Antigravity or AI coding assistants.
+- 🔍 **Per-Card "Fix with AI" Button**: Added individual AI prompt generators directly within each finding card's remediation section for targeted, single-issue fixes.
+
+### 🚀 [v0.6.1] — Backend API Auditing & Smart Protocol Fallback
+- 🌐 **Backend & Local API Support**: Seamlessly audit local development servers (`localhost:8000`, `127.0.0.1:5000`), microservices, Docker containers, and internal LAN targets.
+- ⚡ **Smart Protocol Selection & Auto-Fallback**: Automatically defaults to `http://` for local/port-based targets and retries on `http://` if initial `https://` handshake fails.
+- 🔒 **Self-Signed SSL/TLS Certificate Support**: Enabled `.danger_accept_invalid_certs(true)` to inspect staging servers and internal APIs with self-signed TLS certificates without connection crashes.
+- 🎯 **Private Host Optimization**: Skips public DoH and Certificate Transparency lookups for private IP addresses (`10.x`, `192.168.x`, `172.16-31.x`, `.local`, `.internal`) to prevent unnecessary latency.
+- 💡 **Actionable Diagnostics & Quick Presets**: Added `localhost:8000` quick target button and clear connection error guidance for offline backend services.
+
+### 🚀 [v0.6.0] — Native Desktop Workstation & Auto Port Scanner
+- 🖥️ **Native Desktop Workstation Architecture**: Replaced generic web styling with an ultra-sleek, acrylic left activity sidebar and dedicated workspaces (`Posture Audit`, `Port Matrix`, `DNS & Anti-Spoof`, `Surface Recon`, `Fleet Batch`, `Watchdog Daemon`, `Scan Logs`, and `Settings Hub`).
+- 🪟 **Native Window Titlebar & Drag Region**: Added native header toolbar with `-webkit-app-region: drag` (`data-tauri-drag-region`), application badge, active port status pill, and instant command palette (`⌘K`).
+- 🔌 **Automatic Default Port Scanning**: TCP Port Scanner is now enabled by default with the lowest/fastest preset (`Top 20`, 600ms timeout) without requiring manual configuration.
+- 📊 **Native Live Status Bar**: Bottom 24px desktop status bar providing real-time telemetry (Rust Core version, SQLite WAL mode, Port Engine profile, Active monitors, Response latency, Keyboard shortcut hints).
+- 🎨 **Desktop Density & Window Containment**: Viewport locked to `h-screen w-screen overflow-hidden` with zero browser scrolling, system native fonts, hairline borders, and disabled chrome text selection (`desktop-select-none`).
+
+### ⚡ [v0.5.0] — Unified Settings Hub & Multi-Format Export
+- ⚙️ **Unified Settings Hub (`⌘,`)**: Centralized scan parameters, custom HTTP headers, auth tokens, port scan profiles, scheduled monitors, and SQLite storage management into a single modal drawer.
+- ⌨️ **Comprehensive Keyboard Navigation**: Added global shortcuts (`Ctrl+K`, `Ctrl+B`, `Ctrl+M`, `Ctrl+H`, `Ctrl+O`, `Ctrl+E`, `Ctrl+P`, `?`).
+- 📄 **Multi-Format Export & Print**: Added JSON, CSV (formula injection-safe), Markdown, and cURL export capabilities.
+
+### 🌐 [v0.4.1] — Multi-Source Subdomain Reconnaissance
+- 🔍 Integrated Certificate Transparency logs (`crt.sh`) and HackerTarget with active DNS resolver verification.
+
+### 🔌 [v0.4.0] — High-Speed TCP Port Discovery
+- ⚡ Asynchronous TCP port scanner with service banner grabbing, preset profiles (`Top 20`, `Databases`, `Top 100`, `Custom`), and risk classification.
+
+---
+
+## 📥 Installation & Downloads
+
+Pre-compiled production binaries are available for major operating systems on the **[Releases](https://github.com/manuja-me/vuln-radar/releases)** page:
+
+| Operating System | Package Architecture | Formats |
+|---|---|---|
+| **Windows** | x86_64 (64-bit) | Installer (`.exe`), Windows Installer (`.msi`) |
+| **macOS** | Universal Binary (Apple Silicon & Intel) | Disk Image (`.dmg`) |
+| **Linux** | x86_64 (64-bit) | AppImage (`.AppImage`), Debian Package (`.deb`) |
+
+### 🪟 Windows Package Manager (WinGet)
+
+You can install and update VulnRadar on Windows 10 & 11 with a single command using `winget`:
+
+```powershell
+# Install VulnRadar
+winget install manuja-me.VulnRadar
+
+# Or using the friendly moniker
+winget install vulnradar
+
+# Upgrade to the latest version
+winget upgrade manuja-me.VulnRadar
+```
+
+> [!NOTE]
+> **Windows Defender Notice**:
+> Because VulnRadar is a community-driven open-source project without a paid EV code-signing certificate, Windows SmartScreen may show an *"Unknown publisher"* dialog on initial launch.
+> 1. Click **More info**
+> 2. Click **Run anyway**
 
 ---
 

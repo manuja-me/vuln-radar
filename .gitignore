@@ -12,3 +12,5 @@ vite.config.ts.timestamp-*
 *.db
 *.log
 .agents/
+__pycache__/
+*.pyc
