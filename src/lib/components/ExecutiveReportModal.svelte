@@ -94,7 +94,7 @@
           <div>
             <div class="flex items-center gap-2">
               <span class="text-[var(--color-text-headline)] print:text-neutral-900 font-mono font-bold text-lg tracking-tight uppercase">VulnRadar</span>
-              <span class="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--color-canvas)] print:bg-neutral-100 text-[var(--color-text-muted)] print:text-neutral-700 rounded-none border border-[var(--color-hairline)] print:border-neutral-300 uppercase tracking-widest">v0.7.0</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--color-canvas)] print:bg-neutral-100 text-[var(--color-text-muted)] print:text-neutral-700 rounded-none border border-[var(--color-hairline)] print:border-neutral-300 uppercase tracking-widest">v0.8.0</span>
             </div>
             <h1 class="text-xl font-mono font-bold text-[var(--color-text-headline)] print:text-black mt-1 uppercase tracking-tight">Web Security Posture Audit</h1>
             <p class="text-xs text-[var(--color-text-muted)] print:text-neutral-600 font-mono mt-0.5">TARGET: {report.target_url}</p>

@@ -1511,7 +1511,7 @@
           <div class="grid grid-cols-3 gap-2 max-w-xl mx-auto pt-4 text-left">
             <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
               <div class="text-[9px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] font-bold">SCANNER ENGINE</div>
-              <div class="text-xs font-bold font-mono text-[var(--color-text-headline)]">RUST CORE v0.7.0</div>
+              <div class="text-xs font-bold font-mono text-[var(--color-text-headline)]">RUST CORE v0.8.0</div>
             </div>
             <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
               <div class="text-[9px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] font-bold">PORT PROBING</div>
@@ -1534,7 +1534,7 @@
     <div class="flex items-center gap-3">
       <span class="flex items-center gap-1.5 text-[var(--color-text-headline)] font-bold">
         <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-        VULNRADAR v0.7.0
+        VULNRADAR v0.8.0
       </span>
       <span class="text-[var(--color-hairline-strong)]">/</span>
       <span>STORAGE: SQLITE WAL</span>
