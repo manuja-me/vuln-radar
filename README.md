@@ -157,6 +157,7 @@ vuln-radar/
 - 📋 **Tabular Finding Inspector & Clean Evidence**: Findings render with flush-left severity strips, high-contrast monospace parameters, and clean tabular borders.
 - 🧭 **Unified Numbered Workspaces**: Restructured navigation tabs (`01/AUDIT`, `02/PORTS`, `03/DNS`, `04/RECON`, `05/FLEET`, `06/WATCHDOG`, `07/HISTORY`, `08/SETTINGS`) with consistent tabular metrics.
 - 🔒 **100% Offline / Local-First**: Zero external CDN font requests; powered purely by modern local system font stacks and CSS custom properties.
+- 🪟 **Windows Package Manager (WinGet) Support**: Official package distribution via WinGet (`winget install vulnradar`) with automated release updates in CI/CD.
 
 ### 🛡️ [v0.7.0] — RCE Risk Assessment & Parameter Heuristic Scanner
 - ⚡ **RCE (Remote Code Execution) Risk Engine**: Added a dedicated, non-intrusive RCE risk assessment scanner module (`rce.rs`) running concurrently in the Rust auditing core.

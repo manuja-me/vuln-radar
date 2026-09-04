@@ -1,6 +1,6 @@
 # Maintainer: manuja-me <https://github.com/manuja-me/vuln-radar>
 pkgname=vuln-radar-bin
-pkgver=0.7.0
+pkgver=0.8.0
 pkgrel=1
 pkgdesc="Desktop Web Vulnerability & Security Scanner (pre-compiled binary)"
 arch=('x86_64')

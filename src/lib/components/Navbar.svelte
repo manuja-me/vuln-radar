@@ -84,7 +84,7 @@
           <span
             class="px-1 py-0.2 text-[9px] font-mono font-bold bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none"
           >
-            v0.7.0
+            v0.8.0
           </span>
         </div>
         <span class="text-[9px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest mt-0.5 font-semibold">
