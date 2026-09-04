@@ -33,11 +33,12 @@ Unlike invasive scanners that send disruptive payloads, trigger Web Application 
 
 ## ⚡ Key Value Propositions
 
+- 🇨🇭 **Swiss Style Design System & Dual Themes**: Stark, objective International Typographic Style with zero-radius geometry, 1px hairlines, asymmetrical modular grid, and seamless live switching between **Swiss Dark** and **Swiss Light** with persistent local state.
 - 🛡️ **Safe & Non-Destructive**: Audits misconfigurations, dangerous parameters, and exposure surfaces without sending destructive exploit payloads or degrading target services.
 - ⚡ **Multi-Threaded Rust Core**: Native asynchronous Tokio runtime paired with lightweight Tauri v2 Webview bindings delivers sub-second scan execution with minimal memory footprint.
 - 🎯 **RCE Risk & Parameter Heuristics**: Inspects target query strings for command execution (`?cmd=`, `?exec=`) and file/template inclusion (`?tpl=`, `?include=`) entry points, correlates server banners with known CVEs, and safely probes unauthenticated debug consoles.
 - 🤖 **AI-Powered 1-Click Remediation**: Generates structured, copy-paste prompts tailored for AI coding assistants (Antigravity, Claude, ChatGPT) containing full finding context, OWASP definitions, and tech-stack-specific patches.
-- 🔒 **Zero Telemetry & 100% Local Privacy**: All scan histories, monitored targets, and executive audit reports are stored entirely on your local machine in an embedded SQLite database (`WAL` mode). No external analytics or cloud dependencies.
+- 🔒 **Zero Telemetry & 100% Local Privacy**: All scan histories, monitored targets, and executive audit reports are stored entirely on your local machine in an embedded SQLite database (`WAL` mode). Zero external CDN fonts or cloud dependencies.
 - ⏰ **Continuous Watchdog Daemon**: Background daemon monitors target URLs on custom intervals (1h, 6h, 12h, 24h, 7d) and fires native OS notifications upon security grade degradation or newly detected flaws.
 - 📊 **Executive & Multi-Format Reports**: Export compliance audits instantly to PDF/Print, Markdown, JSON, CSV (formula-injection safe), or reproducible cURL command strings.
 
@@ -142,6 +143,17 @@ vuln-radar/
 
 ## 📦 Release Changelog
 
+### 🇨🇭 [v0.8.0] — Swiss Style UI Redesign & Dual-Theme Engine
+- 🎨 **Swiss Style Design System (International Typographic Style)**: Ground-up visual transformation prioritizing clarity, asymmetric modular grids, high information density, and sharp zero-radius geometry (`rounded-none`).
+- 🌗 **Dual-Theme Engine (Swiss Dark & Swiss Light)**:
+  - **Swiss Dark**: Pitch-black canvas (`#09090b`), sharp hairline dividers (`#27272a`), crisp white headline typography, and signal red accents.
+  - **Swiss Light**: Stark white poster aesthetic (`#ffffff`), jet-black high-contrast text, razor-sharp hairlines, and vivid signal indicators.
+  - **Live Nav Toggle**: Persistent instant toggle in the global navigation bar with zero flash of unstyled content (FOUC) and `localStorage` persistence.
+- 📊 **Typographic Posture Score & Calibrated Meter**: Replaced blurred circular gauges with an oversized, bold score numeral, `/100` meta label, and 10-tick geometric calibrated bar.
+- 📋 **Tabular Finding Inspector & Clean Evidence**: Findings render with flush-left severity strips, high-contrast monospace parameters, and clean tabular borders.
+- 🧭 **Unified Numbered Workspaces**: Restructured navigation tabs (`01/AUDIT`, `02/PORTS`, `03/DNS`, `04/RECON`, `05/FLEET`, `06/WATCHDOG`, `07/HISTORY`, `08/SETTINGS`) with consistent tabular metrics.
+- 🔒 **100% Offline / Local-First**: Zero external CDN font requests; powered purely by modern local system font stacks and CSS custom properties.
+
 ### 🛡️ [v0.7.0] — RCE Risk Assessment & Parameter Heuristic Scanner
 - ⚡ **RCE (Remote Code Execution) Risk Engine**: Added a dedicated, non-intrusive RCE risk assessment scanner module (`rce.rs`) running concurrently in the Rust auditing core.
 - 🎯 **URL Parameter Attack Surface Heuristics**: Automatically flags dangerous query parameters commonly abused for command injection (`?cmd=`, `?exec=`, `?run=`, `?eval=`) and dynamic template / file inclusion (`?tpl=`, `?template=`, `?include=`, `?page=`).
@@ -195,6 +207,21 @@ Pre-compiled production binaries are available for major operating systems on th
 | **Windows** | x86_64 (64-bit) | Installer (`.exe`), Windows Installer (`.msi`) |
 | **macOS** | Universal Binary (Apple Silicon & Intel) | Disk Image (`.dmg`) |
 | **Linux** | x86_64 (64-bit) | AppImage (`.AppImage`), Debian Package (`.deb`) |
+
+### 🪟 Windows Package Manager (WinGet)
+
+You can install and update VulnRadar on Windows 10 & 11 with a single command using `winget`:
+
+```powershell
+# Install VulnRadar
+winget install manuja-me.VulnRadar
+
+# Or using the friendly moniker
+winget install vulnradar
+
+# Upgrade to the latest version
+winget upgrade manuja-me.VulnRadar
+```
 
 > [!NOTE]
 > **Windows Defender Notice**:

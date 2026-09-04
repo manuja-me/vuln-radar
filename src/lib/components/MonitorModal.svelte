@@ -59,46 +59,50 @@
   }
 
   function getScoreBadge(score?: number | null) {
-    if (score === undefined || score === null) return "bg-slate-800 text-slate-400";
-    if (score >= 85) return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
-    if (score >= 70) return "bg-cyan-500/10 text-cyan-400 border-cyan-500/30";
-    if (score >= 50) return "bg-amber-500/10 text-amber-400 border-amber-500/30";
-    return "bg-rose-500/10 text-rose-400 border-rose-500/30";
+    if (score === undefined || score === null) return "bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none";
+    if (score >= 85) return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-none";
+    if (score >= 70) return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded-none";
+    if (score >= 50) return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-none";
+    return "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 rounded-none";
   }
 </script>
 
 {#if isOpen}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 animate-fade-in"
     onclick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") onClose();
+    }}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
     <div
-      class="bg-[#202020] border border-[#333333] rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl overflow-hidden text-[#e3e2e0]"
+      class="bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-[var(--color-text-body)]"
     >
       <!-- Header -->
-      <div class="p-4 border-b border-[#2e2e2e] flex items-center justify-between bg-[#191919]">
+      <div class="p-4 border-b border-[var(--color-hairline)] flex items-center justify-between bg-[var(--color-surface)]">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[#282828] border border-[#383838] flex items-center justify-center text-neutral-300">
+          <div class="w-8 h-8 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] flex items-center justify-center text-[var(--color-signal-red)]">
             <Activity class="w-4 h-4" />
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-sm font-semibold text-white tracking-tight">Continuous Security Watchdog</h2>
-              <span class="px-1.5 py-0.2 text-[10px] bg-[#282828] text-neutral-400 rounded font-mono border border-[#383838]">
-                {monitors.length} Active
+              <h2 class="text-xs font-black text-[var(--color-text-headline)] uppercase tracking-tight font-mono">Continuous Security Watchdog</h2>
+              <span class="px-1.5 py-0.2 text-[10px] bg-[var(--color-canvas)] text-[var(--color-text-muted)] rounded-none font-mono border border-[var(--color-hairline)] uppercase font-bold">
+                {monitors.length} ACTIVE
               </span>
             </div>
-            <p class="text-[11px] text-neutral-400">Automated background re-scanning with degradation alerts</p>
+            <p class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">Automated background re-scanning with degradation alerts</p>
           </div>
         </div>
         <button
           type="button"
           onclick={onClose}
-          class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-lg transition-colors cursor-pointer"
+          class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
         >
           <X class="w-4 h-4" />
         </button>
@@ -107,21 +111,21 @@
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-5 space-y-5">
         <!-- Add Monitor Form -->
-        <div class="p-3.5 bg-[#191919] border border-[#2e2e2e] rounded-lg space-y-2.5">
-          <div class="flex items-center gap-1.5 text-xs font-medium text-neutral-400 uppercase tracking-wider">
-            <BellRing class="w-3.5 h-3.5 text-neutral-400" />
+        <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2.5">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
+            <BellRing class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
             <span>Schedule Asset Watchdog</span>
           </div>
           <div class="flex flex-col sm:flex-row items-center gap-2">
             <input
               type="text"
               bind:value={newUrl}
-              placeholder="https://domain-to-watch.com"
-              class="w-full sm:flex-1 px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none"
+              placeholder="HTTPS://DOMAIN-TO-WATCH.COM"
+              class="w-full sm:flex-1 px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] uppercase focus:outline-none"
             />
             <select
               bind:value={selectedInterval}
-              class="w-full sm:w-auto px-3 py-1.5 bg-[#202020] border border-[#2e2e2e] focus:border-neutral-500 rounded-lg text-xs font-medium text-neutral-300 focus:outline-none cursor-pointer"
+              class="w-full sm:w-auto px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
             >
               <option value={1}>Every 1 hour</option>
               <option value={6}>Every 6 hours</option>
@@ -133,7 +137,7 @@
               type="button"
               onclick={handleAdd}
               disabled={!newUrl.trim() || isAdding}
-              class="w-full sm:w-auto px-3.5 py-1.5 bg-white hover:bg-neutral-200 disabled:opacity-50 text-neutral-950 font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer flex-shrink-0 shadow-sm"
+              class="w-full sm:w-auto px-3.5 py-1.5 bg-[var(--color-text-headline)] hover:opacity-90 disabled:opacity-50 text-[var(--color-canvas)] font-mono font-bold uppercase rounded-none text-xs flex items-center justify-center gap-1.5 transition-opacity cursor-pointer flex-shrink-0"
             >
               <Plus class="w-3.5 h-3.5" />
               <span>Add Watchdog</span>
@@ -144,17 +148,17 @@
         <!-- Monitor List -->
         <div class="space-y-2.5">
           <div class="flex items-center justify-between">
-            <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+            <h3 class="text-xs font-bold text-[var(--color-text-headline)] uppercase tracking-wider font-mono">
               Configured Domains ({monitors.length})
             </h3>
-            <span class="text-[11px] font-mono text-neutral-500">Auto-polls every 60s</span>
+            <span class="text-[11px] font-mono text-[var(--color-text-muted)] uppercase">Auto-polls every 60s</span>
           </div>
 
           {#if monitors.length === 0}
-            <div class="py-12 text-center text-neutral-500 bg-[#191919] border border-[#2e2e2e] rounded-lg">
-              <Activity class="w-8 h-8 mx-auto mb-2 opacity-30 text-neutral-400" />
-              <p class="text-xs font-medium text-neutral-300">No continuous monitors configured</p>
-              <p class="text-[11px] text-neutral-500 mt-0.5 max-w-sm mx-auto">
+            <div class="py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none font-mono">
+              <Activity class="w-8 h-8 mx-auto mb-2 opacity-30 text-[var(--color-text-muted)]" />
+              <p class="text-xs font-bold text-[var(--color-text-headline)] uppercase">No continuous monitors configured</p>
+              <p class="text-[11px] text-[var(--color-text-muted)] mt-0.5 max-w-sm mx-auto">
                 Add your critical web properties above to track and alert on configuration changes.
               </p>
             </div>
@@ -162,26 +166,26 @@
             <div class="space-y-2">
               {#each monitors as item}
                 <div
-                  class="p-3 bg-[#191919] border border-[#2e2e2e] rounded-lg flex items-center justify-between gap-4"
+                  class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-4"
                 >
                   <div class="flex items-center gap-3 min-w-0 flex-1">
                     <!-- Status dot -->
                     <div
-                      class="w-2 h-2 rounded-full flex-shrink-0 {item.is_active ? 'bg-emerald-400' : 'bg-neutral-600'}"
+                      class="w-2 h-2 rounded-none flex-shrink-0 {item.is_active ? 'bg-emerald-500' : 'bg-[var(--color-text-muted)]'}"
                       title={item.is_active ? 'Active Watchdog' : 'Paused Watchdog'}
                     ></div>
 
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-neutral-200 font-mono truncate">
+                        <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono truncate">
                           {item.target_url}
                         </span>
-                        <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[#282828] text-neutral-400 rounded border border-[#383838]">
+                        <span class="px-1.5 py-0.2 text-[10px] font-mono bg-[var(--color-canvas)] text-[var(--color-text-muted)] rounded-none border border-[var(--color-hairline)] uppercase font-bold">
                           Every {item.interval_hours}h
                         </span>
                       </div>
 
-                      <div class="flex flex-wrap items-center gap-2 text-[11px] text-neutral-400 font-mono mt-0.5">
+                      <div class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--color-text-muted)] font-mono mt-0.5 uppercase">
                         <span>Last: {formatDate(item.last_scanned_at)}</span>
                         <span>•</span>
                         <span>Next: {formatDate(item.next_scan_at)}</span>
@@ -193,7 +197,7 @@
                   <div class="flex items-center gap-1.5 flex-shrink-0">
                     {#if item.last_score !== null && item.last_score !== undefined}
                       <span
-                        class="px-2 py-0.5 text-xs font-mono rounded border {getScoreBadge(item.last_score)}"
+                        class="px-2 py-0.5 text-xs font-mono font-bold uppercase rounded-none border {getScoreBadge(item.last_score)}"
                       >
                         {item.last_score} pts
                       </span>
@@ -205,7 +209,7 @@
                         onScanNow(item.target_url);
                         onClose();
                       }}
-                      class="p-1.5 text-neutral-300 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
+                      class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
                       title="Run Audit Now"
                     >
                       <RotateCw class="w-3.5 h-3.5" />
@@ -214,7 +218,7 @@
                     <button
                       type="button"
                       onclick={() => onToggleMonitor(item.id)}
-                      class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#282828] rounded-md transition-colors cursor-pointer"
+                      class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none transition-colors cursor-pointer"
                       title={item.is_active ? 'Pause Watchdog' : 'Resume Watchdog'}
                     >
                       {#if item.is_active}
@@ -227,7 +231,7 @@
                     <button
                       type="button"
                       onclick={() => onDeleteMonitor(item.id)}
-                      class="p-1.5 text-neutral-500 hover:text-red-400 rounded-md transition-colors cursor-pointer"
+                      class="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 rounded-none transition-colors cursor-pointer"
                       title="Delete Watchdog"
                     >
                       <Trash2 class="w-3.5 h-3.5" />
