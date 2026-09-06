@@ -19,31 +19,15 @@ use url::Url;
 fn is_local_or_private(host: &str) -> bool {
     let h = host.to_lowercase();
     let hostname = h.split(':').next().unwrap_or(&h);
-    hostname == "localhost"
-        || hostname == "127.0.0.1"
-        || hostname == "0.0.0.0"
-        || hostname == "::1"
-        || hostname.starts_with("192.168.")
-        || hostname.starts_with("10.")
-        || hostname.starts_with("172.16.")
-        || hostname.starts_with("172.17.")
-        || hostname.starts_with("172.18.")
-        || hostname.starts_with("172.19.")
-        || hostname.starts_with("172.20.")
-        || hostname.starts_with("172.21.")
-        || hostname.starts_with("172.22.")
-        || hostname.starts_with("172.23.")
-        || hostname.starts_with("172.24.")
-        || hostname.starts_with("172.25.")
-        || hostname.starts_with("172.26.")
-        || hostname.starts_with("172.27.")
-        || hostname.starts_with("172.28.")
-        || hostname.starts_with("172.29.")
-        || hostname.starts_with("172.30.")
-        || hostname.starts_with("172.31.")
-        || hostname.ends_with(".local")
-        || hostname.ends_with(".internal")
-        || hostname.ends_with(".lan")
+    if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "0.0.0.0" || hostname == "::1"
+        || hostname.ends_with(".local") || hostname.ends_with(".internal") || hostname.ends_with(".lan")
+        || hostname.starts_with("192.168.") || hostname.starts_with("10.") {
+        return true;
+    }
+    hostname.strip_prefix("172.")
+        .and_then(|r| r.split('.').next())
+        .and_then(|s| s.parse::<u8>().ok())
+        .map_or(false, |b| (16..=31).contains(&b))
 }
 
 pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<ScanReport, String> {
@@ -145,12 +129,10 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let resp_headers = response.headers().clone();
     let server_info = resp_headers.get("server").and_then(|h| h.to_str().ok()).map(|s| s.to_string());
 
-    let mut response_headers_list = Vec::new();
-    for (k, v) in resp_headers.iter() {
-        if let Ok(val_str) = v.to_str() {
-            response_headers_list.push((k.as_str().to_string(), val_str.to_string()));
-        }
-    }
+    let response_headers_list: Vec<(String, String)> = resp_headers
+        .iter()
+        .filter_map(|(k, v)| v.to_str().ok().map(|s| (k.as_str().to_string(), s.to_string())))
+        .collect();
 
     // Protect against OOM / decompression bombs (Cap HTML body parsing to 5MB)
     let content_len = response.content_length().unwrap_or(0);
@@ -174,29 +156,16 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     }
 
     // Passive CDN / WAF Edge Detection
-    if resp_headers.contains_key("cf-ray") || server_info.as_deref().unwrap_or("").to_lowercase().contains("cloudflare") {
-        if !detected_tech.iter().any(|t| t.contains("Cloudflare")) {
-            detected_tech.push("WAF/CDN: Cloudflare".to_string());
-        }
-    }
-    if resp_headers.contains_key("x-amz-cf-id") || resp_headers.get("via").and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase().contains("cloudfront") {
-        if !detected_tech.iter().any(|t| t.contains("CloudFront")) {
-            detected_tech.push("CDN: AWS CloudFront".to_string());
-        }
-    }
-    if resp_headers.contains_key("x-fastly-request-id") || resp_headers.contains_key("fastly-restarts") {
-        if !detected_tech.iter().any(|t| t.contains("Fastly")) {
-            detected_tech.push("CDN: Fastly".to_string());
-        }
-    }
-    if resp_headers.contains_key("x-akamai-transformed") {
-        if !detected_tech.iter().any(|t| t.contains("Akamai")) {
-            detected_tech.push("CDN: Akamai".to_string());
-        }
-    }
-    if resp_headers.contains_key("x-varnish") {
-        if !detected_tech.iter().any(|t| t.contains("Varnish")) {
-            detected_tech.push("Cache: Varnish".to_string());
+    let cdn_signatures: [(&str, bool, &str); 5] = [
+        ("Cloudflare", resp_headers.contains_key("cf-ray") || server_info.as_deref().unwrap_or("").to_lowercase().contains("cloudflare"), "WAF/CDN: Cloudflare"),
+        ("CloudFront", resp_headers.contains_key("x-amz-cf-id") || resp_headers.get("via").and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase().contains("cloudfront"), "CDN: AWS CloudFront"),
+        ("Fastly", resp_headers.contains_key("x-fastly-request-id") || resp_headers.contains_key("fastly-restarts"), "CDN: Fastly"),
+        ("Akamai", resp_headers.contains_key("x-akamai-transformed"), "CDN: Akamai"),
+        ("Varnish", resp_headers.contains_key("x-varnish"), "Cache: Varnish"),
+    ];
+    for (name, matched, label) in cdn_signatures {
+        if matched && !detected_tech.iter().any(|t| t.contains(name)) {
+            detected_tech.push(label.to_string());
         }
     }
 
@@ -208,13 +177,19 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let cookie_findings = cookies::analyze_cookies(&resp_headers, is_https);
     all_findings.extend(cookie_findings);
 
-    // Dependencies & Known CVEs
-    let dep_findings = dependencies::analyze_dependencies(&html_body, &mut detected_tech);
-    all_findings.extend(dep_findings);
+    // Shared single-pass HTML DOM parsing in dedicated scope so scraper::Html (!Send)
+    // is immediately freed before downstream recon .await points
+    {
+        let document = scraper::Html::parse_document(&html_body);
 
-    // Leaks, Insecure Forms, Secrets
-    let leak_findings = leaks::analyze_leaks(&html_body, is_https);
-    all_findings.extend(leak_findings);
+        // Dependencies & Known CVEs
+        let dep_findings = dependencies::analyze_dependencies(&document, &mut detected_tech);
+        all_findings.extend(dep_findings);
+
+        // Leaks, Insecure Forms, Secrets
+        let leak_findings = leaks::analyze_leaks(&document, &html_body, is_https);
+        all_findings.extend(leak_findings);
+    }
 
     // 5. Extended Recon Modules (Subdomains, DNS & Email Security, Endpoint Hunter, Port Scanner)
     let is_private = is_local_or_private(&domain);
@@ -271,43 +246,23 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let mut medium_count = 0;
     let mut low_count = 0;
     let mut info_count = 0;
-
     let mut score_deductions = 0u32;
 
     for finding in &all_findings {
+        score_deductions += finding.severity.deduction();
         match finding.severity {
-            Severity::Critical => {
-                critical_count += 1;
-                score_deductions += 25;
-            }
-            Severity::High => {
-                high_count += 1;
-                score_deductions += 15;
-            }
-            Severity::Medium => {
-                medium_count += 1;
-                score_deductions += 8;
-            }
-            Severity::Low => {
-                low_count += 1;
-                score_deductions += 3;
-            }
-            Severity::Info => {
-                info_count += 1;
-                score_deductions += 1;
-            }
+            Severity::Critical => critical_count += 1,
+            Severity::High => high_count += 1,
+            Severity::Medium => medium_count += 1,
+            Severity::Low => low_count += 1,
+            Severity::Info => info_count += 1,
         }
     }
 
     let security_score = 100u32.saturating_sub(score_deductions);
     let total_findings = all_findings.len();
     let scan_id = format!("scan_{}", Utc::now().timestamp_millis());
-
-    let port_report_opt = if port_scan_enabled {
-        Some(port_report)
-    } else {
-        None
-    };
+    let port_report_opt = port_scan_enabled.then_some(port_report);
 
     Ok(ScanReport {
         id: scan_id,
@@ -364,8 +319,9 @@ mod tests {
     #[test]
     fn test_vulnerable_jquery_dependency() {
         let html = r#"<html><head><script src="https://code.jquery.com/jquery-1.12.4.min.js"></script></head><body></body></html>"#;
+        let doc = scraper::Html::parse_document(html);
         let mut detected_tech = Vec::new();
-        let findings = dependencies::analyze_dependencies(html, &mut detected_tech);
+        let findings = dependencies::analyze_dependencies(&doc, &mut detected_tech);
         assert!(!findings.is_empty());
         assert!(findings.iter().any(|f| f.title.contains("jQuery v1.12.4")));
         assert!(detected_tech.contains(&"jQuery v1.12.4".to_string()));
@@ -374,7 +330,8 @@ mod tests {
     #[test]
     fn test_leaks_and_insecure_forms() {
         let html = r#"<html><body><form method="get" action="/login"><input type="password" name="pwd"/></form><!-- TODO: fix admin db_pass in prod --></body></html>"#;
-        let findings = leaks::analyze_leaks(html, true);
+        let doc = scraper::Html::parse_document(html);
+        let findings = leaks::analyze_leaks(&doc, html, true);
         let ids: Vec<String> = findings.into_iter().map(|f| f.id).collect();
         assert!(ids.contains(&"password-form-method-get".to_string()));
         assert!(ids.iter().any(|id| id.contains("sensitive-comment")));

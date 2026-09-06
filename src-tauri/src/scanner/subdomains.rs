@@ -62,7 +62,7 @@ pub async fn discover_subdomains(client: &Client, domain: &str) -> Vec<String> {
         Vec::new()
     };
 
-    // 3. Fast Concurrent DNS Active Wordlist Probing
+    // 3. Fast Bounded Concurrent DNS Active Wordlist Probing
     let dns_probe_fut = async {
         const WORDLIST: &[&str] = &[
             "www", "api", "app", "dev", "staging", "mail", "admin", "portal", "auth", "blog",
@@ -71,26 +71,30 @@ pub async fn discover_subdomains(client: &Client, domain: &str) -> Vec<String> {
             "preview", "v1", "v2", "grafana", "assets", "media", "internal", "hub", "campusnest",
         ];
 
-        let mut probe_tasks = Vec::new();
+        let mut set = tokio::task::JoinSet::new();
+        let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(12));
+
         for &sub_prefix in WORDLIST {
             let candidate = format!("{}.{}", sub_prefix, clean_domain);
-            probe_tasks.push(async move {
-                if let Ok(mut addrs) = tokio::net::lookup_host(format!("{}:80", candidate)).await {
-                    if addrs.next().is_some() {
-                        return Some(candidate);
-                    }
-                } else if let Ok(mut addrs_ssl) = tokio::net::lookup_host(format!("{}:443", candidate)).await {
-                    if addrs_ssl.next().is_some() {
-                        return Some(candidate);
-                    }
+            let sem = semaphore.clone();
+            set.spawn(async move {
+                let _permit = sem.acquire().await.ok()?;
+                let host_port = format!("{}:80", candidate);
+                let is_alive = match tokio::net::lookup_host(&host_port).await {
+                    Ok(mut addrs) => addrs.next().is_some(),
+                    Err(_) => false,
+                };
+                if is_alive {
+                    Some(candidate)
+                } else {
+                    None
                 }
-                None
             });
         }
 
         let mut found = Vec::new();
-        for task in probe_tasks {
-            if let Some(sub) = task.await {
+        while let Some(res) = set.join_next().await {
+            if let Ok(Some(sub)) = res {
                 found.push(sub);
             }
         }

@@ -39,16 +39,33 @@ async fn query_doh_txt(client: &Client, name: &str) -> (Vec<String>, bool) {
     };
 
     let dnssec = doh.ad.unwrap_or(false);
-    let mut records = Vec::new();
-
-    if let Some(answers) = doh.answer {
-        for a in answers {
-            let clean = a.data.trim().trim_matches('"').replace("\\\"", "\"");
-            records.push(clean);
-        }
-    }
+    let records = doh.answer.map(|answers| {
+        answers.into_iter().map(|a| a.data.trim().trim_matches('"').replace("\\\"", "\"")).collect()
+    }).unwrap_or_default();
 
     (records, dnssec)
+}
+
+fn dns_finding(
+    id: &str,
+    title: &str,
+    severity: Severity,
+    desc: &str,
+    impact: &str,
+    remediation: &str,
+    refs: &[&str],
+) -> Finding {
+    Finding::new(
+        id,
+        title,
+        severity,
+        Category::DnsEmailSecurity,
+        desc,
+        impact,
+        remediation,
+        "A05:2021-Security Misconfiguration",
+    )
+    .with_refs(refs)
 }
 
 pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (DnsSecurityReport, Vec<Finding>) {
@@ -68,8 +85,14 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
         return (report, findings);
     }
 
-    // 1. Query SPF (TXT records on root domain)
-    let (root_txts, dnssec) = query_doh_txt(client, &clean_domain).await;
+    // Query SPF and DMARC concurrently
+    let dmarc_query_name = format!("_dmarc.{}", clean_domain);
+    let (root_res, dmarc_res) = tokio::join!(
+        query_doh_txt(client, &clean_domain),
+        query_doh_txt(client, &dmarc_query_name)
+    );
+    let (root_txts, dnssec) = root_res;
+    let (dmarc_txts, _) = dmarc_res;
     report.dnssec_enabled = dnssec;
 
     let spf_record = root_txts
@@ -81,59 +104,49 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
         let spf_lower = spf.to_lowercase();
 
         if spf_lower.contains("+all") {
-            findings.push(Finding {
-                id: "dns-spf-permissive-plus-all".to_string(),
-                title: "Insecure SPF Record (+all Directive)".to_string(),
-                severity: Severity::High,
-                category: Category::DnsEmailSecurity,
-                description: "The SPF record includes the '+all' directive, explicitly permitting ANY mail server in the world to send authorized emails on behalf of this domain.".to_string(),
-                impact: "Attackers can trivially spoof emails from this domain, leading to high-credibility CEO fraud, business email compromise (BEC), and phishing campaigns.".to_string(),
-                remediation: "Change '+all' to '~all' (SoftFail) or '-all' (HardFail) in your DNS TXT record.".to_string(),
-                evidence: Some(spf.clone()),
-                owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                cve_id: None,
-                references: vec!["https://www.rfc-editor.org/rfc/rfc7208".to_string()],
-            });
+            findings.push(
+                dns_finding(
+                    "dns-spf-permissive-plus-all",
+                    "Insecure SPF Record (+all Directive)",
+                    Severity::High,
+                    "The SPF record includes the '+all' directive, explicitly permitting ANY mail server in the world to send authorized emails on behalf of this domain.",
+                    "Attackers can trivially spoof emails from this domain, leading to high-credibility CEO fraud, business email compromise (BEC), and phishing campaigns.",
+                    "Change '+all' to '~all' (SoftFail) or '-all' (HardFail) in your DNS TXT record.",
+                    &["https://www.rfc-editor.org/rfc/rfc7208"],
+                )
+                .with_evidence(spf.clone()),
+            );
         } else if spf_lower.contains("?all") {
-            findings.push(Finding {
-                id: "dns-spf-neutral-all".to_string(),
-                title: "Neutral SPF Policy (?all Directive)".to_string(),
-                severity: Severity::Medium,
-                category: Category::DnsEmailSecurity,
-                description: "The SPF record ends with '?all' (Neutral), meaning receiving servers will treat unauthorized sender IPs as neutral without taking defensive action.".to_string(),
-                impact: "Provides little to no protection against phishing and email forgery.".to_string(),
-                remediation: "Update SPF directive from '?all' to '-all' (HardFail) or '~all' (SoftFail).".to_string(),
-                evidence: Some(spf.clone()),
-                owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                cve_id: None,
-                references: vec!["https://www.rfc-editor.org/rfc/rfc7208".to_string()],
-            });
+            findings.push(
+                dns_finding(
+                    "dns-spf-neutral-all",
+                    "Neutral SPF Policy (?all Directive)",
+                    Severity::Medium,
+                    "The SPF record ends with '?all' (Neutral), meaning receiving servers will treat unauthorized sender IPs as neutral without taking defensive action.",
+                    "Provides little to no protection against phishing and email forgery.",
+                    "Update SPF directive from '?all' to '-all' (HardFail) or '~all' (SoftFail).",
+                    &["https://www.rfc-editor.org/rfc/rfc7208"],
+                )
+                .with_evidence(spf.clone()),
+            );
             report.spf_valid = true;
         } else {
             report.spf_valid = true;
         }
     } else {
-        findings.push(Finding {
-            id: "dns-missing-spf".to_string(),
-            title: "Missing SPF (Sender Policy Framework) Record".to_string(),
-            severity: Severity::High,
-            category: Category::DnsEmailSecurity,
-            description: "No SPF TXT record was detected on this domain. SPF allows domain owners to publish a list of authorized IP addresses or subnets permitted to send emails.".to_string(),
-            impact: "Threat actors can easily forge email senders using your domain name to conduct phishing and identity impersonation.".to_string(),
-            remediation: "Add a DNS TXT record for your domain with a valid SPF policy, e.g., 'v=spf1 include:_spf.google.com ~all'.".to_string(),
-            evidence: None,
-            owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-            cve_id: None,
-            references: vec![
-                "https://www.rfc-editor.org/rfc/rfc7208".to_string(),
-                "https://owasp.org/www-community/attacks/Spamming".to_string(),
+        findings.push(dns_finding(
+            "dns-missing-spf",
+            "Missing SPF (Sender Policy Framework) Record",
+            Severity::High,
+            "No SPF TXT record was detected on this domain. SPF allows domain owners to publish a list of authorized IP addresses or subnets permitted to send emails.",
+            "Threat actors can easily forge email senders using your domain name to conduct phishing and identity impersonation.",
+            "Add a DNS TXT record for your domain with a valid SPF policy, e.g., 'v=spf1 include:_spf.google.com ~all'.",
+            &[
+                "https://www.rfc-editor.org/rfc/rfc7208",
+                "https://owasp.org/www-community/attacks/Spamming",
             ],
-        });
+        ));
     }
-
-    // 2. Query DMARC (TXT records on _dmarc.{domain})
-    let dmarc_query_name = format!("_dmarc.{}", clean_domain);
-    let (dmarc_txts, _) = query_doh_txt(client, &dmarc_query_name).await;
 
     let dmarc_record = dmarc_txts
         .into_iter()
@@ -143,7 +156,6 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
         report.dmarc_record = Some(dmarc.clone());
         let dmarc_lower = dmarc.to_lowercase();
 
-        // Extract policy p=...
         let policy = if dmarc_lower.contains("p=reject") {
             "reject"
         } else if dmarc_lower.contains("p=quarantine") {
@@ -156,37 +168,32 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
         report.dmarc_policy = Some(policy.to_string());
 
         if policy == "none" {
-            findings.push(Finding {
-                id: "dns-dmarc-policy-none".to_string(),
-                title: "DMARC Policy Set to 'none' (Monitoring Only)".to_string(),
-                severity: Severity::Low,
-                category: Category::DnsEmailSecurity,
-                description: "The DMARC record specifies 'p=none', which instructs receiving mail servers to deliver fraudulent or unaligned emails without quarantine or rejection.".to_string(),
-                impact: "While helpful for initial setup monitoring, 'p=none' provides no active defense against phishing emails spoofing your domain.".to_string(),
-                remediation: "Graduate your DMARC policy from 'p=none' to 'p=quarantine' and ultimately 'p=reject'.".to_string(),
-                evidence: Some(dmarc.clone()),
-                owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                cve_id: None,
-                references: vec!["https://www.rfc-editor.org/rfc/rfc7489".to_string()],
-            });
+            findings.push(
+                dns_finding(
+                    "dns-dmarc-policy-none",
+                    "DMARC Policy Set to 'none' (Monitoring Only)",
+                    Severity::Low,
+                    "The DMARC record specifies 'p=none', which instructs receiving mail servers to deliver fraudulent or unaligned emails without quarantine or rejection.",
+                    "While helpful for initial setup monitoring, 'p=none' provides no active defense against phishing emails spoofing your domain.",
+                    "Graduate your DMARC policy from 'p=none' to 'p=quarantine' and ultimately 'p=reject'.",
+                    &["https://www.rfc-editor.org/rfc/rfc7489"],
+                )
+                .with_evidence(dmarc.clone()),
+            );
             report.dmarc_valid = true;
         } else {
             report.dmarc_valid = true;
         }
     } else {
-        findings.push(Finding {
-            id: "dns-missing-dmarc".to_string(),
-            title: "Missing DMARC Record".to_string(),
-            severity: Severity::High,
-            category: Category::DnsEmailSecurity,
-            description: "No DMARC TXT record was found at _dmarc.<domain>. DMARC validates SPF and DKIM alignment to prevent email address spoofing.".to_string(),
-            impact: "Without DMARC enforcement, email providers have no authoritative instructions to reject or quarantine fraudulent emails impersonating this domain.".to_string(),
-            remediation: "Create a DNS TXT record at '_dmarc.<domain>' with a policy such as 'v=DMARC1; p=reject; rua=mailto:dmarc-reports@example.com;'.".to_string(),
-            evidence: None,
-            owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-            cve_id: None,
-            references: vec!["https://dmarc.org/".to_string(), "https://www.rfc-editor.org/rfc/rfc7489".to_string()],
-        });
+        findings.push(dns_finding(
+            "dns-missing-dmarc",
+            "Missing DMARC Record",
+            Severity::High,
+            "No DMARC TXT record was found at _dmarc.<domain>. DMARC validates SPF and DKIM alignment to prevent email address spoofing.",
+            "Without DMARC enforcement, email providers have no authoritative instructions to reject or quarantine fraudulent emails impersonating this domain.",
+            "Create a DNS TXT record at '_dmarc.<domain>' with a policy such as 'v=DMARC1; p=reject; rua=mailto:dmarc-reports@example.com;'.",
+            &["https://dmarc.org/", "https://www.rfc-editor.org/rfc/rfc7489"],
+        ));
     }
 
     (report, findings)

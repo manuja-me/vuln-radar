@@ -12,13 +12,14 @@ impl Database {
     pub fn new(db_path: PathBuf) -> Result<Self> {
         let conn = Connection::open(db_path)?;
 
-        // High-performance SQLite tuning: WAL mode, memory cache, normal sync
+        // High-performance, low-memory SQLite tuning: WAL mode, 2MB cache, incremental vacuum
         let _ = conn.execute_batch(
             "PRAGMA journal_mode = WAL;
              PRAGMA synchronous = NORMAL;
              PRAGMA temp_store = MEMORY;
-             PRAGMA cache_size = -32000;
-             PRAGMA busy_timeout = 5000;",
+             PRAGMA cache_size = -2000;
+             PRAGMA busy_timeout = 5000;
+             PRAGMA auto_vacuum = INCREMENTAL;",
         );
 
         conn.execute(
@@ -40,6 +41,11 @@ impl Database {
         )?;
 
         conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_scans_scanned_at ON scans (scanned_at DESC)",
+            [],
+        )?;
+
+        conn.execute(
             "CREATE TABLE IF NOT EXISTS monitors (
                 id TEXT PRIMARY KEY,
                 target_url TEXT NOT NULL,
@@ -50,6 +56,11 @@ impl Database {
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL
             )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_monitors_due ON monitors (is_active, next_scan_at)",
             [],
         )?;
 
@@ -94,7 +105,7 @@ impl Database {
              FROM scans ORDER BY scanned_at DESC LIMIT 50",
         )?;
 
-        let rows = stmt.query_map([], |row| {
+        let history: Vec<ScanSummary> = stmt.query_map([], |row| {
             Ok(ScanSummary {
                 id: row.get(0)?,
                 target_url: row.get(1)?,
@@ -108,30 +119,15 @@ impl Database {
                 low_count: row.get(9)?,
                 info_count: row.get(10)?,
             })
-        })?;
-
-        let mut history = Vec::new();
-        for row in rows {
-            if let Ok(item) = row {
-                history.push(item);
-            }
-        }
+        })?.flatten().collect();
         Ok(history)
     }
 
     pub fn get_scan_report(&self, scan_id: &str) -> Result<Option<ScanReport>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT report_json FROM scans WHERE id = ?1")?;
-        let mut rows = stmt.query(params![scan_id])?;
-
-        if let Some(row) = rows.next()? {
-            let json_str: String = row.get(0)?;
-            if let Ok(report) = serde_json::from_str::<ScanReport>(&json_str) {
-                return Ok(Some(report));
-            }
-        }
-
-        Ok(None)
+        let json_str: Option<String> = stmt.query_row(params![scan_id], |r| r.get(0)).ok();
+        Ok(json_str.and_then(|s| serde_json::from_str(&s).ok()))
     }
 
     pub fn delete_scan(&self, scan_id: &str) -> Result<()> {
@@ -179,27 +175,7 @@ impl Database {
             "SELECT id, target_url, interval_hours, last_scanned_at, next_scan_at, last_score, is_active, created_at
              FROM monitors ORDER BY created_at DESC",
         )?;
-
-        let rows = stmt.query_map([], |row| {
-            let active_int: i32 = row.get(6)?;
-            Ok(MonitorTarget {
-                id: row.get(0)?,
-                target_url: row.get(1)?,
-                interval_hours: row.get(2)?,
-                last_scanned_at: row.get(3)?,
-                next_scan_at: row.get(4)?,
-                last_score: row.get(5)?,
-                is_active: active_int == 1,
-                created_at: row.get(7)?,
-            })
-        })?;
-
-        let mut monitors = Vec::new();
-        for row in rows {
-            if let Ok(item) = row {
-                monitors.push(item);
-            }
-        }
+        let monitors: Vec<MonitorTarget> = stmt.query_map([], map_monitor_row)?.flatten().collect();
         Ok(monitors)
     }
 
@@ -215,14 +191,8 @@ impl Database {
             "UPDATE monitors SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?1",
             params![id],
         )?;
-
-        let mut stmt = conn.prepare("SELECT is_active FROM monitors WHERE id = ?1")?;
-        let mut rows = stmt.query(params![id])?;
-        if let Some(row) = rows.next()? {
-            let active_int: i32 = row.get(0)?;
-            return Ok(active_int == 1);
-        }
-        Ok(false)
+        let active_int: i32 = conn.query_row("SELECT is_active FROM monitors WHERE id = ?1", params![id], |r| r.get(0)).unwrap_or(0);
+        Ok(active_int == 1)
     }
 
     pub fn update_monitor_scan(&self, id: &str, last_scanned_at: &str, next_scan_at: &str, last_score: u32) -> Result<()> {
@@ -240,27 +210,21 @@ impl Database {
             "SELECT id, target_url, interval_hours, last_scanned_at, next_scan_at, last_score, is_active, created_at
              FROM monitors WHERE is_active = 1 AND next_scan_at <= ?1",
         )?;
-
-        let rows = stmt.query_map(params![now_iso], |row| {
-            let active_int: i32 = row.get(6)?;
-            Ok(MonitorTarget {
-                id: row.get(0)?,
-                target_url: row.get(1)?,
-                interval_hours: row.get(2)?,
-                last_scanned_at: row.get(3)?,
-                next_scan_at: row.get(4)?,
-                last_score: row.get(5)?,
-                is_active: active_int == 1,
-                created_at: row.get(7)?,
-            })
-        })?;
-
-        let mut monitors = Vec::new();
-        for row in rows {
-            if let Ok(item) = row {
-                monitors.push(item);
-            }
-        }
+        let monitors: Vec<MonitorTarget> = stmt.query_map(params![now_iso], map_monitor_row)?.flatten().collect();
         Ok(monitors)
     }
+}
+
+fn map_monitor_row(row: &rusqlite::Row) -> rusqlite::Result<MonitorTarget> {
+    let active_int: i32 = row.get(6)?;
+    Ok(MonitorTarget {
+        id: row.get(0)?,
+        target_url: row.get(1)?,
+        interval_hours: row.get(2)?,
+        last_scanned_at: row.get(3)?,
+        next_scan_at: row.get(4)?,
+        last_score: row.get(5)?,
+        is_active: active_int == 1,
+        created_at: row.get(7)?,
+    })
 }

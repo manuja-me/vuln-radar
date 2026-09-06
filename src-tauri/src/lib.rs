@@ -120,18 +120,23 @@ async fn scan_ports(
 
 #[tauri::command]
 fn export_report_markdown(report: ScanReport) -> String {
-    let mut md = String::new();
-    md.push_str(&format!("# Security Assessment Report: {}\n\n", report.target_url));
-    md.push_str(&format!("- **Scan Date**: {}\n", report.scanned_at));
-    md.push_str(&format!("- **Security Score**: {} / 100\n", report.security_score));
-    md.push_str(&format!("- **HTTP Status**: {}\n", report.status_code));
-    md.push_str(&format!("- **Response Time**: {} ms\n", report.response_time_ms));
-    md.push_str(&format!("- **Total Findings**: {}\n", report.total_findings));
-    md.push_str(&format!("  - Critical: {}\n", report.critical_count));
-    md.push_str(&format!("  - High: {}\n", report.high_count));
-    md.push_str(&format!("  - Medium: {}\n", report.medium_count));
-    md.push_str(&format!("  - Low: {}\n", report.low_count));
-    md.push_str(&format!("  - Info: {}\n\n", report.info_count));
+    let mut md = format!(
+        "# Security Assessment Report: {}\n\n\
+        - **Scan Date**: {}\n\
+        - **Security Score**: {} / 100\n\
+        - **HTTP Status**: {}\n\
+        - **Response Time**: {} ms\n\
+        - **Total Findings**: {}\n\
+          - Critical: {}\n\
+          - High: {}\n\
+          - Medium: {}\n\
+          - Low: {}\n\
+          - Info: {}\n\n",
+        report.target_url, report.scanned_at, report.security_score,
+        report.status_code, report.response_time_ms, report.total_findings,
+        report.critical_count, report.high_count, report.medium_count,
+        report.low_count, report.info_count
+    );
 
     if !report.technologies_detected.is_empty() {
         md.push_str("### Detected Technologies & Stack\n");
@@ -142,31 +147,38 @@ fn export_report_markdown(report: ScanReport) -> String {
     }
 
     if let Some(port_rep) = &report.port_report {
-        md.push_str("### Discovered Open Ports & Services\n");
-        if let Some(ip) = &port_rep.ip_address {
-            md.push_str(&format!("- **Resolved IP**: {}\n", ip));
-        }
-        md.push_str(&format!("- **Ports Scanned**: {}\n", port_rep.scanned_ports_count));
-        md.push_str(&format!("- **Open Ports Found**: {}\n", port_rep.open_ports_count));
-        md.push_str(&format!("- **Scan Duration**: {} ms\n\n", port_rep.scan_duration_ms));
+        let ip_line = port_rep.ip_address.as_deref().map(|ip| format!("- **Resolved IP**: {}\n", ip)).unwrap_or_default();
+        md.push_str(&format!(
+            "### Discovered Open Ports & Services\n\
+            {}\
+            - **Ports Scanned**: {}\n\
+            - **Open Ports Found**: {}\n\
+            - **Scan Duration**: {} ms\n\n",
+            ip_line, port_rep.scanned_ports_count, port_rep.open_ports_count, port_rep.scan_duration_ms
+        ));
 
         if !port_rep.open_ports.is_empty() {
-            md.push_str("| Port | Protocol | Service | State | Risk | Banner / Details |\n");
-            md.push_str("| --- | --- | --- | --- | --- | --- |\n");
+            md.push_str("| Port | Protocol | Service | State | Risk | Banner / Details |\n| --- | --- | --- | --- | --- | --- |\n");
             for p in &port_rep.open_ports {
-                let risk_label = if p.is_risky { "⚠️ EXPOSED / RISKY" } else { "STANDARD" };
-                let banner_info = p.banner.as_deref().unwrap_or(p.description.as_str());
-                md.push_str(&format!("| {} | {} | {} | {} | {} | {} |\n", p.port, p.protocol.to_uppercase(), p.service, p.state.to_uppercase(), risk_label, banner_info));
+                let risk = if p.is_risky { "⚠️ EXPOSED / RISKY" } else { "STANDARD" };
+                let banner = p.banner.as_deref().unwrap_or(p.description.as_str());
+                md.push_str(&format!("| {} | {} | {} | {} | {} | {} |\n", p.port, p.protocol.to_uppercase(), p.service, p.state.to_uppercase(), risk, banner));
             }
             md.push('\n');
         }
     }
 
     if let Some(dns) = &report.dns_security {
-        md.push_str("### DNS & Email Security\n");
-        md.push_str(&format!("- **SPF Record**: {}\n", dns.spf_record.as_deref().unwrap_or("None")));
-        md.push_str(&format!("- **DMARC Record**: {}\n", dns.dmarc_record.as_deref().unwrap_or("None")));
-        md.push_str(&format!("- **DNSSEC**: {}\n\n", if dns.dnssec_enabled { "Enabled" } else { "Disabled / Not Detected" }));
+        let dnssec = if dns.dnssec_enabled { "Enabled" } else { "Disabled / Not Detected" };
+        md.push_str(&format!(
+            "### DNS & Email Security\n\
+            - **SPF Record**: {}\n\
+            - **DMARC Record**: {}\n\
+            - **DNSSEC**: {}\n\n",
+            dns.spf_record.as_deref().unwrap_or("None"),
+            dns.dmarc_record.as_deref().unwrap_or("None"),
+            dnssec
+        ));
     }
 
     if !report.subdomains.is_empty() {
@@ -178,26 +190,26 @@ fn export_report_markdown(report: ScanReport) -> String {
     }
 
     md.push_str("## Vulnerability Findings\n\n");
-    for (i, finding) in report.findings.iter().enumerate() {
-        md.push_str(&format!("### {}. [{:?}] {}\n\n", i + 1, finding.severity, finding.title));
-        md.push_str(&format!("- **OWASP Category**: {}\n", finding.owasp_category));
-        if let Some(cve) = &finding.cve_id {
-            md.push_str(&format!("- **CVE ID**: {}\n", cve));
-        }
-        md.push_str(&format!("\n**Description**:\n{}\n\n", finding.description));
-        md.push_str(&format!("**Security Impact**:\n{}\n\n", finding.impact));
-        md.push_str(&format!("**Remediation Guidance**:\n{}\n\n", finding.remediation));
-        if let Some(ev) = &finding.evidence {
-            md.push_str(&format!("**Evidence / Trigger**:\n```\n{}\n```\n\n", ev));
-        }
-        if !finding.references.is_empty() {
-            md.push_str("**References**:\n");
-            for r in &finding.references {
-                md.push_str(&format!("- {}\n", r));
-            }
-            md.push('\n');
-        }
-        md.push_str("---\n\n");
+    for (i, f) in report.findings.iter().enumerate() {
+        let cve_line = f.cve_id.as_deref().map(|c| format!("- **CVE ID**: {}\n", c)).unwrap_or_default();
+        let ev_block = f.evidence.as_deref().map(|e| format!("**Evidence / Trigger**:\n```\n{}\n```\n\n", e)).unwrap_or_default();
+        let refs = if f.references.is_empty() {
+            String::new()
+        } else {
+            format!("**References**:\n{}\n\n", f.references.iter().map(|r| format!("- {}", r)).collect::<Vec<_>>().join("\n"))
+        };
+
+        md.push_str(&format!(
+            "### {}. [{:?}] {}\n\n\
+            - **OWASP Category**: {}\n\
+            {}\
+            \n**Description**:\n{}\n\n\
+            **Security Impact**:\n{}\n\n\
+            **Remediation Guidance**:\n{}\n\n\
+            {}{}\
+            ---\n\n",
+            i + 1, f.severity, f.title, f.owasp_category, cve_line, f.description, f.impact, f.remediation, ev_block, refs
+        ));
     }
 
     md

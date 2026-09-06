@@ -1,11 +1,10 @@
 use crate::models::{Category, Finding, OpenPort, PortScanReport, Severity};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 /// Parse custom port list or range string (e.g., "80, 443, 3000-3005, 8080")
 pub fn parse_port_input(input: &str) -> Vec<u16> {
@@ -85,303 +84,68 @@ pub struct PortMetadata {
 }
 
 pub fn get_port_metadata(port: u16) -> PortMetadata {
-    match port {
-        20 => PortMetadata {
-            service: "FTP-DATA",
-            description: "File Transfer Protocol (Data Channel)",
-            is_risky: false,
-        },
-        21 => PortMetadata {
-            service: "FTP",
-            description: "File Transfer Protocol (Cleartext authentication)",
-            is_risky: true,
-        },
-        22 => PortMetadata {
-            service: "SSH",
-            description: "Secure Shell Remote Administration",
-            is_risky: false,
-        },
-        23 => PortMetadata {
-            service: "Telnet",
-            description: "Unencrypted legacy remote terminal access",
-            is_risky: true,
-        },
-        25 => PortMetadata {
-            service: "SMTP",
-            description: "Simple Mail Transfer Protocol",
-            is_risky: false,
-        },
-        53 => PortMetadata {
-            service: "DNS",
-            description: "Domain Name System Server",
-            is_risky: false,
-        },
-        67 | 68 => PortMetadata {
-            service: "DHCP",
-            description: "Dynamic Host Configuration Protocol",
-            is_risky: false,
-        },
-        69 => PortMetadata {
-            service: "TFTP",
-            description: "Trivial File Transfer Protocol",
-            is_risky: true,
-        },
-        80 => PortMetadata {
-            service: "HTTP",
-            description: "World Wide Web HTTP Server",
-            is_risky: false,
-        },
-        110 => PortMetadata {
-            service: "POP3",
-            description: "Post Office Protocol v3 (Cleartext)",
-            is_risky: true,
-        },
-        111 => PortMetadata {
-            service: "RPCBind",
-            description: "ONC RPC Portmapper",
-            is_risky: true,
-        },
-        123 => PortMetadata {
-            service: "NTP",
-            description: "Network Time Protocol",
-            is_risky: false,
-        },
-        135 => PortMetadata {
-            service: "MSRPC",
-            description: "Microsoft Windows RPC Endpoint Mapper",
-            is_risky: true,
-        },
-        137 | 138 => PortMetadata {
-            service: "NetBIOS",
-            description: "NetBIOS Name & Datagram Service",
-            is_risky: true,
-        },
-        139 => PortMetadata {
-            service: "NetBIOS-SSN",
-            description: "NetBIOS Session Service (SMB over NetBIOS)",
-            is_risky: true,
-        },
-        143 => PortMetadata {
-            service: "IMAP",
-            description: "Internet Message Access Protocol (Cleartext)",
-            is_risky: true,
-        },
-        161 | 162 => PortMetadata {
-            service: "SNMP",
-            description: "Simple Network Management Protocol",
-            is_risky: true,
-        },
-        389 => PortMetadata {
-            service: "LDAP",
-            description: "Lightweight Directory Access Protocol (Cleartext)",
-            is_risky: true,
-        },
-        443 => PortMetadata {
-            service: "HTTPS",
-            description: "HTTP over TLS/SSL Secure Web Server",
-            is_risky: false,
-        },
-        445 => PortMetadata {
-            service: "SMB",
-            description: "Microsoft-DS Active Directory / SMB File Sharing",
-            is_risky: true,
-        },
-        465 => PortMetadata {
-            service: "SMTPS",
-            description: "Secure SMTP over TLS",
-            is_risky: false,
-        },
-        587 => PortMetadata {
-            service: "SMTP-Submission",
-            description: "Mail Message Submission Protocol",
-            is_risky: false,
-        },
-        636 => PortMetadata {
-            service: "LDAPS",
-            description: "Secure LDAP over TLS",
-            is_risky: false,
-        },
-        873 => PortMetadata {
-            service: "rsync",
-            description: "rsync Remote File Synchronization Daemon",
-            is_risky: true,
-        },
-        993 => PortMetadata {
-            service: "IMAPS",
-            description: "Secure IMAP over TLS",
-            is_risky: false,
-        },
-        995 => PortMetadata {
-            service: "POP3S",
-            description: "Secure POP3 over TLS",
-            is_risky: false,
-        },
-        1080 => PortMetadata {
-            service: "SOCKS",
-            description: "SOCKS Proxy Server",
-            is_risky: true,
-        },
-        1194 => PortMetadata {
-            service: "OpenVPN",
-            description: "OpenVPN Tunneling Daemon",
-            is_risky: false,
-        },
-        1433 => PortMetadata {
-            service: "MSSQL",
-            description: "Microsoft SQL Server Database Engine",
-            is_risky: true,
-        },
-        1521 => PortMetadata {
-            service: "Oracle",
-            description: "Oracle Database Listener",
-            is_risky: true,
-        },
-        2049 => PortMetadata {
-            service: "NFS",
-            description: "Network File System Daemon",
-            is_risky: true,
-        },
-        2082 | 2083 => PortMetadata {
-            service: "cPanel",
-            description: "cPanel Web Management Interface",
-            is_risky: false,
-        },
-        2086 | 2087 => PortMetadata {
-            service: "WHM",
-            description: "WebHost Manager Interface",
-            is_risky: true,
-        },
-        2181 => PortMetadata {
-            service: "ZooKeeper",
-            description: "Apache ZooKeeper Coordination Service",
-            is_risky: true,
-        },
-        2375 | 2376 => PortMetadata {
-            service: "Docker",
-            description: "Docker Daemon REST API (Unauthenticated/TLS)",
-            is_risky: true,
-        },
-        3000 => PortMetadata {
-            service: "Node.js/Dev",
-            description: "Node.js / React / Next.js Development Server",
-            is_risky: false,
-        },
-        3128 => PortMetadata {
-            service: "Squid",
-            description: "Squid HTTP Proxy Caching Server",
-            is_risky: true,
-        },
-        3306 => PortMetadata {
-            service: "MySQL",
-            description: "MySQL / MariaDB Relational Database",
-            is_risky: true,
-        },
-        3389 => PortMetadata {
-            service: "RDP",
-            description: "Microsoft Remote Desktop Protocol",
-            is_risky: true,
-        },
-        5000 => PortMetadata {
-            service: "Flask/Dev",
-            description: "Python Flask / Docker Registry / Dev Server",
-            is_risky: false,
-        },
-        5432 => PortMetadata {
-            service: "PostgreSQL",
-            description: "PostgreSQL Relational Database Engine",
-            is_risky: true,
-        },
-        5672 => PortMetadata {
-            service: "RabbitMQ",
-            description: "RabbitMQ AMQP Message Broker",
-            is_risky: true,
-        },
-        5900..=5905 => PortMetadata {
-            service: "VNC",
-            description: "Virtual Network Computing Remote Display",
-            is_risky: true,
-        },
-        5985 | 5986 => PortMetadata {
-            service: "WinRM",
-            description: "Windows Remote Management (HTTP/HTTPS)",
-            is_risky: true,
-        },
-        6379 => PortMetadata {
-            service: "Redis",
-            description: "Redis In-Memory Key-Value Data Store",
-            is_risky: true,
-        },
-        7000 | 7001 => PortMetadata {
-            service: "Cassandra",
-            description: "Apache Cassandra Cluster / Storage Service",
-            is_risky: true,
-        },
-        8000 => PortMetadata {
-            service: "HTTP-Alt",
-            description: "Alternate HTTP / Django / Python Server",
-            is_risky: false,
-        },
-        8080 => PortMetadata {
-            service: "HTTP-Proxy",
-            description: "HTTP Alternate / Apache Tomcat / Spring Boot",
-            is_risky: false,
-        },
-        8081 => PortMetadata {
-            service: "HTTP-Alt2",
-            description: "Alternate HTTP Application Server",
-            is_risky: false,
-        },
-        8086 => PortMetadata {
-            service: "InfluxDB",
-            description: "InfluxDB Time Series Database HTTP API",
-            is_risky: true,
-        },
-        8443 => PortMetadata {
-            service: "HTTPS-Alt",
-            description: "Alternate HTTPS SSL/TLS Web Service",
-            is_risky: false,
-        },
-        8888 => PortMetadata {
-            service: "Jupyter/Admin",
-            description: "Jupyter Notebook / Web Administration Console",
-            is_risky: false,
-        },
-        9000 => PortMetadata {
-            service: "Portainer/PHP",
-            description: "Portainer Docker Management / PHP-FPM / MinIO",
-            is_risky: true,
-        },
-        9090 => PortMetadata {
-            service: "Prometheus",
-            description: "Prometheus Monitoring Metrics Server",
-            is_risky: false,
-        },
-        9200 | 9300 => PortMetadata {
-            service: "Elasticsearch",
-            description: "Elasticsearch REST API / Cluster Node Communication",
-            is_risky: true,
-        },
-        11211 => PortMetadata {
-            service: "Memcached",
-            description: "Memcached In-Memory Distributed Cache",
-            is_risky: true,
-        },
-        27017 | 27018 => PortMetadata {
-            service: "MongoDB",
-            description: "MongoDB NoSQL Database Server",
-            is_risky: true,
-        },
-        28017 => PortMetadata {
-            service: "MongoDB-Web",
-            description: "MongoDB Legacy Web Status Interface",
-            is_risky: true,
-        },
-        _ => PortMetadata {
-            service: "Unknown",
-            description: "Custom or unmapped TCP network service",
-            is_risky: false,
-        },
-    }
+    let (service, description, is_risky) = match port {
+        20 => ("FTP-DATA", "File Transfer Protocol (Data Channel)", false),
+        21 => ("FTP", "File Transfer Protocol (Cleartext authentication)", true),
+        22 => ("SSH", "Secure Shell Remote Administration", false),
+        23 => ("Telnet", "Unencrypted legacy remote terminal access", true),
+        25 => ("SMTP", "Simple Mail Transfer Protocol", false),
+        53 => ("DNS", "Domain Name System Server", false),
+        67 | 68 => ("DHCP", "Dynamic Host Configuration Protocol", false),
+        69 => ("TFTP", "Trivial File Transfer Protocol", true),
+        80 => ("HTTP", "World Wide Web HTTP Server", false),
+        110 => ("POP3", "Post Office Protocol v3 (Cleartext)", true),
+        111 => ("RPCBind", "ONC RPC Portmapper", true),
+        123 => ("NTP", "Network Time Protocol", false),
+        135 => ("MSRPC", "Microsoft Windows RPC Endpoint Mapper", true),
+        137 | 138 => ("NetBIOS", "NetBIOS Name & Datagram Service", true),
+        139 => ("NetBIOS-SSN", "NetBIOS Session Service (SMB over NetBIOS)", true),
+        143 => ("IMAP", "Internet Message Access Protocol (Cleartext)", true),
+        161 | 162 => ("SNMP", "Simple Network Management Protocol", true),
+        389 => ("LDAP", "Lightweight Directory Access Protocol (Cleartext)", true),
+        443 => ("HTTPS", "HTTP over TLS/SSL Secure Web Server", false),
+        445 => ("SMB", "Microsoft-DS Active Directory / SMB File Sharing", true),
+        465 => ("SMTPS", "Secure SMTP over TLS", false),
+        587 => ("SMTP-Submission", "Mail Message Submission Protocol", false),
+        636 => ("LDAPS", "Secure LDAP over TLS", false),
+        873 => ("rsync", "rsync Remote File Synchronization Daemon", true),
+        993 => ("IMAPS", "Secure IMAP over TLS", false),
+        995 => ("POP3S", "Secure POP3 over TLS", false),
+        1080 => ("SOCKS", "SOCKS Proxy Server", true),
+        1194 => ("OpenVPN", "OpenVPN Tunneling Daemon", false),
+        1433 => ("MSSQL", "Microsoft SQL Server Database Engine", true),
+        1521 => ("Oracle", "Oracle Database Listener", true),
+        2049 => ("NFS", "Network File System Daemon", true),
+        2082 | 2083 => ("cPanel", "cPanel Web Management Interface", false),
+        2086 | 2087 => ("WHM", "WebHost Manager Interface", true),
+        2181 => ("ZooKeeper", "Apache ZooKeeper Coordination Service", true),
+        2375 | 2376 => ("Docker", "Docker Daemon REST API (Unauthenticated/TLS)", true),
+        3000 => ("Node.js/Dev", "Node.js / React / Next.js Development Server", false),
+        3128 => ("Squid", "Squid HTTP Proxy Caching Server", true),
+        3306 => ("MySQL", "MySQL / MariaDB Relational Database", true),
+        3389 => ("RDP", "Microsoft Remote Desktop Protocol", true),
+        5000 => ("Flask/Dev", "Python Flask / Docker Registry / Dev Server", false),
+        5432 => ("PostgreSQL", "PostgreSQL Relational Database Engine", true),
+        5672 => ("RabbitMQ", "RabbitMQ AMQP Message Broker", true),
+        5900..=5905 => ("VNC", "Virtual Network Computing Remote Display", true),
+        5985 | 5986 => ("WinRM", "Windows Remote Management (HTTP/HTTPS)", true),
+        6379 => ("Redis", "Redis In-Memory Key-Value Data Store", true),
+        7000 | 7001 => ("Cassandra", "Apache Cassandra Cluster / Storage Service", true),
+        8000 => ("HTTP-Alt", "Alternate HTTP / Django / Python Server", false),
+        8080 => ("HTTP-Proxy", "HTTP Alternate / Apache Tomcat / Spring Boot", false),
+        8081 => ("HTTP-Alt2", "Alternate HTTP Application Server", false),
+        8086 => ("InfluxDB", "InfluxDB Time Series Database HTTP API", true),
+        8443 => ("HTTPS-Alt", "Alternate HTTPS SSL/TLS Web Service", false),
+        8888 => ("Jupyter/Admin", "Jupyter Notebook / Web Administration Console", false),
+        9000 => ("Portainer/PHP", "Portainer Docker Management / PHP-FPM / MinIO", true),
+        9090 => ("Prometheus", "Prometheus Monitoring Metrics Server", false),
+        9200 | 9300 => ("Elasticsearch", "Elasticsearch REST API / Cluster Node Communication", true),
+        11211 => ("Memcached", "Memcached In-Memory Distributed Cache", true),
+        27017 | 27018 => ("MongoDB", "MongoDB NoSQL Database Server", true),
+        28017 => ("MongoDB-Web", "MongoDB Legacy Web Status Interface", true),
+        _ => ("Unknown", "Custom or unmapped TCP network service", false),
+    };
+    PortMetadata { service, description, is_risky }
 }
 
 /// Attempt to grab lightweight service banner from open TCP stream
@@ -475,16 +239,22 @@ pub async fn audit_ports(
     report.scanned_ports_count = ports_to_scan.len();
 
     let probe_timeout = Duration::from_millis(timeout_ms.unwrap_or(800).clamp(200, 5000));
-    let semaphore = Arc::new(Semaphore::new(45)); // Concurrency limiter
-
-    let mut tasks = Vec::new();
+    const MAX_CONCURRENT_PORT_TASKS: usize = 45;
+    let mut set = JoinSet::new();
+    let mut open_ports = Vec::new();
 
     for port in ports_to_scan {
-        let sem = semaphore.clone();
-        let target_sock = SocketAddr::new(target_ip, port);
+        // Enforce maximum concurrent active tasks in memory
+        while set.len() >= MAX_CONCURRENT_PORT_TASKS {
+            if let Some(res) = set.join_next().await {
+                if let Ok(Some(open_p)) = res {
+                    open_ports.push(open_p);
+                }
+            }
+        }
 
-        tasks.push(tokio::spawn(async move {
-            let _permit = sem.acquire().await.ok();
+        let target_sock = SocketAddr::new(target_ip, port);
+        set.spawn(async move {
             let connect_fut = TcpStream::connect(target_sock);
 
             match tokio::time::timeout(probe_timeout, connect_fut).await {
@@ -503,12 +273,12 @@ pub async fn audit_ports(
                 }
                 _ => None,
             }
-        }));
+        });
     }
 
-    let mut open_ports = Vec::new();
-    for task in tasks {
-        if let Ok(Some(open_p)) = task.await {
+    // Drain remaining active tasks
+    while let Some(res) = set.join_next().await {
+        if let Ok(Some(open_p)) = res {
             open_ports.push(open_p);
         }
     }
@@ -520,122 +290,113 @@ pub async fn audit_ports(
     // 2. Generate Security Findings for risky open ports
     for op in &open_ports {
         match op.port {
-            23 => {
-                findings.push(Finding {
-                    id: "port-telnet-exposed".to_string(),
-                    title: "Exposed Telnet Remote Terminal (Port 23)".to_string(),
-                    severity: Severity::Critical,
-                    category: Category::PortExposure,
-                    description: "An unencrypted Telnet service is publicly accessible on port 23. Telnet transmits credentials and commands in cleartext across the network.".to_string(),
-                    impact: "Adversaries can intercept administrative login credentials via network sniffing or brute-force remote terminal access.".to_string(),
-                    remediation: "Disable the Telnet daemon immediately. Transition all remote administration to SSH (Port 22) with public key authentication.".to_string(),
-                    evidence: Some(format!("Port 23/TCP open. Banner: {}", op.banner.as_deref().unwrap_or("N/A"))),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec![
-                        "https://cwe.mitre.org/data/definitions/319.html".to_string(),
-                        "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server".to_string(),
-                    ],
-                });
-            }
-            21 => {
-                findings.push(Finding {
-                    id: "port-ftp-exposed".to_string(),
-                    title: "Exposed Cleartext FTP Service (Port 21)".to_string(),
-                    severity: Severity::Medium,
-                    category: Category::PortExposure,
-                    description: "An unencrypted File Transfer Protocol (FTP) service was discovered open on port 21. Standard FTP sends user credentials in plaintext.".to_string(),
-                    impact: "Network eavesdroppers can capture FTP authentication credentials and gain unauthorized file system read/write access.".to_string(),
-                    remediation: "Enforce SFTP (over SSH on port 22) or FTPS (FTP over TLS/SSL) and restrict port 21 with firewall rules.".to_string(),
-                    evidence: Some(format!("Port 21/TCP open. Banner: {}", op.banner.as_deref().unwrap_or("N/A"))),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec!["https://cwe.mitre.org/data/definitions/319.html".to_string()],
-                });
-            }
-            135 | 139 | 445 => {
-                findings.push(Finding {
-                    id: format!("port-smb-netbios-exposed-{}", op.port),
-                    title: format!("Exposed Windows SMB/NetBIOS Service (Port {})", op.port),
-                    severity: Severity::High,
-                    category: Category::PortExposure,
-                    description: format!("Port {} ({}) is exposed to the public network. SMB/MSRPC ports are prime vectors for lateral movement, ransomware, and remote exploits.", op.port, op.service),
-                    impact: "Attackers can exploit known SMB vulnerabilities (e.g. EternalBlue) or enumerate network shares and domain accounts.".to_string(),
-                    remediation: "Block ports 135, 137-139, and 445 at the perimeter edge firewall. Require VPN for internal network share access.".to_string(),
-                    evidence: Some(format!("Port {}/TCP open ({})", op.port, op.service)),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec!["https://www.cisa.gov/news-events/alerts/2017/01/16/risks-associated-smb-and-open-ports".to_string()],
-                });
-            }
-            3389 => {
-                findings.push(Finding {
-                    id: "port-rdp-exposed".to_string(),
-                    title: "Exposed Remote Desktop Protocol (Port 3389)".to_string(),
-                    severity: Severity::High,
-                    category: Category::PortExposure,
-                    description: "Microsoft Remote Desktop Protocol (RDP) is accessible on port 3389 directly over the public internet.".to_string(),
-                    impact: "Publicly exposed RDP services are targeted by automated credential stuffing, brute-force bots, and remote code execution vulnerabilities (e.g. BlueKeep).".to_string(),
-                    remediation: "Do not expose RDP directly to the internet. Protect desktop access behind an enterprise VPN or Zero-Trust Network Access (ZTNA) with MFA.".to_string(),
-                    evidence: Some(format!("Port 3389/TCP open. Host: {}", clean_host)),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec!["https://www.cisa.gov/news-events/analysis-reports/ar19-133a".to_string()],
-                });
-            }
-            5900..=5905 => {
-                findings.push(Finding {
-                    id: format!("port-vnc-exposed-{}", op.port),
-                    title: format!("Exposed VNC Remote Desktop (Port {})", op.port),
-                    severity: Severity::High,
-                    category: Category::PortExposure,
-                    description: format!("Virtual Network Computing (VNC) is exposed on port {}. Many VNC servers lack strong brute-force protections or TLS encryption.", op.port),
-                    impact: "Allows unauthorized remote GUI desktop access if weak or default passwords are configured.".to_string(),
-                    remediation: "Tunnel VNC sessions over SSH or VPN, or disable VNC if not strictly needed.".to_string(),
-                    evidence: Some(format!("Port {}/TCP open ({})", op.port, op.service)),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec!["https://owasp.org/".to_string()],
-                });
-            }
-            3306 | 5432 | 1433 | 1521 | 6379 | 27017 | 9200 | 11211 => {
-                findings.push(Finding {
-                    id: format!("port-database-exposed-{}", op.port),
-                    title: format!("Exposed Database Engine ({}, Port {})", op.service, op.port),
-                    severity: Severity::High,
-                    category: Category::PortExposure,
-                    description: format!(
+            23 => findings.push(
+                Finding::new(
+                    "port-telnet-exposed",
+                    "Exposed Telnet Remote Terminal (Port 23)",
+                    Severity::Critical,
+                    Category::PortExposure,
+                    "An unencrypted Telnet service is publicly accessible on port 23. Telnet transmits credentials and commands in cleartext across the network.",
+                    "Adversaries can intercept administrative login credentials via network sniffing or brute-force remote terminal access.",
+                    "Disable the Telnet daemon immediately. Transition all remote administration to SSH (Port 22) with public key authentication.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port 23/TCP open. Banner: {}", op.banner.as_deref().unwrap_or("N/A")))
+                .with_refs(&[
+                    "https://cwe.mitre.org/data/definitions/319.html",
+                    "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server",
+                ]),
+            ),
+            21 => findings.push(
+                Finding::new(
+                    "port-ftp-exposed",
+                    "Exposed Cleartext FTP Service (Port 21)",
+                    Severity::Medium,
+                    Category::PortExposure,
+                    "An unencrypted File Transfer Protocol (FTP) service was discovered open on port 21. Standard FTP sends user credentials in plaintext.",
+                    "Network eavesdroppers can capture FTP authentication credentials and gain unauthorized file system read/write access.",
+                    "Enforce SFTP (over SSH on port 22) or FTPS (FTP over TLS/SSL) and restrict port 21 with firewall rules.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port 21/TCP open. Banner: {}", op.banner.as_deref().unwrap_or("N/A")))
+                .with_refs(&["https://cwe.mitre.org/data/definitions/319.html"]),
+            ),
+            135 | 139 | 445 => findings.push(
+                Finding::new(
+                    format!("port-smb-netbios-exposed-{}", op.port),
+                    format!("Exposed Windows SMB/NetBIOS Service (Port {})", op.port),
+                    Severity::High,
+                    Category::PortExposure,
+                    format!("Port {} ({}) is exposed to the public network. SMB/MSRPC ports are prime vectors for lateral movement, ransomware, and remote exploits.", op.port, op.service),
+                    "Attackers can exploit known SMB vulnerabilities (e.g. EternalBlue) or enumerate network shares and domain accounts.",
+                    "Block ports 135, 137-139, and 445 at the perimeter edge firewall. Require VPN for internal network share access.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port {}/TCP open ({})", op.port, op.service))
+                .with_refs(&["https://www.cisa.gov/news-events/alerts/2017/01/16/risks-associated-smb-and-open-ports"]),
+            ),
+            3389 => findings.push(
+                Finding::new(
+                    "port-rdp-exposed",
+                    "Exposed Remote Desktop Protocol (Port 3389)",
+                    Severity::High,
+                    Category::PortExposure,
+                    "Microsoft Remote Desktop Protocol (RDP) is accessible on port 3389 directly over the public internet.",
+                    "Publicly exposed RDP services are targeted by automated credential stuffing, brute-force bots, and remote code execution vulnerabilities (e.g. BlueKeep).",
+                    "Do not expose RDP directly to the internet. Protect desktop access behind an enterprise VPN or Zero-Trust Network Access (ZTNA) with MFA.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port 3389/TCP open. Host: {}", clean_host))
+                .with_refs(&["https://www.cisa.gov/news-events/analysis-reports/ar19-133a"]),
+            ),
+            5900..=5905 => findings.push(
+                Finding::new(
+                    format!("port-vnc-exposed-{}", op.port),
+                    format!("Exposed VNC Remote Desktop (Port {})", op.port),
+                    Severity::High,
+                    Category::PortExposure,
+                    format!("Virtual Network Computing (VNC) is exposed on port {}. Many VNC servers lack strong brute-force protections or TLS encryption.", op.port),
+                    "Allows unauthorized remote GUI desktop access if weak or default passwords are configured.",
+                    "Tunnel VNC sessions over SSH or VPN, or disable VNC if not strictly needed.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port {}/TCP open ({})", op.port, op.service))
+                .with_refs(&["https://owasp.org/"]),
+            ),
+            3306 | 5432 | 1433 | 1521 | 6379 | 27017 | 9200 | 11211 => findings.push(
+                Finding::new(
+                    format!("port-database-exposed-{}", op.port),
+                    format!("Exposed Database Engine ({}, Port {})", op.service, op.port),
+                    Severity::High,
+                    Category::PortExposure,
+                    format!(
                         "The {} database service is listening and accessible on port {}. Database ports should never be exposed to the public internet.",
                         op.service, op.port
                     ),
-                    impact: "Attackers can perform automated credential brute-forcing, exploit unauthenticated configurations (e.g., Redis/MongoDB/Elasticsearch default setups), or exfiltrate sensitive data.".to_string(),
-                    remediation: format!(
+                    "Attackers can perform automated credential brute-forcing, exploit unauthenticated configurations (e.g., Redis/MongoDB/Elasticsearch default setups), or exfiltrate sensitive data.",
+                    format!(
                         "Bind {} to localhost (127.0.0.1) or private VPC subnets. Enforce firewall rules restricting inbound traffic on port {}.",
                         op.service, op.port
                     ),
-                    evidence: Some(format!("Port {}/TCP open. Service: {}. Banner: {}", op.port, op.service, op.banner.as_deref().unwrap_or("N/A"))),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec![
-                        "https://owasp.org/www-project-top-ten/2017/A6_2017-Security_Misconfiguration".to_string(),
-                    ],
-                });
-            }
-            2375 | 2376 => {
-                findings.push(Finding {
-                    id: format!("port-docker-exposed-{}", op.port),
-                    title: format!("Exposed Docker Daemon API (Port {})", op.port),
-                    severity: Severity::Critical,
-                    category: Category::PortExposure,
-                    description: format!("Docker Daemon API port {} was found open. An exposed unauthenticated Docker API allows full root-level container creation and host takeover.", op.port),
-                    impact: "Attackers can run privileged containers with mounted host root filesystems, achieving complete remote server takeover.".to_string(),
-                    remediation: "Never expose Docker socket or API over public TCP. Use Unix socket or require mutual TLS client certificate authentication.".to_string(),
-                    evidence: Some(format!("Port {}/TCP open. Service: Docker", op.port)),
-                    owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                    cve_id: None,
-                    references: vec!["https://docs.docker.com/engine/security/protect-access/".to_string()],
-                });
-            }
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port {}/TCP open. Service: {}. Banner: {}", op.port, op.service, op.banner.as_deref().unwrap_or("N/A")))
+                .with_refs(&["https://owasp.org/www-project-top-ten/2017/A6_2017-Security_Misconfiguration"]),
+            ),
+            2375 | 2376 => findings.push(
+                Finding::new(
+                    format!("port-docker-exposed-{}", op.port),
+                    format!("Exposed Docker Daemon API (Port {})", op.port),
+                    Severity::Critical,
+                    Category::PortExposure,
+                    format!("Docker Daemon API port {} was found open. An exposed unauthenticated Docker API allows full root-level container creation and host takeover.", op.port),
+                    "Attackers can run privileged containers with mounted host root filesystems, achieving complete remote server takeover.",
+                    "Never expose Docker socket or API over public TCP. Use Unix socket or require mutual TLS client certificate authentication.",
+                    "A05:2021-Security Misconfiguration",
+                )
+                .with_evidence(format!("Port {}/TCP open. Service: Docker", op.port))
+                .with_refs(&["https://docs.docker.com/engine/security/protect-access/"]),
+            ),
             _ => {}
         }
     }

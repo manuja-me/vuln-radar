@@ -130,17 +130,14 @@ fn parse_semver(ver_str: &str) -> Option<(u32, u32, u32)> {
     Some((major, minor, patch))
 }
 
-pub fn analyze_dependencies(html_content: &str, detected_tech: &mut Vec<String>) -> Vec<Finding> {
+pub fn analyze_dependencies(document: &Html, detected_tech: &mut Vec<String>) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let document = Html::parse_document(html_content);
 
     // Extract script src attributes
-    let mut script_sources = Vec::new();
-    for element in document.select(&SCRIPT_SELECTOR) {
-        if let Some(src) = element.value().attr("src") {
-            script_sources.push(src);
-        }
-    }
+    let script_sources: Vec<&str> = document
+        .select(&SCRIPT_SELECTOR)
+        .filter_map(|element| element.value().attr("src"))
+        .collect();
 
     for rule in &COMPILED_RULES {
         let re = &rule.regex;
@@ -155,19 +152,21 @@ pub fn analyze_dependencies(html_content: &str, detected_tech: &mut Vec<String>)
 
                     if let Some((major, minor, patch)) = parse_semver(version_str) {
                         if let Some((cve, severity, impact, remediation, ref_url)) = (rule.vulnerable_check)(major, minor, patch) {
-                            findings.push(Finding {
-                                id: format!("vulnerable-lib-{}-{}", rule.name.to_lowercase(), version_str),
-                                title: format!("Outdated & Vulnerable Library: {} v{} ({})", rule.name, version_str, cve),
-                                severity,
-                                category: Category::VulnerableDependency,
-                                description: format!("The application is loading {} version {}, which has known public security vulnerabilities.", rule.name, version_str),
-                                impact: impact.to_string(),
-                                remediation: remediation.to_string(),
-                                evidence: Some(format!("Script source: {}", src)),
-                                owasp_category: "A06:2021-Vulnerable and Outdated Components".to_string(),
-                                cve_id: Some(cve.to_string()),
-                                references: vec![ref_url.to_string()],
-                            });
+                            findings.push(
+                                Finding::new(
+                                    format!("vulnerable-lib-{}-{}", rule.name.to_lowercase(), version_str),
+                                    format!("Outdated & Vulnerable Library: {} v{} ({})", rule.name, version_str, cve),
+                                    severity,
+                                    Category::VulnerableDependency,
+                                    format!("The application is loading {} version {}, which has known public security vulnerabilities.", rule.name, version_str),
+                                    impact,
+                                    remediation,
+                                    "A06:2021-Vulnerable and Outdated Components",
+                                )
+                                .with_evidence(format!("Script source: {}", src))
+                                .with_cve(cve)
+                                .with_refs(&[ref_url]),
+                            );
                         }
                     }
                 }

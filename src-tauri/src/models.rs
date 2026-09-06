@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
     Critical,
@@ -10,7 +10,19 @@ pub enum Severity {
     Info,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+impl Severity {
+    pub fn deduction(&self) -> u32 {
+        match self {
+            Severity::Critical => 25,
+            Severity::High => 15,
+            Severity::Medium => 8,
+            Severity::Low => 3,
+            Severity::Info => 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Category {
     SecurityHeaders,
@@ -40,6 +52,48 @@ pub struct Finding {
     pub owasp_category: String,
     pub cve_id: Option<String>,
     pub references: Vec<String>,
+}
+
+impl Finding {
+    pub fn new(
+        id: impl Into<String>,
+        title: impl Into<String>,
+        severity: Severity,
+        category: Category,
+        description: impl Into<String>,
+        impact: impl Into<String>,
+        remediation: impl Into<String>,
+        owasp_category: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            title: title.into(),
+            severity,
+            category,
+            description: description.into(),
+            impact: impact.into(),
+            remediation: remediation.into(),
+            evidence: None,
+            owasp_category: owasp_category.into(),
+            cve_id: None,
+            references: Vec::new(),
+        }
+    }
+
+    pub fn with_evidence(mut self, evidence: impl Into<String>) -> Self {
+        self.evidence = Some(evidence.into());
+        self
+    }
+
+    pub fn with_cve(mut self, cve: impl Into<String>) -> Self {
+        self.cve_id = Some(cve.into());
+        self
+    }
+
+    pub fn with_refs(mut self, refs: &[&str]) -> Self {
+        self.references = refs.iter().map(|s| s.to_string()).collect();
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

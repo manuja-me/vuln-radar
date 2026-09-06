@@ -12,11 +12,9 @@
   import ScoreGauge from "$lib/components/ScoreGauge.svelte";
   import SeverityBadge from "$lib/components/SeverityBadge.svelte";
   import FindingCard from "$lib/components/FindingCard.svelte";
-  import HistoryModal from "$lib/components/HistoryModal.svelte";
   import ExportModal from "$lib/components/ExportModal.svelte";
   import ExecutiveReportModal from "$lib/components/ExecutiveReportModal.svelte";
   import BatchScanModal from "$lib/components/BatchScanModal.svelte";
-  import ScanOptionsModal from "$lib/components/ScanOptionsModal.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
@@ -81,11 +79,9 @@
   // Modal States
   let isSettingsOpen = $state(false);
   let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data">("params");
-  let isHistoryOpen = $state(false);
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
   let isBatchOpen = $state(false);
-  let isOptionsOpen = $state(false);
   let isMonitorsOpen = $state(false);
   let isShortcutsOpen = $state(false);
   let exportMarkdown = $state("");
@@ -172,11 +168,9 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
       isSettingsOpen = false;
-      isHistoryOpen = false;
       isExportOpen = false;
       isExecutiveReportOpen = false;
       isBatchOpen = false;
-      isOptionsOpen = false;
       isMonitorsOpen = false;
       isShortcutsOpen = false;
       return;
@@ -424,6 +418,14 @@
     }
 
     return list;
+  });
+
+  let showAllFindings = $state(false);
+  const displayedFindings = $derived.by(() => {
+    if (showAllFindings || filteredFindings.length <= 35) {
+      return filteredFindings;
+    }
+    return filteredFindings.slice(0, 35);
   });
 
   const categories = [
@@ -1324,21 +1326,17 @@
             <!-- Proportional Colored Bar -->
             {#if report.total_findings > 0}
               <div class="w-full h-2 bg-[var(--color-hairline)] rounded-none overflow-hidden flex gap-0.5">
-                {#if report.critical_count > 0}
-                  <div class="bg-red-500 h-full" style="width: {(report.critical_count / report.total_findings) * 100}%"></div>
-                {/if}
-                {#if report.high_count > 0}
-                  <div class="bg-orange-500 h-full" style="width: {(report.high_count / report.total_findings) * 100}%"></div>
-                {/if}
-                {#if report.medium_count > 0}
-                  <div class="bg-amber-500 h-full" style="width: {(report.medium_count / report.total_findings) * 100}%"></div>
-                {/if}
-                {#if report.low_count > 0}
-                  <div class="bg-blue-500 h-full" style="width: {(report.low_count / report.total_findings) * 100}%"></div>
-                {/if}
-                {#if report.info_count > 0}
-                  <div class="bg-zinc-500 h-full" style="width: {(report.info_count / report.total_findings) * 100}%"></div>
-                {/if}
+                {#each [
+                  { count: report.critical_count, color: 'bg-red-500' },
+                  { count: report.high_count, color: 'bg-orange-500' },
+                  { count: report.medium_count, color: 'bg-amber-500' },
+                  { count: report.low_count, color: 'bg-blue-500' },
+                  { count: report.info_count, color: 'bg-zinc-500' },
+                ] as seg}
+                  {#if seg.count > 0}
+                    <div class="{seg.color} h-full" style="width: {(seg.count / report.total_findings) * 100}%"></div>
+                  {/if}
+                {/each}
               </div>
             {/if}
 
@@ -1351,41 +1349,21 @@
               >
                 ALL ({report.total_findings})
               </button>
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "critical")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'critical' ? 'bg-red-600 text-white' : 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/30'}"
-              >
-                CRITICAL ({report.critical_count})
-              </button>
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "high")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'high' ? 'bg-orange-600 text-white' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 border border-orange-500/30'}"
-              >
-                HIGH ({report.high_count})
-              </button>
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "medium")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'medium' ? 'bg-amber-600 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'}"
-              >
-                MED ({report.medium_count})
-              </button>
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "low")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'low' ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/30'}"
-              >
-                LOW ({report.low_count})
-              </button>
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "info")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'info' ? 'bg-zinc-600 text-white' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-500/20 border border-zinc-500/30'}"
-              >
-                INFO ({report.info_count})
-              </button>
+              {#each [
+                { id: 'critical', label: 'CRITICAL', count: report.critical_count, active: 'bg-red-600 text-white', inactive: 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border-red-500/30' },
+                { id: 'high', label: 'HIGH', count: report.high_count, active: 'bg-orange-600 text-white', inactive: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 border-orange-500/30' },
+                { id: 'medium', label: 'MED', count: report.medium_count, active: 'bg-amber-600 text-white', inactive: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border-amber-500/30' },
+                { id: 'low', label: 'LOW', count: report.low_count, active: 'bg-blue-600 text-white', inactive: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border-blue-500/30' },
+                { id: 'info', label: 'INFO', count: report.info_count, active: 'bg-zinc-600 text-white', inactive: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-500/20 border-zinc-500/30' },
+              ] as s}
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = s.id as Severity)}
+                  class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === s.id ? s.active : `${s.inactive} border`}"
+                >
+                  {s.label} ({s.count})
+                </button>
+              {/each}
             </div>
           </div>
 
@@ -1433,9 +1411,21 @@
                 <h3 class="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text-headline)]">No findings matching active criteria</h3>
               </div>
             {:else}
-              {#each filteredFindings as finding (finding.id)}
+              {#each displayedFindings as finding (finding.id)}
                 <FindingCard {finding} />
               {/each}
+
+              {#if filteredFindings.length > 35 && !showAllFindings}
+                <div class="pt-4 pb-2 text-center">
+                  <button
+                    type="button"
+                    onclick={() => (showAllFindings = true)}
+                    class="px-5 py-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] text-[var(--color-text-headline)] text-xs font-mono font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors shadow-sm"
+                  >
+                    [SHOW ALL {filteredFindings.length} FINDINGS (+{filteredFindings.length - 35} MORE)]
+                  </button>
+                </div>
+              {/if}
             {/if}
           </div>
         </div>
@@ -1588,18 +1578,6 @@
   onClose={() => (isSettingsOpen = false)}
 />
 
-<HistoryModal
-  isOpen={isHistoryOpen}
-  {history}
-  onSelect={(id: string) => {
-    isHistoryOpen = false;
-    handleSelectHistoryScan(id);
-  }}
-  onDelete={handleDeleteScan}
-  onClearAll={handleClearAllHistory}
-  onClose={() => (isHistoryOpen = false)}
-/>
-
 <ExportModal
   isOpen={isExportOpen}
   {report}
@@ -1627,17 +1605,6 @@
     currentWorkspace = "audit";
   }}
   onClose={() => (isBatchOpen = false)}
-/>
-
-<ScanOptionsModal
-  isOpen={isOptionsOpen}
-  options={scanOptions}
-  onApply={(newOpts) => {
-    scanOptions = newOpts;
-    showToast("Scan parameters applied", "success");
-    isOptionsOpen = false;
-  }}
-  onClose={() => (isOptionsOpen = false)}
 />
 
 <MonitorModal

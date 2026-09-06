@@ -51,9 +51,8 @@ static SECRET_PATTERNS: [SecretPattern; 5] = [
     },
 ];
 
-pub fn analyze_leaks(html_content: &str, is_https: bool) -> Vec<Finding> {
+pub fn analyze_leaks(document: &Html, html_content: &str, is_https: bool) -> Vec<Finding> {
     let mut findings = Vec::new();
-    let document = Html::parse_document(html_content);
 
     // 1. Insecure Form Submissions
     for form in document.select(&FORM_SELECTOR) {
@@ -62,62 +61,63 @@ pub fn analyze_leaks(html_content: &str, is_https: bool) -> Vec<Finding> {
 
         // Check if form submits via unencrypted HTTP on HTTPS site
         if is_https && action.starts_with("http://") {
-            findings.push(Finding {
-                id: "insecure-form-action-http".to_string(),
-                title: "Insecure Form Action (Submits over Plaintext HTTP)".to_string(),
-                severity: Severity::High,
-                category: Category::InsecureForm,
-                description: format!("Form action points to an unencrypted HTTP destination ('{}').", action),
-                impact: "Form data submitted by users (passwords, PII) will be transmitted in plaintext across the network.".to_string(),
-                remediation: "Ensure all form action URLs use HTTPS (or relative URLs).".to_string(),
-                evidence: Some(format!("<form action=\"{}\" method=\"{}\">", action, method)),
-                owasp_category: "A02:2021-Cryptographic Failures".to_string(),
-                cve_id: None,
-                references: vec!["https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html".to_string()],
-            });
+            findings.push(
+                Finding::new(
+                    "insecure-form-action-http",
+                    "Insecure Form Action (Submits over Plaintext HTTP)",
+                    Severity::High,
+                    Category::InsecureForm,
+                    format!("Form action points to an unencrypted HTTP destination ('{}').", action),
+                    "Form data submitted by users (passwords, PII) will be transmitted in plaintext across the network.",
+                    "Ensure all form action URLs use HTTPS (or relative URLs).",
+                    "A02:2021-Cryptographic Failures",
+                )
+                .with_evidence(format!("<form action=\"{}\" method=\"{}\">", action, method))
+                .with_refs(&["https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html"]),
+            );
         }
 
         // Check if form with password field uses GET method
         if form.select(&PASSWORD_SELECTOR).next().is_some() && method == "get" {
-            findings.push(Finding {
-                id: "password-form-method-get".to_string(),
-                title: "Password Form Uses HTTP GET Method".to_string(),
-                severity: Severity::High,
-                category: Category::InsecureForm,
-                description: "A form containing a password field is configured to submit via HTTP GET.".to_string(),
-                impact: "Passwords will be appended to the query string, exposing them in browser history, proxy logs, web server access logs, and Referer headers.".to_string(),
-                remediation: "Change the form method to 'POST'.".to_string(),
-                evidence: Some(format!("<form method=\"get\" action=\"{}\">", action)),
-                owasp_category: "A02:2021-Cryptographic Failures".to_string(),
-                cve_id: None,
-                references: vec!["https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url".to_string()],
-            });
+            findings.push(
+                Finding::new(
+                    "password-form-method-get",
+                    "Password Form Uses HTTP GET Method",
+                    Severity::High,
+                    Category::InsecureForm,
+                    "A form containing a password field is configured to submit via HTTP GET.",
+                    "Passwords will be appended to the query string, exposing them in browser history, proxy logs, web server access logs, and Referer headers.",
+                    "Change the form method to 'POST'.",
+                    "A02:2021-Cryptographic Failures",
+                )
+                .with_evidence(format!("<form method=\"get\" action=\"{}\">", action))
+                .with_refs(&["https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url"]),
+            );
         }
     }
 
     // 2. Mixed Content on HTTPS
     if is_https {
-        let mut mixed_resources = Vec::new();
-        for el in document.select(&MIXED_SELECTOR) {
-            if let Some(src) = el.value().attr("src").or_else(|| el.value().attr("href")) {
-                mixed_resources.push(src.to_string());
-            }
-        }
+        let mixed_resources: Vec<String> = document
+            .select(&MIXED_SELECTOR)
+            .filter_map(|el| el.value().attr("src").or_else(|| el.value().attr("href")).map(String::from))
+            .collect();
 
         if !mixed_resources.is_empty() {
-            findings.push(Finding {
-                id: "mixed-active-content".to_string(),
-                title: "Mixed Active Content (HTTP Resources Loaded on HTTPS)".to_string(),
-                severity: Severity::High,
-                category: Category::TlsSsl,
-                description: format!("The HTTPS page loads {} active unencrypted HTTP resources (scripts/stylesheets/iframes).", mixed_resources.len()),
-                impact: "Man-in-the-Middle attackers can modify unencrypted HTTP scripts in transit to execute arbitrary JavaScript in victim browsers.".to_string(),
-                remediation: "Serve all external scripts, stylesheets, and iframes over HTTPS.".to_string(),
-                evidence: Some(mixed_resources.join("\n")),
-                owasp_category: "A02:2021-Cryptographic Failures".to_string(),
-                cve_id: None,
-                references: vec!["https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content".to_string()],
-            });
+            findings.push(
+                Finding::new(
+                    "mixed-active-content",
+                    "Mixed Active Content (HTTP Resources Loaded on HTTPS)",
+                    Severity::High,
+                    Category::TlsSsl,
+                    format!("The HTTPS page loads {} active unencrypted HTTP resources (scripts/stylesheets/iframes).", mixed_resources.len()),
+                    "Man-in-the-Middle attackers can modify unencrypted HTTP scripts in transit to execute arbitrary JavaScript in victim browsers.",
+                    "Serve all external scripts, stylesheets, and iframes over HTTPS.",
+                    "A02:2021-Cryptographic Failures",
+                )
+                .with_evidence(mixed_resources.join("\n"))
+                .with_refs(&["https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content"]),
+            );
         }
     }
 
@@ -132,19 +132,20 @@ pub fn analyze_leaks(html_content: &str, is_https: bool) -> Vec<Finding> {
                 "***".to_string()
             };
 
-            findings.push(Finding {
-                id: format!("exposed-secret-{}", pattern.name.to_lowercase().replace(' ', "-")),
-                title: format!("Potential Hardcoded Secret Exposed: {}", pattern.name),
-                severity: pattern.severity.clone(),
-                category: Category::InformationDisclosure,
-                description: format!("A pattern matching a {} was detected in the client-accessible source code.", pattern.name),
-                impact: "Exposed API credentials allow unauthorized attackers to access cloud infrastructure, APIs, or internal databases.".to_string(),
-                remediation: "Revoke the exposed key immediately and store credentials in secure server-side environment variables.".to_string(),
-                evidence: Some(format!("Detected Pattern: {}", masked)),
-                owasp_category: "A07:2021-Identification and Authentication Failures".to_string(),
-                cve_id: None,
-                references: vec!["https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html".to_string()],
-            });
+            findings.push(
+                Finding::new(
+                    format!("exposed-secret-{}", pattern.name.to_lowercase().replace(' ', "-")),
+                    format!("Potential Hardcoded Secret Exposed: {}", pattern.name),
+                    pattern.severity,
+                    Category::InformationDisclosure,
+                    format!("A pattern matching a {} was detected in the client-accessible source code.", pattern.name),
+                    "Exposed API credentials allow unauthorized attackers to access cloud infrastructure, APIs, or internal databases.",
+                    "Revoke the exposed key immediately and store credentials in secure server-side environment variables.",
+                    "A07:2021-Identification and Authentication Failures",
+                )
+                .with_evidence(format!("Detected Pattern: {}", masked))
+                .with_refs(&["https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html"]),
+            );
         }
     }
 
@@ -158,19 +159,20 @@ pub fn analyze_leaks(html_content: &str, is_https: bool) -> Vec<Finding> {
 
             for keyword in &sensitive_keywords {
                 if comment_lower.contains(keyword) {
-                    findings.push(Finding {
-                        id: format!("sensitive-comment-{}", keyword.replace(' ', "-")),
-                        title: format!("Sensitive Comment Discovered in HTML Source ('{}')", keyword),
-                        severity: Severity::Low,
-                        category: Category::InformationDisclosure,
-                        description: "HTML source comments contain developer notes or credentials that should not be visible to public users.".to_string(),
-                        impact: "Assists attackers in discovering internal logic, test endpoints, or forgotten credentials.".to_string(),
-                        remediation: "Strip HTML and code comments during your production build process.".to_string(),
-                        evidence: Some(format!("<!-- {} -->", if comment_text.len() > 120 { &comment_text[..120] } else { comment_text })),
-                        owasp_category: "A05:2021-Security Misconfiguration".to_string(),
-                        cve_id: None,
-                        references: vec!["https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Webpage_Comments_and_Metadata_for_Information_Leakage".to_string()],
-                    });
+                    findings.push(
+                        Finding::new(
+                            format!("sensitive-comment-{}", keyword.replace(' ', "-")),
+                            format!("Sensitive Comment Discovered in HTML Source ('{}')", keyword),
+                            Severity::Low,
+                            Category::InformationDisclosure,
+                            "HTML source comments contain developer notes or credentials that should not be visible to public users.",
+                            "Assists attackers in discovering internal logic, test endpoints, or forgotten credentials.",
+                            "Strip HTML and code comments during your production build process.",
+                            "A05:2021-Security Misconfiguration",
+                        )
+                        .with_evidence(format!("<!-- {} -->", if comment_text.len() > 120 { &comment_text[..120] } else { comment_text }))
+                        .with_refs(&["https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Webpage_Comments_and_Metadata_for_Information_Leakage"]),
+                    );
                     break;
                 }
             }
