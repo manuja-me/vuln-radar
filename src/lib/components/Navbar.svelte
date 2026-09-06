@@ -45,6 +45,7 @@
       } else {
         currentTheme = (document.documentElement.getAttribute("data-theme") as SwissTheme) || "swiss-dark";
       }
+      document.documentElement.classList.toggle("dark", currentTheme === "swiss-dark");
     } catch {}
   });
 
@@ -53,6 +54,7 @@
     try {
       localStorage.setItem("vulnradar_theme", currentTheme);
       document.documentElement.setAttribute("data-theme", currentTheme);
+      document.documentElement.classList.toggle("dark", currentTheme === "swiss-dark");
     } catch {}
   }
 
@@ -84,7 +86,7 @@
           <span
             class="px-1 py-0.2 text-[9px] font-mono font-bold bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none"
           >
-            v0.8.0
+            v0.9.0
           </span>
         </div>
         <span class="text-[9px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest mt-0.5 font-semibold">

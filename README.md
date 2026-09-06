@@ -147,6 +147,24 @@ vuln-radar/
 
 ## 📦 Release Changelog
 
+### 🇨🇭 [v0.9.0] — Swiss Light Ergonomics & Defensive Path Vulnerability Auditing
+- 🎨 **Swiss Light Theme Ergonomic Refinement**:
+  - Replaced harsh pitch-black wireframe borders with refined, subtle hairlines (`#e2e8f0` and `#cbd5e1`), eliminating grid fatigue.
+  - Upgraded canvas contrast to a soft studio canvas (`#f8fafc`) with elevated pure white card surfaces (`#ffffff`).
+  - Added `@custom-variant dark` in Tailwind v4 and synchronized `dark` class toggles across initial HTML load and navigation bar state.
+  - Polished scrollbar thumb contrast and text color hierarchies for pleasant readability.
+- 🛡️ **Defensive Path Vulnerability Auditing with Zero False Positives**:
+  - **Dynamic Soft-404 / SPA Baseline Calibration**: Automatically probes a randomized non-existent route to detect wildcard catch-all routers, Single Page Applications, and custom 200 OK error pages, discarding false positives that mirror the SPA fallback.
+  - **Comprehensive High-Impact Sensitive Path Auditing**:
+    - **Environment Files**: `/.env`, `/.env.local`, `/.env.production` (strictly validated against non-HTML format and credential directives like `DB_PASSWORD=`, `APP_KEY=`, `AWS_SECRET`).
+    - **Git Repositories**: `/.git/HEAD`, `/.git/config` (verified for `ref: refs/` or 40-char SHA-1 hash and Git config headers).
+    - **Database Dumps & Backups**: `/backup.sql`, `/dump.sql`, `/database.sqlite`, `/wp-config.php.bak`, `/docker-compose.yml`.
+    - **Diagnostics & Profilers**: `/phpinfo.php`, `/_profiler/` (Symfony), `/_debugbar/` (Laravel), `/telescope/` (Laravel), `/elmah.axd` (ASP.NET).
+    - **API Documentation**: `/swagger.json`, `/openapi.json`, `/v2/api-docs`.
+    - **Administrative Portals**: `/wp-admin/`, `/phpmyadmin/`.
+    - **Telemetry & Metrics**: `/metrics`, `/actuator/health`.
+  - **Threat Model & Exploitability Analysis**: Detailed `impact` and `remediation` fields for every vulnerability path, mapping exact attack vectors to OWASP categories and actionable server configuration rules.
+
 ### 🇨🇭 [v0.8.0] — Swiss Style UI Redesign & Dual-Theme Engine
 - 🎨 **Swiss Style Design System (International Typographic Style)**: Ground-up visual transformation prioritizing clarity, asymmetric modular grids, high information density, and sharp zero-radius geometry (`rounded-none`).
 - 🌗 **Dual-Theme Engine (Swiss Dark & Swiss Light)**:

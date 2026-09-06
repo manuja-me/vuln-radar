@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="swiss-dark"], [data-theme="swiss-dark"] *));
+
 @layer base {
   :root, [data-theme="swiss-dark"] {
     --font-sans: "Inter", "Helvetica Neue", Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,26 +33,26 @@
     --font-sans: "Inter", "Helvetica Neue", Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* Swiss Light (Poster / Print Mode) */
-    --color-canvas: #ffffff;
-    --color-surface: #f4f4f6;
-    --color-surface-hover: #e8e8ed;
-    --color-hairline: #18181b;
-    --color-hairline-strong: #09090b;
-    --color-text-headline: #09090b;
-    --color-text-body: #27272a;
-    --color-text-muted: #52525b;
+    /* Swiss Light (Refined Modern Workstation Mode) */
+    --color-canvas: #f8fafc;
+    --color-surface: #ffffff;
+    --color-surface-hover: #f1f5f9;
+    --color-hairline: #e2e8f0;
+    --color-hairline-strong: #cbd5e1;
+    --color-text-headline: #0f172a;
+    --color-text-body: #334155;
+    --color-text-muted: #64748b;
 
-    /* Swiss Signal Accents (Slightly deeper for light paper contrast) */
-    --color-signal-red: #dc2626;
+    /* Swiss Signal Accents (Calibrated for crisp readability and soft contrast) */
+    --color-signal-red: #e11d48;
     --color-signal-orange: #ea580c;
     --color-signal-amber: #d97706;
     --color-signal-blue: #2563eb;
-    --color-signal-green: #059669;
-    --color-signal-zinc: #52525b;
+    --color-signal-green: #16a34a;
+    --color-signal-zinc: #64748b;
 
-    --selection-bg: rgba(220, 38, 38, 0.2);
-    --selection-text: #09090b;
+    --selection-bg: rgba(225, 29, 72, 0.15);
+    --selection-text: #0f172a;
   }
 
   html, body {

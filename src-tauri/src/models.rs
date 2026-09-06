@@ -108,6 +108,10 @@ pub struct EndpointReport {
     pub sensitive_disallowed_paths: Vec<String>,
     pub security_txt_found: bool,
     pub security_txt_content: Option<String>,
+    #[serde(default)]
+    pub exposed_paths_count: usize,
+    #[serde(default)]
+    pub scanned_paths_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

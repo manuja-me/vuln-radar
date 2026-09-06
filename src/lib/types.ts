@@ -88,6 +88,8 @@ export interface EndpointReport {
   sensitive_disallowed_paths: string[];
   security_txt_found: boolean;
   security_txt_content?: string | null;
+  exposed_paths_count?: number;
+  scanned_paths_count?: number;
 }
 
 export interface ScanReport {
