@@ -77,11 +77,11 @@
   <!-- Window Drag / App Title & Status -->
   <div class="flex items-center gap-3 no-drag flex-shrink-0">
     <div class="flex items-center gap-2">
-      <div
-        class="w-7 h-7 rounded-none bg-[var(--color-surface)] border border-[var(--color-hairline)] border-l-2 border-l-[var(--color-signal-red)] flex items-center justify-center text-[var(--color-text-headline)]"
-      >
-        <ShieldCheck class="w-4 h-4 text-[var(--color-signal-red)]" />
-      </div>
+      <img
+        src="/favicon.png"
+        alt="VulnRadar"
+        class="w-7 h-7 rounded-none object-contain border border-[var(--color-hairline)] bg-[var(--color-surface)]"
+      />
       <div class="flex flex-col">
         <div class="flex items-center gap-1.5 leading-none">
           <span class="text-xs font-black tracking-tight text-[var(--color-text-headline)] font-mono uppercase">
@@ -90,7 +90,7 @@
           <span
             class="px-1 py-0.2 text-[9px] font-mono font-bold bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none"
           >
-            v0.9.0
+            v1.1.1
           </span>
         </div>
         <span class="text-[9px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest mt-0.5 font-semibold">
