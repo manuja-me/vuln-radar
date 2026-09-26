@@ -131,6 +131,15 @@ export interface PortScanReport {
   scan_duration_ms: number;
 }
 
+export interface DnsRecord {
+  name: string;
+  ttl: number;
+  class: string;
+  type: string;
+  data: string;
+  note?: string | null;
+}
+
 export interface DnsSecurityReport {
   domain: string;
   spf_record?: string | null;
@@ -139,6 +148,9 @@ export interface DnsSecurityReport {
   dmarc_valid: boolean;
   dmarc_policy?: string | null;
   dnssec_enabled: boolean;
+  nameservers?: string[];
+  latency_ms?: number | null;
+  records?: DnsRecord[];
 }
 
 export interface EndpointReport {

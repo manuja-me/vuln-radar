@@ -81,7 +81,11 @@ impl PathProbeDef {
     }
 }
 
-pub async fn audit_endpoints(client: &Client, base_url: &Url) -> (EndpointReport, Vec<Finding>) {
+pub async fn audit_endpoints(
+    client: &Client,
+    base_url: &Url,
+    custom_paths: Option<&[String]>,
+) -> (EndpointReport, Vec<Finding>) {
     let mut report = EndpointReport::default();
     let mut findings = Vec::new();
 
@@ -214,6 +218,45 @@ pub async fn audit_endpoints(client: &Client, base_url: &Url) -> (EndpointReport
     let path_findings = probe_vulnerable_paths(client, base_url, &baseline, probes).await;
     report.exposed_paths_count = path_findings.len();
     findings.extend(path_findings);
+
+    // 3. Audit User-Configured Custom Wordlist Paths
+    if let Some(custom) = custom_paths {
+        for cp in custom {
+            let clean = cp.trim();
+            if clean.is_empty() || clean.starts_with('#') {
+                continue;
+            }
+            let norm_path = format!("/{}", clean.trim_start_matches('/'));
+            if let Ok(probe_url) = base_url.join(&norm_path) {
+                report.scanned_paths_count += 1;
+                if let Ok(resp) = client.get(probe_url.as_str()).timeout(Duration::from_secs(4)).send().await {
+                    let status = resp.status().as_u16();
+                    if status != 404 && status != 0 {
+                        let ct = resp.headers().get("content-type").and_then(|h| h.to_str().ok()).unwrap_or("").to_string();
+                        let final_url = resp.url().clone();
+                        let body = resp.text().await.unwrap_or_default();
+                        if !matches_baseline(&baseline, &ct, &body, &final_url, base_url) {
+                            report.exposed_paths_count += 1;
+                            let sev = if status == 200 { Severity::Medium } else { Severity::Low };
+                            findings.push(Finding {
+                                id: format!("custom_path_{}", clean.replace('/', "_")),
+                                title: format!("Discovered Exposed Path: {}", norm_path),
+                                severity: sev,
+                                category: Category::EndpointExposure,
+                                description: format!("Custom wordlist path probe '{}' returned HTTP {} status with {} bytes payload.", norm_path, status, body.len()),
+                                impact: "Unrestricted path disclosure may expose internal resources, interfaces, or sensitive files.".to_string(),
+                                remediation: "Ensure the path requires authentication, returns 404/403 for unauthorized users, or remove obsolete files.".to_string(),
+                                evidence: Some(format!("HTTP {} {}\nContent-Type: {}\nLength: {} bytes", status, probe_url, ct, body.len())),
+                                owasp_category: "A01:2021-Broken Access Control".to_string(),
+                                cve_id: None,
+                                references: vec!["https://owasp.org/Top10/A01_2021-Broken_Access_Control/".to_string()],
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     (report, findings)
 }

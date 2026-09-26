@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface-lowest: var(--color-surface-lowest);
+  --color-surface-low: var(--color-surface-low);
+  --color-surface: var(--color-surface);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-low: var(--color-surface-low);
+  --color-surface-container-lowest: var(--color-surface-lowest);
+  --color-surface-container-high: var(--color-surface-high);
+  --color-surface-container-highest: var(--color-surface-highest);
+  --color-surface-bright: var(--color-surface-bright);
+  --color-on-surface: var(--color-text-headline);
+  --color-on-surface-variant: var(--color-text-body);
+  --color-outline: var(--color-text-muted);
+  --color-outline-variant: var(--color-hairline);
+  --color-primary: var(--color-signal-red);
+  --color-primary-container: #ff5451;
+  --color-on-primary: #ffffff;
+  --color-secondary: var(--color-signal-blue);
+  --color-secondary-container: #03b5d3;
+  --color-tertiary: var(--color-signal-green);
+  --color-tertiary-container: #00a572;
+  --color-error: var(--color-signal-red);
+  --color-error-container: #93000a;
+  --spacing-space-xs: 0.125rem;
+  --spacing-space-sm: 0.25rem;
+  --spacing-space-md: 0.5rem;
+  --spacing-space-lg: 0.75rem;
+  --spacing-space-xl: 1rem;
+  --spacing-margin: 1rem;
+  --font-code-inline: var(--font-mono);
+  --font-label-sm: var(--font-mono);
+  --font-headline-sm: var(--font-sans);
+  --font-headline-lg: var(--font-sans);
+}
+
 @custom-variant dark (&:where([data-theme="swiss-dark"], [data-theme="swiss-dark"] *));
 
 @layer base {
@@ -10,8 +45,14 @@
     /* Swiss Dark (Workstation Mode) */
     color-scheme: dark;
     --color-canvas: #09090b;
+    --color-surface-lowest: #0e0e10;
+    --color-surface-low: #121215;
     --color-surface: #121215;
+    --color-surface-container: #18181b;
     --color-surface-hover: #1c1d22;
+    --color-surface-high: #202024;
+    --color-surface-highest: #27272a;
+    --color-surface-bright: #39393b;
     --color-hairline: #27272a;
     --color-hairline-strong: #3f3f46;
     --color-text-headline: #ffffff;
@@ -22,8 +63,9 @@
     --color-signal-red: #ef4444;
     --color-signal-orange: #f97316;
     --color-signal-amber: #f59e0b;
-    --color-signal-blue: #3b82f6;
+    --color-signal-blue: #06b6d4;
     --color-signal-green: #10b981;
+    --color-signal-emerald: #10b981;
     --color-signal-zinc: #a1a1aa;
 
     --selection-bg: rgba(239, 68, 68, 0.25);
@@ -37,8 +79,14 @@
     /* Swiss Light (Refined Modern Workstation Mode) */
     color-scheme: light;
     --color-canvas: #f8fafc;
+    --color-surface-lowest: #f1f5f9;
+    --color-surface-low: #ffffff;
     --color-surface: #ffffff;
+    --color-surface-container: #f8fafc;
     --color-surface-hover: #f1f5f9;
+    --color-surface-high: #e2e8f0;
+    --color-surface-highest: #cbd5e1;
+    --color-surface-bright: #e2e8f0;
     --color-hairline: #e2e8f0;
     --color-hairline-strong: #cbd5e1;
     --color-text-headline: #0f172a;
@@ -49,8 +97,9 @@
     --color-signal-red: #e11d48;
     --color-signal-orange: #ea580c;
     --color-signal-amber: #d97706;
-    --color-signal-blue: #2563eb;
+    --color-signal-blue: #0284c7;
     --color-signal-green: #16a34a;
+    --color-signal-emerald: #16a34a;
     --color-signal-zinc: #64748b;
 
     --selection-bg: rgba(225, 29, 72, 0.15);
@@ -166,3 +215,84 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* Tactical Slider Range Controls - Vertical Bar Thumb (|) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--color-surface-container-high, #333333);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+/* WebKit / Chromium / Blink / Safari */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3.5px;
+  height: 14px;
+  background-color: var(--color-on-surface, #e2e8f0);
+  border-radius: 2px;
+  border: none;
+  margin-top: -5px;
+  cursor: ew-resize;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background-color: var(--color-secondary, #00e5ff);
+  transform: scaleY(1.15);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  background-color: var(--color-secondary, #00e5ff);
+  transform: scaleY(1.25);
+}
+
+/* Firefox / Gecko */
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--color-surface-container-high, #333333);
+  border-radius: 2px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 3.5px;
+  height: 14px;
+  background-color: var(--color-on-surface, #e2e8f0);
+  border-radius: 2px;
+  border: none;
+  cursor: ew-resize;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  background-color: var(--color-secondary, #00e5ff);
+  transform: scaleY(1.15);
+}
+
+input[type="range"]::-moz-range-thumb:active {
+  background-color: var(--color-secondary, #00e5ff);
+  transform: scaleY(1.25);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 4px;
+  background-color: var(--color-secondary, #00e5ff);
+  border-radius: 2px;
+}
+

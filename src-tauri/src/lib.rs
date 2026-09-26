@@ -38,7 +38,23 @@ async fn analyze_paths(
         .build()
         .map_err(|e| e.to_string())?;
 
-    let base_url = crate::server::sanitize_url(&target_url)?;
+    let trimmed = target_url.trim();
+    if trimmed.is_empty() {
+        return Err("Target URL cannot be empty.".to_string());
+    }
+    let had_explicit_scheme = trimmed.starts_with("http://") || trimmed.starts_with("https://");
+    let candidate_url = if !had_explicit_scheme {
+        let lower = trimmed.to_lowercase();
+        let scheme = match lower.starts_with("localhost") || lower.starts_with("127.0.0.1") || lower.contains(':') {
+            true => "http",
+            false => "https",
+        };
+        format!("{}://{}", scheme, trimmed)
+    } else {
+        trimmed.to_string()
+    };
+
+    let base_url = crate::server::sanitize_url(&candidate_url)?;
     let sanitized_paths = crate::server::sanitize_word_list(&paths)?;
 
     let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency_limit));
@@ -204,8 +220,42 @@ async fn scan_ports(
     custom_ports: Option<String>,
     timeout_ms: Option<u64>,
 ) -> Result<models::PortScanReport, String> {
-    let prof = profile.unwrap_or_else(|| "top20".to_string());
+    let prof = match profile {
+        Some(ref p) if !p.is_empty() => p.clone(),
+        _ => if custom_ports.is_some() { "custom".to_string() } else { "top20".to_string() },
+    };
     let (report, _) = scanner::ports::audit_ports(&host, &prof, custom_ports.as_deref(), timeout_ms).await;
+    if report.ip_address.is_none() && report.scanned_ports_count == 0 {
+        return Err(format!("Could not resolve network host '{}'. Verify the domain/IP and active connectivity.", host));
+    }
+    Ok(report)
+}
+
+#[tauri::command]
+async fn query_dns(domain: String) -> Result<models::DnsSecurityReport, String> {
+    let clean = domain
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .split('/')
+        .next()
+        .unwrap_or(&domain)
+        .split(':')
+        .next()
+        .unwrap_or(&domain)
+        .to_string();
+
+    if clean.is_empty() {
+        return Err("Target domain cannot be empty.".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .danger_accept_invalid_certs(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let (report, _) = scanner::dns::audit_dns_and_email_security(&client, &clean).await;
     Ok(report)
 }
 
@@ -445,15 +495,14 @@ pub fn run() {
                                 // If previous score was known and score decreased or critical issues found, emit alert
                                 let previous_score = target.last_score.unwrap_or(report.security_score);
                                 if report.security_score < previous_score || report.critical_count > 0 {
-                                    let _ = app_handle.emit(
-                                        "monitor_alert",
-                                        serde_json::json!({
-                                            "target_url": target.target_url,
-                                            "new_score": report.security_score,
-                                            "previous_score": previous_score,
-                                            "critical_count": report.critical_count,
-                                        }),
-                                    );
+                                    let alert_payload = serde_json::json!({
+                                        "target_url": target.target_url,
+                                        "new_score": report.security_score,
+                                        "previous_score": previous_score,
+                                        "critical_count": report.critical_count,
+                                    });
+                                    let _ = app_handle.emit("monitor_alert", &alert_payload);
+                                    let _ = app_handle.emit("watchdog_alert", &alert_payload);
                                 }
                             }
                         }
@@ -477,6 +526,7 @@ pub fn run() {
             scan_target,
             scan_batch,
             scan_ports,
+            query_dns,
             get_history,
             get_scan_report,
             delete_scan,

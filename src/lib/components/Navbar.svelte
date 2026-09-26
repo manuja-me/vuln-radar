@@ -1,45 +1,80 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
-    ShieldCheck,
-    Search,
-    Loader2,
-    History,
-    FileDown,
     Settings,
-    RotateCw,
+    FileDown,
     Sun,
     Moon,
-    ListFilter,
-    Globe,
+    HelpCircle,
   } from "lucide-svelte";
   import type { SwissTheme } from "$lib/types";
 
   let {
-    targetUrl = $bindable(""),
     isScanning = false,
     hasReport = false,
     hasCustomOptions = false,
     activeMonitorsCount = 0,
-    onScan,
-    onOpenHistory,
     onOpenSettings,
     onOpenExport,
-    onOpenPaths,
+    onOpenShortcuts,
   }: {
-    targetUrl: string;
     isScanning: boolean;
     hasReport: boolean;
     hasCustomOptions?: boolean;
     activeMonitorsCount?: number;
-    onScan: () => void;
-    onOpenHistory: () => void;
     onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data") => void;
     onOpenExport: () => void;
-    onOpenPaths?: () => void;
+    onOpenShortcuts?: () => void;
   } = $props();
 
   let currentTheme = $state<SwissTheme>("swiss-dark");
+  let isMaximized = $state(false);
+
+  async function getAppWindow() {
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      return getCurrentWindow();
+    } catch {
+      return null;
+    }
+  }
+
+  async function checkMaximized() {
+    const win = await getAppWindow();
+    if (win) {
+      try {
+        isMaximized = await win.isMaximized();
+      } catch {}
+    }
+  }
+
+  async function minimizeWindow() {
+    const win = await getAppWindow();
+    if (win) {
+      try {
+        await win.minimize();
+      } catch {}
+    }
+  }
+
+  async function toggleMaximizeWindow() {
+    const win = await getAppWindow();
+    if (win) {
+      try {
+        await win.toggleMaximize();
+        await checkMaximized();
+      } catch {}
+    }
+  }
+
+  async function closeWindow() {
+    const win = await getAppWindow();
+    if (win) {
+      try {
+        await win.close();
+      } catch {}
+    }
+  }
 
   onMount(() => {
     try {
@@ -51,6 +86,22 @@
       }
       document.documentElement.classList.toggle("dark", currentTheme === "swiss-dark");
     } catch {}
+
+    checkMaximized();
+    let unlistenResize: (() => void) | null = null;
+    getAppWindow().then((win) => {
+      if (win) {
+        win.onResized(() => {
+          checkMaximized();
+        }).then((unsub) => {
+          unlistenResize = unsub;
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
+    return () => {
+      if (unlistenResize) unlistenResize();
+    };
   });
 
   function toggleTheme() {
@@ -61,181 +112,129 @@
       document.documentElement.classList.toggle("dark", currentTheme === "swiss-dark");
     } catch {}
   }
-
-  function handleSubmit(e: Event) {
-    e.preventDefault();
-    if (!targetUrl.trim() || isScanning) return;
-    onScan();
-  }
 </script>
 
-<!-- Swiss Window Toolbar & Integrated Command Bar -->
+<!-- Clean Standard Tactical Desktop Window Titlebar -->
 <header
   data-tauri-drag-region
-  class="bg-[var(--color-surface)] border-b border-[var(--color-hairline)] sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between gap-4 titlebar-drag desktop-select-none print:hidden flex-shrink-0 transition-colors"
+  class="h-10 pl-3 pr-0 bg-surface-container border-b border-surface-container-high sticky top-0 z-40 flex items-center justify-between titlebar-drag desktop-select-none print:hidden flex-shrink-0 transition-colors"
 >
-  <!-- Window Drag / App Title & Status -->
-  <div class="flex items-center gap-3 no-drag flex-shrink-0">
-    <div class="flex items-center gap-2">
-      <img
-        src="/favicon.png"
-        alt="VulnRadar"
-        class="w-7 h-7 rounded-none object-contain border border-[var(--color-hairline)] bg-[var(--color-surface)]"
-      />
-      <div class="flex flex-col">
-        <div class="flex items-center gap-1.5 leading-none">
-          <span class="text-xs font-black tracking-tight text-[var(--color-text-headline)] font-mono uppercase">
-            VULNRADAR
-          </span>
-          <span
-            class="px-1 py-0.2 text-[9px] font-mono font-bold bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)] rounded-none"
-          >
-            v1.1.1
-          </span>
-        </div>
-        <span class="text-[9px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest mt-0.5 font-semibold">
-          SECURITY WORKSTATION
-        </span>
-      </div>
-    </div>
+  <!-- Left: App Brand & Version -->
+  <div class="flex items-center gap-2 no-drag">
+    <img src="/favicon.png" alt="VulnRadar" class="h-5 w-5 object-contain" />
+    <span class="font-mono text-xs font-black uppercase text-on-surface tracking-wider">VulnRadar</span>
+    <span class="font-mono text-[10px] text-outline">v1.2.0</span>
   </div>
 
-  <!-- Central Command Bar / Target URL Input -->
-  <form
-    onsubmit={handleSubmit}
-    class="w-full max-w-xl flex items-center gap-1.5 no-drag"
-  >
-    <div class="relative flex-1 group">
-      <div
-        class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-[var(--color-text-muted)] group-focus-within:text-[var(--color-text-headline)] transition-colors"
+  <!-- Center: Engine Status Pulse -->
+  <div class="hidden sm:flex items-center gap-1.5 text-[11px] font-mono text-outline">
+    <span class="w-1.5 h-1.5 rounded-full {isScanning ? 'bg-primary animate-ping' : 'bg-tertiary'}"></span>
+    <span class="{isScanning ? 'text-primary font-bold' : 'text-on-surface-variant'}">
+      {isScanning ? 'Scanning...' : 'Ready'}
+    </span>
+  </div>
+
+  <!-- Right: Standard Control Actions & Windows Caption Buttons -->
+  <div class="flex items-center no-drag">
+    <!-- Utility actions -->
+    <div class="flex items-center gap-1.5 pr-2">
+      <!-- Shortcuts Help Button -->
+      {#if onOpenShortcuts}
+        <button
+          type="button"
+          onclick={onOpenShortcuts}
+          class="w-7 h-7 bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-outline hover:text-on-surface rounded flex items-center justify-center cursor-pointer transition-colors"
+          title="Keyboard Shortcuts (?)"
+        >
+          <HelpCircle class="w-3.5 h-3.5" />
+        </button>
+      {/if}
+
+      <!-- Theme Switcher Icon -->
+      <button
+        type="button"
+        onclick={toggleTheme}
+        class="w-7 h-7 bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-outline hover:text-on-surface rounded flex items-center justify-center cursor-pointer transition-colors"
+        title="Toggle Dark / Light Theme"
       >
-        <Search class="w-3.5 h-3.5" />
-      </div>
-      <input
-        type="text"
-        bind:value={targetUrl}
-        placeholder="TARGET URL (E.G. EXAMPLE.COM OR HTTP://LOCALHOST:8000)..."
-        disabled={isScanning}
-        class="w-full pl-8 pr-12 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] font-mono uppercase transition-all disabled:opacity-60 focus:outline-none"
-      />
-      <div
-        class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none gap-1"
+        {#if currentTheme === "swiss-dark"}
+          <Moon class="w-3.5 h-3.5 text-secondary" />
+        {:else}
+          <Sun class="w-3.5 h-3.5 text-amber-500" />
+        {/if}
+      </button>
+
+      <!-- Export Report Button (Visible when report exists) -->
+      {#if hasReport}
+        <button
+          type="button"
+          onclick={onOpenExport}
+          class="h-7 px-2.5 bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-outline hover:text-on-surface text-[10px] font-mono font-bold uppercase rounded cursor-pointer flex items-center gap-1.5 transition-colors"
+          title="Export Reports"
+        >
+          <FileDown class="w-3.5 h-3.5 text-secondary" />
+          <span>EXPORT</span>
+        </button>
+      {/if}
+
+      <!-- Settings Icon Button -->
+      <button
+        type="button"
+        onclick={() => onOpenSettings()}
+        class="w-7 h-7 bg-surface-container-lowest hover:bg-surface-container border border-surface-container-high text-outline hover:text-on-surface rounded flex items-center justify-center cursor-pointer transition-colors relative"
+        title="Settings & Audit Engine (⌘,)"
       >
-        <kbd class="px-1.5 py-0.2 text-[9px] font-mono bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none text-[var(--color-text-muted)]">
-          ⌘K
-        </kbd>
-      </div>
+        <Settings class="w-3.5 h-3.5" />
+        {#if hasCustomOptions || activeMonitorsCount > 0}
+          <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full"></span>
+        {/if}
+      </button>
     </div>
 
-    <!-- Audit Action Button -->
-    <button
-      type="submit"
-      disabled={!targetUrl.trim() || isScanning}
-      class="px-3.5 py-1.5 bg-[var(--color-signal-red)] hover:opacity-90 disabled:opacity-40 text-white font-bold font-mono text-xs rounded-none flex items-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed flex-shrink-0 uppercase tracking-wider"
-    >
-      {#if isScanning}
-        <Loader2 class="w-3.5 h-3.5 animate-spin" />
-        <span>SCANNING...</span>
-      {:else}
-        <span>AUDIT</span>
-        <span class="text-[10px] font-mono opacity-80">⏎</span>
-      {/if}
-    </button>
-  </form>
-
-  <!-- Desktop Quick Utility Tools -->
-  <div class="flex items-center gap-1.5 no-drag flex-shrink-0">
-    <!-- Re-scan current target -->
-    {#if hasReport && !isScanning}
+    <!-- Windows Style Window Caption Controls -->
+    <div class="flex items-center h-10 border-l border-surface-container-high">
       <button
         type="button"
-        onclick={onScan}
-        class="p-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono transition-colors cursor-pointer"
-        title="Re-run Security Audit (Ctrl+R)"
+        onclick={minimizeWindow}
+        class="w-11 h-10 flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+        title="Minimize"
+        aria-label="Minimize Window"
       >
-        <RotateCw class="w-3.5 h-3.5" />
+        <svg class="w-3 h-3" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1" fill="none">
+          <path d="M1 5h8" />
+        </svg>
       </button>
-    {/if}
 
-    <!-- Path Discovery & Analysis Workspace -->
-    {#if onOpenPaths}
       <button
         type="button"
-        onclick={onOpenPaths}
-        class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-        title="Path Analysis & Wordlist Discovery (Target URL & Wordlist Upload)"
+        onclick={toggleMaximizeWindow}
+        class="w-11 h-10 flex items-center justify-center text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+        title={isMaximized ? "Restore" : "Maximize"}
+        aria-label={isMaximized ? "Restore Window" : "Maximize Window"}
       >
-        <Globe class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
-        <span class="hidden md:inline">PATH RADAR</span>
+        {#if isMaximized}
+          <svg class="w-3 h-3" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1" fill="none">
+            <rect x="2.5" y="1.5" width="6" height="6" />
+            <path d="M1.5 3.5v5h5" />
+          </svg>
+        {:else}
+          <svg class="w-3 h-3" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1" fill="none">
+            <rect x="1.5" y="1.5" width="7" height="7" />
+          </svg>
+        {/if}
       </button>
-    {/if}
 
-    <!-- Wordlists Discovery Hub -->
-    <button
-      type="button"
-      onclick={() => onOpenSettings("wordlists")}
-      class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-      title="Wordlist Selection & Path Discovery (Configure paths, directories, and files)"
-    >
-      <ListFilter class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
-      <span class="hidden md:inline">WORDLISTS</span>
-    </button>
-
-    <!-- Scan History Drawer -->
-    <button
-      type="button"
-      onclick={onOpenHistory}
-      class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-      title="Open Local SQLite History (Ctrl+H)"
-    >
-      <History class="w-3.5 h-3.5" />
-      <span class="hidden sm:inline">HISTORY</span>
-    </button>
-
-    <!-- Export & Share -->
-    {#if hasReport}
       <button
         type="button"
-        onclick={onOpenExport}
-        class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-        title="Export Report & Print PDF (Ctrl+E)"
+        onclick={closeWindow}
+        class="w-11 h-10 flex items-center justify-center text-outline hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
+        title="Close"
+        aria-label="Close Window"
       >
-        <FileDown class="w-3.5 h-3.5" />
-        <span class="hidden sm:inline">EXPORT</span>
+        <svg class="w-3 h-3" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.1" fill="none">
+          <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
+        </svg>
       </button>
-    {/if}
-
-    <!-- Dual-Theme Toggle (Swiss Dark ↔ Swiss Light) -->
-    <button
-      type="button"
-      onclick={toggleTheme}
-      class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
-      title="Toggle Swiss Theme Mode (Dark / Light)"
-    >
-      {#if currentTheme === "swiss-dark"}
-        <Sun class="w-3.5 h-3.5 text-amber-400" />
-        <span class="hidden sm:inline">LIGHT</span>
-      {:else}
-        <Moon class="w-3.5 h-3.5 text-zinc-600" />
-        <span class="hidden sm:inline">DARK</span>
-      {/if}
-    </button>
-
-    <!-- Unified Settings Hub -->
-    <button
-      type="button"
-      onclick={() => onOpenSettings()}
-      class="p-1.5 sm:px-2.5 sm:py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer relative"
-      title="Settings & Preferences (⌘,)"
-    >
-      <Settings class="w-3.5 h-3.5" />
-      <span class="hidden sm:inline">SETTINGS</span>
-      {#if hasCustomOptions || activeMonitorsCount > 0}
-        <span
-          class="absolute top-1 right-1 w-1.5 h-1.5 bg-[var(--color-signal-red)] rounded-none"
-          title="Active customizations or scheduled monitors"
-        ></span>
-      {/if}
-    </button>
+    </div>
   </div>
 </header>

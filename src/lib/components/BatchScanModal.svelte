@@ -29,6 +29,7 @@
     "https://example.com\nhttps://httpbin.org\nhttp://testphp.vulnweb.com"
   );
   let isRunning = $state(false);
+  let batchError = $state<string | null>(null);
   let batchItems = $state<BatchScanItem[]>([]);
   let completedCount = $derived(
     batchItems.filter((i) => i.status === "completed" || i.status === "failed")
@@ -52,6 +53,7 @@
     if (lines.length === 0) return;
 
     isRunning = true;
+    batchError = null;
     batchItems = lines.map((url) => ({
       url,
       status: "scanning",
@@ -67,6 +69,12 @@
       batchItems = results;
     } catch (e: any) {
       console.error("Batch scan error:", e);
+      batchError = e?.message || String(e);
+      batchItems = batchItems.map((item) => ({
+        ...item,
+        status: "failed",
+        error: batchError,
+      }));
     } finally {
       isRunning = false;
     }
@@ -187,6 +195,13 @@
                 style="width: {batchItems.length > 0 ? (completedCount / batchItems.length) * 100 : 0}%"
               ></div>
             </div>
+
+            {#if batchError}
+              <div class="p-3 bg-red-950/40 border border-red-800/60 text-red-300 text-xs font-mono flex items-center gap-2">
+                <AlertOctagon class="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{batchError}</span>
+              </div>
+            {/if}
 
             <!-- Results List -->
             <div class="space-y-2 max-h-80 overflow-y-auto">

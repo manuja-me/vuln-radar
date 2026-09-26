@@ -9,65 +9,53 @@
     MonitorTarget,
   } from "$lib/types";
   import Navbar from "$lib/components/Navbar.svelte";
-  import ScoreGauge from "$lib/components/ScoreGauge.svelte";
-  import SeverityBadge from "$lib/components/SeverityBadge.svelte";
+  import Sidebar from "$lib/components/Sidebar.svelte";
   import FindingCard from "$lib/components/FindingCard.svelte";
+  import PortMatrixWorkspace from "$lib/components/PortMatrixWorkspace.svelte";
+  import DnsPostureWorkspace from "$lib/components/DnsPostureWorkspace.svelte";
+  import PathAnalysisWorkspace from "$lib/components/PathAnalysisWorkspace.svelte";
   import ExportModal from "$lib/components/ExportModal.svelte";
   import ExecutiveReportModal from "$lib/components/ExecutiveReportModal.svelte";
   import BatchScanModal from "$lib/components/BatchScanModal.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
-  import PathAnalysisWorkspace from "$lib/components/PathAnalysisWorkspace.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
-    ShieldCheck,
     AlertOctagon,
     AlertTriangle,
-    Info,
     Search,
     Globe,
-    Cpu,
     ExternalLink,
     Filter,
-    Clock,
-    Server,
-    Sparkles,
     CheckCircle2,
-    Mail,
-    FileCode,
-    Layers,
     Activity,
     Bell,
-    Sliders,
     Loader2,
     X,
-    Keyboard,
     Terminal,
-    ArrowUpDown,
     Check,
     TrendingUp,
     TrendingDown,
     Zap,
-    Radio,
     HardDrive,
     ShieldAlert,
-    ChevronRight,
-    RotateCw,
-    Database,
+    ShieldCheck,
     FileText,
-    ListFilter,
+    FileDown,
+    Database,
+    Sliders,
   } from "lucide-svelte";
   import { WORDLIST_PRESETS } from "$lib/wordlists";
 
-  let targetUrl = $state("");
+  let targetUrl = $state("https://example.com");
   let isScanning = $state(false);
   let scanError = $state<string | null>(null);
   let report = $state<ScanReport | null>(null);
   let history = $state<ScanSummary[]>([]);
   let monitors = $state<MonitorTarget[]>([]);
 
-  // Scan Configuration - Default port scan enabled with lowest setting (Top 20)
+  // Scan Configuration - Default port scan enabled with Top 20
   let scanOptions = $state<ScanOptions>({
     timeout_seconds: 15,
     include_subdomains: true,
@@ -77,7 +65,7 @@
   });
 
   // Active Workspace Navigation View
-  let currentWorkspace = $state<"audit" | "ports" | "dns" | "recon" | "paths" | "batch" | "watchdog" | "history" | "settings">("audit");
+  let currentWorkspace = $state<"audit" | "ports" | "dns" | "paths" | "batch" | "watchdog" | "history" | "settings">("audit");
 
   // Modal States
   let isSettingsOpen = $state(false);
@@ -121,12 +109,6 @@
   let copiedCurl = $state(false);
   let copiedUrl = $state(false);
 
-  // Open Ports Filter State
-  let portSearchQuery = $state("");
-  let portRiskFilter = $state<"all" | "risky" | "standard">("all");
-  let copiedPort = $state<number | null>(null);
-  let subdomainSearch = $state("");
-
   const hasCustomOptions = $derived(
     !!(
       (scanOptions.custom_headers && scanOptions.custom_headers.length > 0) ||
@@ -155,17 +137,13 @@
   async function loadHistory() {
     try {
       history = await invokeTauri<ScanSummary[]>("get_history");
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   async function loadMonitors() {
     try {
       monitors = await invokeTauri<MonitorTarget[]>("get_monitors");
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -179,15 +157,22 @@
       return;
     }
 
+    if (e.key === "/" && (document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA")) {
+      e.preventDefault();
+      const input = document.getElementById("finding-search") as HTMLInputElement | null;
+      input?.focus();
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key === ",") {
       e.preventDefault();
-      currentWorkspace = "settings";
+      isSettingsOpen = true;
       return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
-      const input = document.querySelector('header input[type="text"]') as HTMLInputElement | null;
+      const input = document.getElementById("target-url-input") as HTMLInputElement | null;
       if (input) {
         input.focus();
         input.select();
@@ -197,7 +182,7 @@
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
       e.preventDefault();
-      currentWorkspace = "batch";
+      isBatchOpen = true;
       return;
     }
 
@@ -213,31 +198,31 @@
       return;
     }
 
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
-      e.preventDefault();
-      currentWorkspace = "settings";
-      return;
-    }
-
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
-      if (report) {
-        e.preventDefault();
-        openExportModal();
-      }
+      e.preventDefault();
+      openExportModal();
       return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") {
+      e.preventDefault();
       if (report) {
-        e.preventDefault();
-        isExecutiveReportOpen = !isExecutiveReportOpen;
+        isExecutiveReportOpen = true;
       }
       return;
     }
 
-    if (e.key === "?" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+      e.preventDefault();
+      settingsTab = "params";
+      isSettingsOpen = true;
+      return;
+    }
+
+    if (e.key === "?" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
       e.preventDefault();
       isShortcutsOpen = true;
+      return;
     }
   }
 
@@ -247,26 +232,66 @@
 
     window.addEventListener("keydown", handleKeydown);
 
-    let unlisten: (() => void) | undefined;
-    (async () => {
-      try {
-        const { listen } = await import("@tauri-apps/api/event");
-        unlisten = await listen<any>("monitor_alert", (event) => {
+    let unlistenWatchdog: (() => void) | undefined;
+    let unlistenMonitor: (() => void) | undefined;
+    import("@tauri-apps/api/event")
+      .then(({ listen }) => {
+        const onAlert = (event: { payload: { target_url: string; new_score: number; previous_score: number; critical_count: number } }) => {
           watchdogAlert = event.payload;
           loadMonitors();
           loadHistory();
-          showToast(`Watchdog Alert for ${event.payload?.target_url || "monitored target"}`, "error");
+        };
+        listen<{
+          target_url: string;
+          new_score: number;
+          previous_score: number;
+          critical_count: number;
+        }>("watchdog_alert", onAlert).then((unsub) => {
+          unlistenWatchdog = unsub;
         });
-      } catch {
-        // ignore in non-tauri dev
-      }
-    })();
+        listen<{
+          target_url: string;
+          new_score: number;
+          previous_score: number;
+          critical_count: number;
+        }>("monitor_alert", onAlert).then((unsub) => {
+          unlistenMonitor = unsub;
+        });
+      })
+      .catch(() => {});
 
     return () => {
       window.removeEventListener("keydown", handleKeydown);
-      if (unlisten) unlisten();
+      if (unlistenWatchdog) unlistenWatchdog();
+      if (unlistenMonitor) unlistenMonitor();
     };
   });
+
+  function ensureReport(url?: string): ScanReport {
+    if (!report) {
+      report = {
+        id: "temp-" + Date.now(),
+        target_url: url || targetUrl,
+        scanned_at: new Date().toISOString(),
+        status_code: 200,
+        response_time_ms: 0,
+        security_score: 100,
+        total_findings: 0,
+        critical_count: 0,
+        high_count: 0,
+        medium_count: 0,
+        low_count: 0,
+        info_count: 0,
+        findings: [],
+        technologies_detected: [],
+        response_headers: [],
+        port_report: null,
+        dns_security: null,
+        endpoint_report: null,
+      };
+    }
+    return report;
+  }
 
   async function handleScan(urlToScan?: string) {
     const url = (urlToScan || targetUrl).trim();
@@ -305,7 +330,7 @@
         currentWorkspace = "audit";
         showToast(`Loaded audit report for ${res.target_url}`, "info");
       }
-    } catch (e: any) {
+    } catch {
       showToast("Failed to load historical scan report", "error");
     }
   }
@@ -375,6 +400,17 @@
     isExportOpen = true;
   }
 
+  async function copyCurlCommand() {
+    const url = report?.target_url || targetUrl;
+    try {
+      const curlCmd = `curl -i -s -k -L -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) VulnRadar/2.0" "${url}"`;
+      await navigator.clipboard.writeText(curlCmd);
+      copiedCurl = true;
+      showToast("cURL probe copied to clipboard", "success");
+      setTimeout(() => (copiedCurl = false), 2000);
+    } catch {}
+  }
+
   const previousScan = $derived.by(() => {
     if (!report || history.length === 0) return null;
     const cleanCurrent = report.target_url.replace(/\/$/, "").toLowerCase();
@@ -419,87 +455,28 @@
     } else if (sortFindingsBy === "category") {
       list.sort((a, b) => a.category.localeCompare(b.category));
     }
-
     return list;
   });
 
-  let showAllFindings = $state(false);
-  const displayedFindings = $derived.by(() => {
-    if (showAllFindings || filteredFindings.length <= 35) {
-      return filteredFindings;
-    }
-    return filteredFindings.slice(0, 35);
+  // Posture Score & Metrics derivation
+  const postureScore = $derived(report ? report.security_score : null);
+
+  const scoreGrade = $derived.by(() => {
+    if (postureScore === null) return "";
+    if (postureScore >= 95) return "A+";
+    if (postureScore >= 90) return "A";
+    if (postureScore >= 80) return "B+";
+    if (postureScore >= 70) return "B";
+    if (postureScore >= 60) return "C";
+    if (postureScore >= 50) return "D";
+    return "F";
   });
 
-  const categories = [
-    { id: "all", label: "All Categories" },
-    { id: "security_headers", label: "Headers" },
-    { id: "cookie_security", label: "Cookies" },
-    { id: "port_exposure", label: "Open Ports & Services" },
-    { id: "dns_email_security", label: "DNS & Email" },
-    { id: "endpoint_exposure", label: "Endpoints / Recon" },
-    { id: "vulnerable_dependency", label: "Dependencies (CVEs)" },
-    { id: "information_disclosure", label: "Info Leaks" },
-    { id: "tls_ssl", label: "TLS / HTTPS" },
-    { id: "cors_misconfiguration", label: "CORS" },
-    { id: "insecure_form", label: "Forms" },
-    { id: "rce_risk", label: "RCE & Injection Risks" },
-  ];
-
-  async function copyTargetUrl() {
-    if (!report) return;
-    try {
-      await navigator.clipboard.writeText(report.target_url);
-      copiedUrl = true;
-      showToast("Target URL copied to clipboard", "success");
-      setTimeout(() => (copiedUrl = false), 2000);
-    } catch {}
-  }
-
-  async function copyCurlCommand() {
-    if (!report) return;
-    try {
-      const curlCmd = `curl -i -s -k -L -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) VulnRadar/1.0" "${report.target_url}"`;
-      await navigator.clipboard.writeText(curlCmd);
-      copiedCurl = true;
-      showToast("cURL command copied to clipboard", "success");
-      setTimeout(() => (copiedCurl = false), 2000);
-    } catch {}
-  }
-
-  async function copyPortAddress(host: string, port: number) {
-    try {
-      await navigator.clipboard.writeText(`${host}:${port}`);
-      copiedPort = port;
-      showToast(`Port address ${host}:${port} copied`, "success");
-      setTimeout(() => (copiedPort = null), 2000);
-    } catch {}
-  }
-
-  const filteredOpenPorts = $derived.by(() => {
-    if (!report || !report.port_report || !report.port_report.open_ports) return [];
-    return report.port_report.open_ports.filter((p) => {
-      if (portRiskFilter === "risky" && !p.is_risky) return false;
-      if (portRiskFilter === "standard" && p.is_risky) return false;
-      if (portSearchQuery.trim()) {
-        const q = portSearchQuery.toLowerCase();
-        const matchesPort = p.port.toString().includes(q);
-        const matchesService = p.service.toLowerCase().includes(q);
-        const matchesDesc = p.description.toLowerCase().includes(q);
-        const matchesBanner = p.banner?.toLowerCase().includes(q) || false;
-        return matchesPort || matchesService || matchesDesc || matchesBanner;
-      }
-      return true;
-    });
-  });
-
-  const filteredSubdomains = $derived.by(() => {
-    if (!report || !report.subdomains) return [];
-    if (!subdomainSearch.trim()) return report.subdomains;
-    return report.subdomains.filter((sub) =>
-      sub.toLowerCase().includes(subdomainSearch.toLowerCase())
-    );
-  });
+  const criticalCount = $derived(report ? report.findings.filter((f) => f.severity === "critical").length : 0);
+  const highCount = $derived(report ? report.findings.filter((f) => f.severity === "high").length : 0);
+  const medCount = $derived(report ? report.findings.filter((f) => f.severity === "medium").length : 0);
+  const lowCount = $derived(report ? report.findings.filter((f) => f.severity === "low").length : 0);
+  const infoCount = $derived(report ? report.findings.filter((f) => f.severity === "info").length : 0);
 </script>
 
 <svelte:head>
@@ -507,38 +484,33 @@
 </svelte:head>
 
 <!-- Application Window Frame Container -->
-<div class="h-screen w-screen flex flex-col overflow-hidden bg-[#0d0e11] text-[#e2e4e9]">
+<div class="h-screen w-screen flex flex-col overflow-hidden bg-surface-container-lowest text-on-surface">
   <!-- Native Desktop Window Header Toolbar -->
   <Navbar
-    bind:targetUrl
     {isScanning}
     hasReport={!!report}
     {hasCustomOptions}
     activeMonitorsCount={monitors.filter((m) => m.is_active).length}
-    onScan={() => handleScan()}
-    onOpenHistory={() => (currentWorkspace = "history")}
-    onOpenPaths={() => (currentWorkspace = "paths")}
     onOpenSettings={(tab) => {
       if (tab) {
         settingsTab = tab;
-        isSettingsOpen = true;
-      } else {
-        currentWorkspace = "settings";
       }
+      isSettingsOpen = true;
     }}
     onOpenExport={openExportModal}
+    onOpenShortcuts={() => (isShortcutsOpen = true)}
   />
 
   <!-- Watchdog Alert Banner -->
   {#if watchdogAlert}
     <div
-      class="bg-rose-950/90 backdrop-blur-md border-b border-rose-800/80 px-4 py-2 text-rose-200 text-xs flex items-center justify-between gap-4 animate-fade-in flex-shrink-0 print:hidden"
+      class="bg-error-container text-on-error-container border-b border-error/40 px-4 py-2 text-xs flex items-center justify-between gap-4 animate-fade-in flex-shrink-0 print:hidden"
     >
       <div class="flex items-center gap-2.5 min-w-0">
-        <Bell class="w-4 h-4 text-rose-400 animate-bounce flex-shrink-0" />
+        <Bell class="w-4 h-4 text-error animate-bounce flex-shrink-0" />
         <span class="font-bold uppercase tracking-wider font-mono text-[10px]">Watchdog Alert:</span>
-        <span class="truncate font-mono font-bold text-white">{watchdogAlert.target_url}</span>
-        <span class="text-rose-300 hidden sm:inline text-xs">
+        <span class="truncate font-mono font-bold text-on-surface">{watchdogAlert.target_url}</span>
+        <span class="hidden sm:inline text-xs">
           Score dropped from {watchdogAlert.previous_score} to {watchdogAlert.new_score} ({watchdogAlert.critical_count} critical issues detected)
         </span>
       </div>
@@ -550,14 +522,14 @@
             handleScan(watchdogAlert!.target_url);
             watchdogAlert = null;
           }}
-          class="px-2.5 py-1 bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold rounded text-xs cursor-pointer transition-all shadow-sm"
+          class="px-2.5 py-1 bg-primary text-on-primary font-bold rounded text-xs cursor-pointer transition-all shadow-sm"
         >
           View Audit
         </button>
         <button
           type="button"
           onclick={() => (watchdogAlert = null)}
-          class="p-1 text-rose-400 hover:text-rose-200 rounded cursor-pointer"
+          class="p-1 text-outline hover:text-on-surface rounded cursor-pointer"
           aria-label="Dismiss alert"
         >
           <X class="w-3.5 h-3.5" />
@@ -566,493 +538,556 @@
     </div>
   {/if}
 
-  <!-- Desktop Workstation Split Layout (Sidebar + Main Workspace) -->
+  <!-- Main Body Layout: Vertical Sidebar + Active Workspace View -->
   <div class="flex-1 flex overflow-hidden">
-    <!-- Desktop Activity Sidebar Rail -->
-    <aside
-      class="w-60 bg-[var(--color-surface)] border-r border-[var(--color-hairline)] flex flex-col justify-between flex-shrink-0 desktop-select-none print:hidden transition-colors"
-    >
-      <!-- Navigation Workspaces -->
-      <div class="p-2 space-y-1 overflow-y-auto">
-        <div class="px-3 py-2 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-muted)]">
-          WORKSPACES
-        </div>
+    <Sidebar
+      {currentWorkspace}
+      activeMonitorsCount={monitors.filter((m) => m.is_active).length}
+      historyCount={history.length}
+      onSelectWorkspace={(ws) => {
+        if (ws === "settings") {
+          isSettingsOpen = true;
+        } else if (ws === "batch") {
+          isBatchOpen = true;
+        } else {
+          currentWorkspace = ws as any;
+        }
+      }}
+    />
 
-        <!-- 1. Audit Workspace -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "audit")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'audit' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">01/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">POSTURE AUDIT</span>
-          </div>
-          {#if report}
-            <span class="px-1.5 py-0.2 text-[10px] font-mono border border-[var(--color-hairline)] rounded-none bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
-              {report.findings.length}
-            </span>
-          {/if}
-        </button>
-
-        <!-- 2. Port Discovery Workspace -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "ports")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'ports' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">02/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">PORT MATRIX</span>
-          </div>
-          {#if report?.port_report}
-            <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
-              {report.port_report.open_ports_count}
-            </span>
-          {/if}
-        </button>
-
-        <!-- 3. DNS & Email Security Workspace -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "dns")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'dns' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">03/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">DNS & SPOOF</span>
-          </div>
-          {#if report?.dns_security?.spf_record}
-            <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-          {/if}
-        </button>
-
-        <!-- 4. Recon & Surface Workspace -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "recon")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'recon' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">04/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">SURFACE RECON</span>
-          </div>
-          {#if report?.subdomains?.length}
-            <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
-              {report.subdomains.length}
-            </span>
-          {/if}
-        </button>
-
-        <!-- 5. Path Discovery & Analysis Workspace -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "paths")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'paths' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">05/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">PATH RADAR</span>
-          </div>
-          <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
-            .TXT
-          </span>
-        </button>
-
-        <div class="pt-3 pb-1 px-3 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-muted)]">
-          FLEET TOOLS
-        </div>
-
-        <!-- 6. Batch Fleet Scanner -->
-        <button
-          type="button"
-          onclick={() => {
-            currentWorkspace = "batch";
-            isBatchOpen = true;
-          }}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'batch' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">06/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">FLEET BATCH</span>
-          </div>
-          <span class="text-[9px] font-mono text-[var(--color-text-muted)]">⌘B</span>
-        </button>
-
-        <!-- 7. Watchdog Monitor -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "watchdog")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'watchdog' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">07/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">WATCHDOG</span>
-          </div>
-          {#if monitors.filter((m) => m.is_active).length > 0}
-            <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)] font-bold">
-              {monitors.filter((m) => m.is_active).length}
-            </span>
-          {/if}
-        </button>
-
-        <!-- 8. History & Database Logs -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "history")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'history' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">08/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">SCAN HISTORY</span>
-          </div>
-          <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
-            {history.length}
-          </span>
-        </button>
-
-        <!-- 9. Preferences & Settings -->
-        <button
-          type="button"
-          onclick={() => (currentWorkspace = "settings")}
-          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'settings' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
-        >
-          <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">09/</span>
-            <span class="truncate uppercase tracking-wider font-semibold">SETTINGS</span>
-          </div>
-          {#if hasCustomOptions}
-            <span class="w-1.5 h-1.5 rounded-none bg-[var(--color-signal-red)]"></span>
-          {/if}
-        </button>
-      </div>
-
-      <!-- Bottom Sidebar System Widget -->
-      <div class="p-3 border-t border-[var(--color-hairline)] space-y-2 bg-[var(--color-surface)]">
-        <button
-          type="button"
-          onclick={() => (isShortcutsOpen = true)}
-          class="w-full flex items-center justify-between px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] rounded-none text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] transition-colors cursor-pointer"
-        >
-          <span class="flex items-center gap-1.5">
-            <Keyboard class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-            SHORTCUTS
-          </span>
-          <kbd class="px-1 py-0.2 text-[9px] font-mono border border-[var(--color-hairline)] rounded-none">?</kbd>
-        </button>
-
-        <div class="flex items-center justify-between text-[10px] font-mono text-[var(--color-text-muted)] px-1 uppercase tracking-wider">
-          <span class="flex items-center gap-1">
-            <Database class="w-3 h-3 text-[var(--color-text-muted)]" />
-            SQLITE WAL
-          </span>
-          <span class="text-emerald-500 font-bold">READY</span>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Desktop Workstation Content Area -->
-    <main class="flex-1 overflow-y-auto bg-[var(--color-canvas)] text-[var(--color-text-body)] flex flex-col p-6 transition-colors">
-      <!-- 1. SCANNING PROGRESS HUD -->
+    <!-- Main Workspace Area -->
+    <main class="flex-1 w-full overflow-y-auto p-5 md:p-6 lg:p-8 bg-surface-container-lowest flex flex-col focus:outline-none">
+    <!-- 1. ACTIVE SCAN HUD (WHEN SCANNING) -->
       {#if isScanning}
-        <div class="my-auto max-w-lg mx-auto w-full p-6 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-5 text-center animate-fade-in">
-          <div class="w-12 h-12 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] flex items-center justify-center text-[var(--color-signal-red)] mx-auto">
-            <Loader2 class="w-6 h-6 animate-spin" />
+        <div class="my-auto max-w-lg mx-auto w-full p-8 bg-surface-container-low border border-surface-container-high rounded text-center space-y-6 shadow-xl animate-fade-in">
+          <div class="w-14 h-14 mx-auto rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
+            <Loader2 class="w-7 h-7 animate-spin" />
           </div>
 
-          <div class="space-y-1.5">
-            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] text-[var(--color-text-headline)] text-[11px] font-mono font-bold uppercase">
-              <span class="w-1.5 h-1.5 rounded-none bg-[var(--color-signal-red)] animate-pulse"></span>
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-surface-container text-on-surface font-label-sm uppercase font-semibold">
+              <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
               <span>RUNNING MULTI-THREADED SECURITY AUDIT</span>
             </div>
-            <h2 class="text-lg font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Auditing Target Surface</h2>
-            <div class="p-2 bg-[var(--color-canvas)] rounded-none border border-[var(--color-hairline)] text-xs font-mono text-[var(--color-text-headline)] truncate max-w-sm mx-auto">
+            <h2 class="text-xl font-bold text-on-surface tracking-tight">Auditing Target Surface</h2>
+            <div class="p-2 bg-surface-container-lowest rounded border border-surface-container-high font-code-inline text-xs text-secondary truncate max-w-sm mx-auto">
               {targetUrl}
             </div>
           </div>
 
           <!-- Active Pipeline Modules Checklist -->
-          <div class="grid grid-cols-2 gap-2 text-left text-xs font-mono pt-3 border-t border-[var(--color-hairline)]">
-            <div class="flex items-center gap-2 text-[var(--color-text-body)]">
-              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+          <div class="grid grid-cols-2 gap-2 text-left font-label-sm pt-3 border-t border-surface-container-high">
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <CheckCircle2 class="w-3.5 h-3.5 text-tertiary" />
               <span>HTTP HEADERS</span>
             </div>
-            <div class="flex items-center gap-2 text-[var(--color-text-body)]">
-              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <CheckCircle2 class="w-3.5 h-3.5 text-tertiary" />
               <span>PORT DISCOVERY</span>
             </div>
-            <div class="flex items-center gap-2 text-[var(--color-text-body)]">
-              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <CheckCircle2 class="w-3.5 h-3.5 text-tertiary" />
               <span>DOH ANTI-SPOOF</span>
             </div>
-            <div class="flex items-center gap-2 text-[var(--color-text-body)]">
-              <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
-              <span>SCA CVE LIBRARY</span>
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <CheckCircle2 class="w-3.5 h-3.5 text-tertiary" />
+              <span>SCA CVE HEURISTICS</span>
             </div>
           </div>
         </div>
 
       <!-- 2. SCAN ERROR HUD -->
       {:else if scanError}
-        <div class="my-auto max-w-xl mx-auto w-full p-6 bg-[var(--color-surface)] border border-red-500/40 rounded-none space-y-4 text-red-600 dark:text-red-400 animate-fade-in">
+        <div class="my-auto max-w-xl mx-auto w-full p-6 bg-surface-container-low border border-error/40 rounded space-y-4 text-error animate-fade-in">
           <div class="flex items-start gap-3">
-            <AlertOctagon class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
+            <AlertOctagon class="w-6 h-6 text-error flex-shrink-0 mt-0.5" />
             <div class="space-y-1.5 flex-1">
-              <h3 class="text-sm font-bold text-red-600 dark:text-red-400 uppercase font-mono tracking-wider">Audit Execution Failed</h3>
-              <p class="text-xs text-[var(--color-text-body)] font-mono bg-[var(--color-canvas)] p-3 rounded-none border border-red-500/20 break-all leading-relaxed">
+              <h3 class="text-sm font-bold uppercase font-mono tracking-wider">Audit Execution Failed</h3>
+              <p class="text-xs text-on-surface-variant font-code-inline bg-surface-container-lowest p-3 rounded border border-error/20 break-all leading-relaxed">
                 {scanError}
               </p>
             </div>
           </div>
-          <div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--color-hairline)]">
+          <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-container-high">
             <button
               type="button"
               onclick={() => handleScan()}
-              class="px-4 py-1.5 bg-[var(--color-signal-red)] hover:opacity-90 text-white rounded-none text-xs font-mono font-bold uppercase transition-opacity cursor-pointer"
+              class="px-4 py-1.5 bg-primary text-on-primary rounded text-xs font-mono font-bold uppercase transition-opacity cursor-pointer hover:opacity-90"
             >
               Retry Audit
             </button>
           </div>
         </div>
 
-      <!-- 3. ACTIVE WORKSPACE RENDERING -->
-      {:else if currentWorkspace === "ports" && report}
-        <!-- DEDICATED PORT WORKSPACE VIEW -->
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          <!-- Port Telemetry Bar -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-0.5">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] font-mono">Host / IP</span>
-              <div class="text-sm font-bold font-mono text-[var(--color-text-headline)] truncate">
-                {report.port_report?.ip_address || report.port_report?.host || "Resolving IP"}
+      <!-- 3. WORKSPACE 01: POSTURE AUDIT DASHBOARD -->
+      {:else if currentWorkspace === "audit"}
+        <div class="flex flex-col w-full gap-6 max-w-7xl mx-auto pb-14">
+          <!-- TOP COMMAND & TARGETING BAR -->
+          <section class="bg-surface-container-low p-5 sm:p-6 rounded-lg flex flex-col gap-4 border border-surface-container-high shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+              <!-- Target Input Group -->
+              <div class="flex items-center flex-1 min-w-[200px] sm:min-w-[280px] h-10 bg-surface-container-lowest px-3.5 rounded border border-surface-container-high focus-within:border-outline transition-colors">
+                <span class="px-2 py-0.5 rounded font-mono text-[10px] bg-tertiary/10 text-tertiary tracking-wider font-bold mr-2.5">
+                  HTTPS
+                </span>
+                <div class="flex items-center flex-1 min-w-0 font-mono text-xs text-on-surface">
+                  <input
+                    id="target-url-input"
+                    class="bg-transparent border-0 outline-none w-full text-on-surface focus:text-secondary selection:bg-surface-container-highest"
+                    spellcheck="false"
+                    type="text"
+                    placeholder="Enter target URL or IP..."
+                    bind:value={targetUrl}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter") handleScan();
+                    }}
+                  />
+                </div>
+                <div class="flex items-center gap-1.5 pl-2 text-outline">
+                  <span class="w-1.5 h-1.5 rounded-full {report ? 'bg-tertiary' : 'bg-outline'}"></span>
+                  <span class="font-mono text-xs text-on-surface-variant font-medium">
+                    {report ? `${report.response_time_ms}ms` : "—"}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-0.5">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] font-mono">Ports Probed</span>
-              <div class="text-sm font-bold font-mono text-[var(--color-text-headline)]">
-                {report.port_report?.scanned_ports_count || 0} Ports (Auto Top 20)
-              </div>
-            </div>
-            <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-0.5">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] font-mono">Open Ports</span>
-              <div class="text-sm font-bold font-mono {(report.port_report?.open_ports_count || 0) > 0 ? 'text-emerald-500' : 'text-[var(--color-text-muted)]'}">
-                {report.port_report?.open_ports_count || 0} Discovered
-              </div>
-            </div>
-            <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-0.5">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] font-mono">Duration</span>
-              <div class="text-sm font-bold font-mono text-[var(--color-text-headline)]">
-                {report.port_report?.scan_duration_ms || 0} ms
-              </div>
-            </div>
-          </div>
 
-          <!-- Port Search & Filter Controls -->
-          <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex flex-col md:flex-row items-center justify-between gap-3">
-            <div class="relative w-full md:w-80">
-              <Search class="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute inset-y-0 left-3 my-auto pointer-events-none" />
-              <input
-                type="text"
-                bind:value={portSearchQuery}
-                placeholder="FILTER BY PORT #, SERVICE, BANNER..."
-                class="w-full pl-8 pr-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] font-mono uppercase focus:outline-none"
-              />
-            </div>
-
-            <div class="flex items-center gap-1.5 w-full md:w-auto">
-              <button
-                type="button"
-                onclick={() => (portRiskFilter = "all")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-colors {portRiskFilter === 'all' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)]'}"
-              >
-                All ({report.port_report?.open_ports.length || 0})
-              </button>
-              <button
-                type="button"
-                onclick={() => (portRiskFilter = "risky")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-colors {portRiskFilter === 'risky' ? 'bg-red-500 text-white' : 'bg-[var(--color-canvas)] text-red-600 dark:text-red-400 border border-[var(--color-hairline)] hover:border-red-500/40'}"
-              >
-                Risky ({report.port_report?.open_ports.filter((p) => p.is_risky).length || 0})
-              </button>
-              <button
-                type="button"
-                onclick={() => (portRiskFilter = "standard")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold uppercase cursor-pointer transition-colors {portRiskFilter === 'standard' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)]'}"
-              >
-                Standard ({report.port_report?.open_ports.filter((p) => !p.is_risky).length || 0})
-              </button>
-            </div>
-          </div>
-
-          <!-- Open Ports Cards -->
-          {#if filteredOpenPorts.length === 0}
-            <div class="py-16 text-center bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2">
-              <CheckCircle2 class="w-10 h-10 text-emerald-500 mx-auto opacity-80" />
-              <h3 class="text-sm font-bold text-[var(--color-text-headline)] font-mono uppercase">No Open Ports Matching Criteria</h3>
-              <p class="text-xs text-[var(--color-text-muted)] max-w-sm mx-auto font-mono">
-                No active listening services were detected on scanned ports.
-              </p>
-            </div>
-          {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {#each filteredOpenPorts as p (p.port)}
-                <div
-                  class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-3 transition-colors {p.is_risky ? 'border-l-4 border-l-red-500' : 'hover:border-[var(--color-hairline-strong)]'}"
+              <!-- Action Exec Group -->
+              <div class="flex items-center gap-2.5">
+                <!-- Main Audit Action Button -->
+                <button
+                  id="btn-audit"
+                  type="button"
+                  disabled={isScanning}
+                  onclick={() => handleScan()}
+                  class="h-10 flex items-center gap-2.5 bg-on-surface text-surface-container-lowest px-5 rounded font-mono text-xs uppercase tracking-wider font-bold hover:bg-surface-bright hover:text-on-surface transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-sm"
                 >
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                      <span class="px-2 py-0.5 text-xs font-mono font-bold rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] text-[var(--color-text-headline)]">
-                        PORT {p.port}/{p.protocol.toUpperCase()}
-                      </span>
-                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-[10px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold uppercase">
-                        <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-                        OPEN
-                      </span>
-                    </div>
-
-                    {#if p.is_risky}
-                      <span class="px-2 py-0.5 text-[10px] font-mono rounded-none bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 flex items-center gap-1 font-bold uppercase">
-                        <AlertTriangle class="w-3 h-3 text-red-500" />
-                        EXPOSED / RISKY
-                      </span>
-                    {/if}
-                  </div>
-
-                  <div class="space-y-0.5">
-                    <div class="text-sm font-bold text-[var(--color-text-headline)] flex items-center gap-1.5 font-mono">
-                      <Server class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                      <span>{p.service}</span>
-                    </div>
-                    <p class="text-xs text-[var(--color-text-muted)]">{p.description}</p>
-                  </div>
-
-                  {#if p.banner}
-                    <div class="p-2.5 bg-[var(--color-canvas)] rounded-none border border-[var(--color-hairline)] space-y-1">
-                      <span class="text-[9px] font-mono text-[var(--color-text-muted)] uppercase tracking-wider block font-bold">Service Banner</span>
-                      <pre class="text-xs font-mono text-[var(--color-text-headline)] overflow-x-auto whitespace-pre-wrap">{p.banner}</pre>
-                    </div>
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                  <span>AUDIT TARGET</span>
+                  {#if report}
+                    <span class="font-mono text-[11px] bg-surface-container-highest text-on-surface px-1.5 py-0.5 rounded font-medium ml-1">
+                      {(report.response_time_ms / 1000).toFixed(2)}s
+                    </span>
                   {/if}
+                </button>
 
-                  <div class="pt-2 border-t border-[var(--color-hairline)] flex items-center justify-between">
-                    <div class="text-[11px] font-mono text-[var(--color-text-muted)]">
-                      {report.port_report?.host}:{p.port}
-                    </div>
-
-                    <div class="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onclick={() => copyPortAddress(report!.port_report!.host, p.port)}
-                        class="px-2 py-0.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono transition-colors cursor-pointer flex items-center gap-1 uppercase"
-                      >
-                        {#if copiedPort === p.port}
-                          <CheckCircle2 class="w-3 h-3 text-emerald-500" />
-                          <span class="text-emerald-500">COPIED</span>
-                        {:else}
-                          <span>COPY ADDRESS</span>
-                        {/if}
-                      </button>
-
-                      {#if [80, 443, 3000, 5000, 8000, 8080, 8081, 8443, 8888, 9000, 9090].includes(p.port)}
-                        <a
-                          href={`${p.port === 443 || p.port === 8443 ? "https" : "http"}://${report?.port_report?.host || "localhost"}:${p.port}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="p-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs transition-colors cursor-pointer"
-                          title="Open in Browser"
-                        >
-                          <ExternalLink class="w-3.5 h-3.5" />
-                        </a>
-                      {/if}
-                    </div>
-                  </div>
+                <!-- Command Utility Icons -->
+                <div class="h-10 flex items-center bg-surface-container-lowest rounded border border-surface-container-high px-1 gap-1">
+                  <button
+                    type="button"
+                    onclick={() => (isExecutiveReportOpen = true)}
+                    class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors cursor-pointer"
+                    title="Executive Audit Report (PDF)"
+                  >
+                    <FileDown class="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onclick={openExportModal}
+                    class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors cursor-pointer"
+                    title="Raw JSON Findings Export"
+                  >
+                    <Database class="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onclick={copyCurlCommand}
+                    class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-secondary hover:bg-surface-container rounded transition-colors cursor-pointer"
+                    title="Copy Target cURL probe"
+                  >
+                    {#if copiedCurl}
+                      <Check class="w-3.5 h-3.5 text-tertiary" />
+                    {:else}
+                      <Terminal class="w-3.5 h-3.5" />
+                    {/if}
+                  </button>
+                  <button
+                    type="button"
+                    onclick={() => {
+                      report = null;
+                      scanError = null;
+                      showToast("Audit buffer reset", "info");
+                    }}
+                    class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-surface-container rounded transition-colors cursor-pointer"
+                    title="Reset Audit Buffer"
+                  >
+                    <X class="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-      <!-- 4. DNS & EMAIL WORKSPACE VIEW -->
-      {:else if currentWorkspace === "dns" && report}
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          {#if report.dns_security}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">SPF Anti-Spoofing</span>
-                  <span class="px-2 py-0.5 text-xs font-mono rounded-none font-bold uppercase {report.dns_security.spf_record ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'}">
-                    {report.dns_security.spf_record ? "Configured" : "Missing"}
-                  </span>
-                </div>
-                <p class="text-xs text-[var(--color-text-muted)] font-mono">Validates authorized mail senders via RFC 7208.</p>
-                {#if report.dns_security.spf_record}
-                  <pre class="bg-[var(--color-canvas)] p-2.5 rounded-none text-xs font-mono text-[var(--color-text-headline)] border border-[var(--color-hairline)] overflow-x-auto whitespace-pre-wrap">{report.dns_security.spf_record}</pre>
-                {/if}
-              </div>
-
-              <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">DMARC Enforcement</span>
-                  <span class="px-2 py-0.5 text-xs font-mono rounded-none font-bold uppercase {report.dns_security.dmarc_policy && report.dns_security.dmarc_policy !== 'none' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30'}">
-                    {report.dns_security.dmarc_policy || "None"}
-                  </span>
-                </div>
-                <p class="text-xs text-[var(--color-text-muted)] font-mono">Enforces domain-based email authentication & alignment.</p>
-                {#if report.dns_security.dmarc_record}
-                  <pre class="bg-[var(--color-canvas)] p-2.5 rounded-none text-xs font-mono text-[var(--color-text-headline)] border border-[var(--color-hairline)] overflow-x-auto whitespace-pre-wrap">{report.dns_security.dmarc_record}</pre>
-                {/if}
-              </div>
-
-              <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">DNSSEC Validation</span>
-                  <span class="px-2 py-0.5 text-xs font-mono rounded-none font-bold uppercase {report.dns_security.dnssec_enabled ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)]'}">
-                    {report.dns_security.dnssec_enabled ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-                <p class="text-xs text-[var(--color-text-muted)] font-mono">Cryptographically authenticates DNS records against poisoning.</p>
               </div>
             </div>
-          {/if}
-        </div>
 
-      <!-- 5. RECON & SURFACE WORKSPACE VIEW -->
-      {:else if currentWorkspace === "recon" && report}
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-3">
-            <div class="relative w-full max-w-sm">
-              <Search class="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute inset-y-0 left-3 my-auto pointer-events-none" />
-              <input
-                type="text"
-                bind:value={subdomainSearch}
-                placeholder="FILTER DISCOVERED SUBDOMAINS..."
-                class="w-full pl-8 pr-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] font-mono uppercase focus:outline-none"
-              />
-            </div>
-            <span class="text-xs font-mono text-[var(--color-text-muted)] uppercase font-bold">
-              {filteredSubdomains.length} / {report.subdomains?.length || 0} DISCOVERED
-            </span>
-          </div>
-
-          {#if filteredSubdomains.length > 0}
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {#each filteredSubdomains as sub}
+            <!-- Quick Target Scope Selector Pills -->
+            <div class="flex items-center gap-2 flex-wrap font-mono text-[11px] pt-1">
+              <span class="uppercase tracking-wider text-outline text-[10px] mr-1">Scope Presets:</span>
+              {#each [
+                { host: "example.com", url: "https://example.com" },
+                { host: "httpbin.org", url: "https://httpbin.org" },
+                { host: "testphp.vulnweb.com", url: "http://testphp.vulnweb.com" },
+                { host: "localhost:8000", url: "http://localhost:8000" }
+              ] as preset}
                 <button
                   type="button"
+                  class="px-2.5 py-1 bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant rounded transition-colors text-[11px] font-mono border border-surface-container-high cursor-pointer {targetUrl === preset.url ? 'border-primary text-primary font-medium' : ''}"
                   onclick={() => {
-                    targetUrl = `https://${sub}`;
-                    handleScan(`https://${sub}`);
+                    targetUrl = preset.url;
+                    handleScan(preset.url);
                   }}
-                  class="p-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] hover:border-[var(--color-hairline-strong)] rounded-none text-left text-xs font-mono text-[var(--color-text-body)] hover:text-[var(--color-text-headline)] transition-colors cursor-pointer truncate flex items-center justify-between group"
                 >
-                  <span class="truncate">{sub}</span>
-                  <ExternalLink class="w-3.5 h-3.5 text-[var(--color-text-muted)] group-hover:text-[var(--color-text-headline)] flex-shrink-0 ml-2" />
+                  {preset.host}
                 </button>
               {/each}
             </div>
-          {/if}
+
+            <!-- Quick Options Bar -->
+            <div class="flex items-center justify-between gap-4 pt-3.5 border-t border-surface-container-high/60 flex-wrap text-xs font-mono">
+              <div class="flex items-center gap-5 sm:gap-6 flex-wrap">
+                <!-- Subdomains -->
+                <label class="flex items-center gap-2 cursor-pointer text-on-surface-variant hover:text-on-surface select-none group">
+                  <input
+                    type="checkbox"
+                    bind:checked={scanOptions.include_subdomains}
+                    class="sr-only"
+                  />
+                  <div class="w-4 h-4 rounded flex items-center justify-center border transition-colors {scanOptions.include_subdomains ? 'bg-primary border-primary text-on-primary' : 'bg-surface-container-lowest border-surface-container-high group-hover:border-outline'}">
+                    {#if scanOptions.include_subdomains}
+                      <Check class="w-2.5 h-2.5 stroke-[3]" />
+                    {/if}
+                  </div>
+                  <span>Subdomains</span>
+                </label>
+
+                <!-- Port Scan Toggle & Profile -->
+                <div class="flex items-center gap-2">
+                  <label class="flex items-center gap-2 cursor-pointer text-on-surface-variant hover:text-on-surface select-none group">
+                    <input
+                      type="checkbox"
+                      bind:checked={scanOptions.enable_port_scan}
+                      class="sr-only"
+                    />
+                    <div class="w-4 h-4 rounded flex items-center justify-center border transition-colors {scanOptions.enable_port_scan ? 'bg-primary border-primary text-on-primary' : 'bg-surface-container-lowest border-surface-container-high group-hover:border-outline'}">
+                      {#if scanOptions.enable_port_scan}
+                        <Check class="w-2.5 h-2.5 stroke-[3]" />
+                      {/if}
+                    </div>
+                    <span>Port Recon</span>
+                  </label>
+                  {#if scanOptions.enable_port_scan}
+                    <select
+                      bind:value={scanOptions.port_scan_profile}
+                      class="bg-surface-container-lowest text-on-surface border border-surface-container-high rounded px-2 py-1 text-xs outline-none ml-1 cursor-pointer"
+                    >
+                      <option value="top20">Top 20</option>
+                      <option value="top100">Top 100</option>
+                      <option value="databases">Databases</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  {/if}
+                </div>
+
+                <!-- Timeout -->
+                <div class="flex items-center gap-1.5 text-on-surface-variant">
+                  <span class="text-outline">Timeout:</span>
+                  <select
+                    bind:value={scanOptions.timeout_seconds}
+                    class="bg-surface-container-lowest text-on-surface border border-surface-container-high rounded px-2 py-1 text-xs outline-none cursor-pointer"
+                  >
+                    <option value={5}>5s</option>
+                    <option value={10}>10s</option>
+                    <option value={15}>15s</option>
+                    <option value={30}>30s</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Open Settings -->
+              <button
+                type="button"
+                onclick={() => {
+                  settingsTab = "params";
+                  isSettingsOpen = true;
+                }}
+                class="flex items-center gap-1.5 text-outline hover:text-on-surface transition-colors cursor-pointer text-xs"
+              >
+                <Sliders class="w-3.5 h-3.5" />
+                <span>Advanced Config (⌘O)</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- POSTURE SCORE & SEVERITY GAUGES SECTION -->
+          <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-stretch">
+            <!-- Hero Score Indicator Card -->
+            <div class="lg:col-span-4 bg-surface-container-low p-5 sm:p-6 rounded-lg flex flex-col justify-between relative overflow-hidden border border-surface-container-high shadow-xs">
+              <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-tertiary/5 rounded-full pointer-events-none blur-2xl"></div>
+              <div class="flex items-start justify-between">
+                <span class="font-mono text-xs uppercase tracking-wider text-outline font-semibold">Security Posture Score</span>
+                {#if postureScore !== null && scoreGrade}
+                  <div class="px-2.5 py-0.5 rounded font-mono text-xs font-bold {postureScore >= 80 ? 'bg-tertiary-container/30 text-tertiary' : postureScore >= 60 ? 'bg-primary/20 text-primary' : 'bg-error/20 text-error'}">
+                    Grade {scoreGrade}
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Center Metric Hero -->
+              <div class="my-4 sm:my-5 flex items-baseline gap-1.5">
+                {#if postureScore !== null}
+                  <span class="text-4xl sm:text-5xl leading-none font-extrabold text-on-surface tracking-tight font-mono">
+                    {postureScore}
+                  </span>
+                {:else}
+                  <span class="text-3xl sm:text-4xl leading-none font-normal text-on-surface-variant font-mono">
+                    —
+                  </span>
+                {/if}
+                <span class="font-code-inline text-base text-outline">/100</span>
+              </div>
+
+              <!-- Segmented Calibrated Bar Metric (10 ticks) -->
+              <div class="flex flex-col gap-2 w-full">
+                <div class="flex items-center justify-between font-code-inline text-[11px] text-outline">
+                  <span>0</span>
+                  <span>50</span>
+                  <span class="text-tertiary">100</span>
+                </div>
+                <div class="grid grid-cols-10 gap-1.5 w-full h-2.5">
+                  {#each [10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as tick, i}
+                    {@const active = postureScore !== null && postureScore >= tick}
+                    {@const col = i < 2 ? "bg-error/80" : i < 4 ? "bg-primary-container/80" : i < 6 ? "bg-primary/80" : i < 8 ? "bg-secondary/80" : "bg-tertiary"}
+                    <div class="{active ? col : 'bg-surface-container-highest'} rounded-xs"></div>
+                  {/each}
+                </div>
+              </div>
+            </div>
+
+            <!-- Severity Deduction Metric Cards (Responsive 5-column grid) -->
+            <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-3.5 items-stretch">
+              <!-- Critical -->
+              <div class="bg-surface-container-low p-4 rounded-lg flex flex-col justify-between border border-surface-container-high shadow-xs">
+                <div class="flex items-center justify-between font-label-sm text-outline">
+                  <span class="font-semibold tracking-wider text-[11px]">CRITICAL</span>
+                  <span class="font-code-inline text-[11px] {criticalCount > 0 ? 'text-error' : 'text-tertiary'}">
+                    {criticalCount > 0 ? `-${criticalCount * 25} PTS` : "0 PTS"}
+                  </span>
+                </div>
+                <div class="my-3">
+                  <span class="text-2xl font-bold font-mono {criticalCount > 0 ? 'text-error' : 'text-on-surface'}">
+                    {criticalCount}
+                  </span>
+                </div>
+                <div class="text-[11px] font-label-sm flex items-center gap-1.5 {criticalCount > 0 ? 'text-error' : 'text-outline'}">
+                  <span class="w-1.5 h-1.5 rounded-full {criticalCount > 0 ? 'bg-error animate-ping' : 'bg-outline'}"></span>
+                  <span>{criticalCount > 0 ? "Action Required" : "All Clear"}</span>
+                </div>
+              </div>
+
+              <!-- High -->
+              <div class="bg-surface-container-low p-4 rounded-lg flex flex-col justify-between relative overflow-hidden border border-surface-container-high shadow-xs">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-primary-container"></div>
+                <div class="flex items-center justify-between font-label-sm text-primary-container">
+                  <span class="font-semibold tracking-wider text-[11px]">HIGH</span>
+                  <span class="font-code-inline text-[11px] font-medium">{highCount > 0 ? `-${highCount * 8} PTS` : "0 PTS"}</span>
+                </div>
+                <div class="my-3">
+                  <span class="text-2xl font-bold text-primary-container font-mono">{highCount}</span>
+                </div>
+                <div class="text-[11px] font-label-sm text-primary-container flex items-center gap-1.5 font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full {highCount > 0 ? 'bg-primary-container animate-pulse' : 'bg-outline'}"></span>
+                  <span>{highCount > 0 ? "Action Required" : "All Clear"}</span>
+                </div>
+              </div>
+
+              <!-- Medium -->
+              <div class="bg-surface-container-low p-4 rounded-lg flex flex-col justify-between relative overflow-hidden border border-surface-container-high shadow-xs">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-primary"></div>
+                <div class="flex items-center justify-between font-label-sm text-primary">
+                  <span class="font-semibold tracking-wider text-[11px]">MEDIUM</span>
+                  <span class="font-code-inline text-[11px] font-medium">{medCount > 0 ? `-${medCount * 4} PTS` : "0 PTS"}</span>
+                </div>
+                <div class="my-3">
+                  <span class="text-2xl font-bold text-primary font-mono">{medCount}</span>
+                </div>
+                <div class="text-[11px] font-label-sm text-primary flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full {medCount > 0 ? 'bg-primary' : 'bg-outline'}"></span>
+                  <span>{medCount > 0 ? "Attention" : "All Clear"}</span>
+                </div>
+              </div>
+
+              <!-- Low -->
+              <div class="bg-surface-container-low p-4 rounded-lg flex flex-col justify-between relative overflow-hidden border border-surface-container-high shadow-xs">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-secondary"></div>
+                <div class="flex items-center justify-between font-label-sm text-secondary">
+                  <span class="font-semibold tracking-wider text-[11px]">LOW</span>
+                  <span class="font-code-inline text-[11px] font-medium">{lowCount > 0 ? `-${lowCount * 1} PTS` : "0 PTS"}</span>
+                </div>
+                <div class="my-3">
+                  <span class="text-2xl font-bold text-secondary font-mono">{lowCount}</span>
+                </div>
+                <div class="text-[11px] font-label-sm text-secondary flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full {lowCount > 0 ? 'bg-secondary' : 'bg-outline'}"></span>
+                  <span>{lowCount > 0 ? "Info" : "All Clear"}</span>
+                </div>
+              </div>
+
+              <!-- Info -->
+              <div class="bg-surface-container-low p-4 rounded-lg flex flex-col justify-between border border-surface-container-high shadow-xs">
+                <div class="flex items-center justify-between font-label-sm text-outline">
+                  <span class="font-semibold tracking-wider text-[11px]">INFO</span>
+                  <span class="font-code-inline text-[11px]">+0 PTS</span>
+                </div>
+                <div class="my-3">
+                  <span class="text-2xl font-bold text-on-surface-variant font-mono">{infoCount}</span>
+                </div>
+                <div class="text-[11px] font-label-sm text-outline flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                  <span>Telemetry</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- INTERACTIVE AUDIT FINDINGS INSPECTOR -->
+          <section class="flex flex-col gap-4">
+            <!-- Filter Toolbar Controls -->
+            <div class="bg-surface-container-low p-3 sm:p-3.5 rounded-lg flex flex-wrap items-center justify-between gap-3 border border-surface-container-high shadow-xs">
+              <!-- Monospace Search Query Input -->
+              <div class="h-9.5 flex items-center gap-2.5 bg-surface-container-lowest px-3.5 rounded min-w-[240px] flex-1 border border-surface-container-high focus-within:border-outline transition-colors">
+                <Search class="w-3.5 h-3.5 text-outline flex-shrink-0" />
+                <input
+                  id="finding-search"
+                  bind:value={searchQuery}
+                  placeholder="Filter by CVE, header, endpoint, vector..."
+                  type="text"
+                  class="bg-transparent border-0 outline-none font-mono text-xs text-on-surface w-full placeholder:text-outline"
+                />
+                <span class="font-mono text-[10px] text-outline bg-surface-container px-1.5 py-0.5 rounded">/</span>
+              </div>
+
+              <!-- Severity Filter Buttons -->
+              <div class="flex items-center gap-1.5 font-mono text-xs flex-wrap">
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = "all")}
+                  class="h-9 px-3.5 rounded transition-colors cursor-pointer {selectedSeverity === 'all' ? 'bg-surface-container-highest text-on-surface font-bold' : 'bg-surface-container-lowest hover:bg-surface-container text-outline'}"
+                >
+                  All ({report?.findings.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = "high")}
+                  class="h-9 px-3.5 rounded transition-colors cursor-pointer {selectedSeverity === 'high' ? 'bg-primary-container text-on-primary font-bold' : 'bg-surface-container-lowest hover:bg-surface-container text-primary-container'}"
+                >
+                  High ({highCount})
+                </button>
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = "medium")}
+                  class="h-9 px-3.5 rounded transition-colors cursor-pointer {selectedSeverity === 'medium' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container-lowest hover:bg-surface-container text-primary'}"
+                >
+                  Med ({medCount})
+                </button>
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = "low")}
+                  class="h-9 px-3.5 rounded transition-colors cursor-pointer {selectedSeverity === 'low' ? 'bg-secondary text-surface-container-lowest font-bold' : 'bg-surface-container-lowest hover:bg-surface-container text-secondary'}"
+                >
+                  Low ({lowCount})
+                </button>
+                <button
+                  type="button"
+                  onclick={() => (selectedSeverity = "info")}
+                  class="h-9 px-3.5 rounded transition-colors cursor-pointer {selectedSeverity === 'info' ? 'bg-surface-container-highest text-on-surface font-bold' : 'bg-surface-container-lowest hover:bg-surface-container text-outline'}"
+                >
+                  Info ({infoCount})
+                </button>
+              </div>
+
+              <!-- OWASP Classification & Sort Dropdowns -->
+              <div class="flex items-center gap-2.5">
+                <div class="h-9 bg-surface-container-lowest px-3 rounded flex items-center gap-2 font-mono text-xs text-on-surface border border-surface-container-high">
+                  <span class="text-outline">Category:</span>
+                  <select
+                    bind:value={selectedCategory}
+                    class="bg-transparent border-0 outline-none text-on-surface font-mono text-xs cursor-pointer"
+                  >
+                    <option value="all">All</option>
+                    <option value="security_headers">Security Headers</option>
+                    <option value="cors_misconfiguration">CORS</option>
+                    <option value="tls_ssl">TLS / SSL</option>
+                    <option value="cookie_security">Cookies</option>
+                    <option value="information_disclosure">Info Leaks</option>
+                  </select>
+                </div>
+                <div class="h-9 bg-surface-container-lowest px-3 rounded flex items-center gap-2 font-mono text-xs text-on-surface border border-surface-container-high">
+                  <span class="text-outline">Sort:</span>
+                  <select
+                    bind:value={sortFindingsBy}
+                    class="bg-transparent border-0 outline-none text-on-surface font-mono text-xs cursor-pointer"
+                  >
+                    <option value="severity">Severity</option>
+                    <option value="title">Title</option>
+                    <option value="category">Category</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Findings Card List -->
+            <div class="flex flex-col gap-3">
+              {#if report}
+                {#if filteredFindings.length === 0}
+                  <div class="p-12 text-center bg-surface-container-low rounded border border-surface-container-high text-outline">
+                    <CheckCircle2 class="w-8 h-8 text-tertiary mx-auto mb-2 opacity-80" />
+                    <p class="font-bold text-on-surface font-mono">No findings match active filter.</p>
+                    <p class="text-xs mt-1">Adjust severity or category selectors to view other security telemetry.</p>
+                  </div>
+                {:else}
+                  {#each filteredFindings as finding (finding.id)}
+                    <FindingCard {finding} />
+                  {/each}
+                {/if}
+              {:else}
+                <div class="p-12 text-center bg-surface-container-low rounded border border-surface-container-high text-outline">
+                  <ShieldAlert class="w-10 h-10 text-outline mx-auto mb-3 opacity-60" />
+                  <p class="font-bold text-on-surface font-mono">No Active Target Audited</p>
+                  <p class="text-xs mt-1">Enter a target URL above and initiate an audit to view live security findings.</p>
+                </div>
+              {/if}
+            </div>
+          </section>
         </div>
 
-      <!-- 6. PATH ANALYSIS & CONTENT DISCOVERY WORKSPACE -->
+      <!-- 4. WORKSPACE 02: PORT MATRIX & RECONNAISSANCE -->
+      {:else if currentWorkspace === "ports"}
+        <PortMatrixWorkspace
+          {targetUrl}
+          portReport={report?.port_report || null}
+          options={scanOptions}
+          onOptionsChange={(opts) => (scanOptions = opts)}
+          onUpdateReport={(rep) => {
+            ensureReport(targetUrl);
+            if (report) {
+              report = { ...report, port_report: rep };
+            }
+          }}
+        />
+
+      <!-- 5. WORKSPACE 03: DNS & POSTURE INSPECTOR -->
+      {:else if currentWorkspace === "dns"}
+        <DnsPostureWorkspace
+          {targetUrl}
+          dnsReport={report?.dns_security || null}
+          onUpdateReport={(dns) => {
+            ensureReport(targetUrl);
+            if (report) {
+              report = { ...report, dns_security: dns };
+            }
+          }}
+        />
+
+      <!-- 6. WORKSPACE 04: PATH RADAR & CONTENT DISCOVERY -->
       {:else if currentWorkspace === "paths"}
         <PathAnalysisWorkspace
           defaultUrl={targetUrl}
@@ -1062,19 +1097,93 @@
           }}
         />
 
-      <!-- 7. SCAN LOGS / HISTORY WORKSPACE VIEW -->
-      {:else if currentWorkspace === "history"}
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          <div class="flex items-center justify-between pb-2 border-b border-[var(--color-hairline)]">
+      <!-- 7. WORKSPACE 06: WATCHDOG CONTINUOUS MONITORING -->
+      {:else if currentWorkspace === "watchdog"}
+        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in pb-10">
+          <div class="flex items-center justify-between pb-2 border-b border-surface-container-high">
             <div class="flex items-center gap-2">
-              <HardDrive class="w-4 h-4 text-[var(--color-signal-red)]" />
-              <h2 class="text-sm font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Local SQLite Audit Logs ({history.length})</h2>
+              <Activity class="w-4 h-4 text-primary" />
+              <h2 class="text-sm font-bold text-on-surface font-mono uppercase tracking-tight">Automated Watchdog Daemon</h2>
+            </div>
+            <button
+              type="button"
+              onclick={() => (isMonitorsOpen = true)}
+              class="px-3 py-1 bg-primary text-on-primary font-bold rounded text-xs font-mono uppercase transition-opacity cursor-pointer hover:opacity-90"
+            >
+              + Add Target
+            </button>
+          </div>
+
+          {#if monitors.length === 0}
+            <div class="py-16 text-center bg-surface-container-low border border-surface-container-high rounded space-y-3">
+              <Activity class="w-10 h-10 text-primary mx-auto opacity-70" />
+              <h3 class="text-sm font-bold text-on-surface font-mono uppercase">No Monitored Targets Active</h3>
+              <p class="text-xs text-outline max-w-sm mx-auto font-mono">
+                Schedule targets for continuous re-auditing (1h, 6h, 12h, 24h) with native desktop alerts upon score degradation.
+              </p>
+            </div>
+          {:else}
+            <div class="space-y-2">
+              {#each monitors as m (m.id)}
+                <div class="p-3.5 bg-surface-container-low border border-surface-container-high rounded flex items-center justify-between gap-4">
+                  <div class="space-y-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-on-surface font-mono text-xs">{m.target_url}</span>
+                      <span class="px-1.5 py-0.2 text-[10px] font-mono rounded bg-surface-container text-outline uppercase">
+                        Every {m.interval_hours}h
+                      </span>
+                    </div>
+                    <div class="text-[11px] font-mono text-outline uppercase">
+                      Next Run: {new Date(m.next_scan_at).toLocaleTimeString()} • Last Score: {m.last_score ?? "Pending"}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onclick={() => {
+                        targetUrl = m.target_url;
+                        currentWorkspace = "audit";
+                        handleScan(m.target_url);
+                      }}
+                      class="px-2.5 py-1 bg-surface-container hover:bg-surface-bright text-on-surface border border-surface-container-high rounded text-xs font-mono font-bold uppercase transition-colors cursor-pointer"
+                      title="Trigger immediate scan now"
+                    >
+                      Scan Now
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => handleToggleMonitor(m.id)}
+                      class="px-2.5 py-1 rounded text-xs font-mono font-bold uppercase transition-colors cursor-pointer {m.is_active ? 'bg-tertiary/20 text-tertiary border border-tertiary/30' : 'bg-surface-container text-outline border border-surface-container-high'}"
+                    >
+                      {m.is_active ? "Active" : "Paused"}
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => handleDeleteMonitor(m.id)}
+                      class="p-1 text-outline hover:text-error rounded cursor-pointer"
+                    >
+                      <X class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+      <!-- 8. WORKSPACE 07: LOCAL SQLITE LOGS / HISTORY -->
+      {:else if currentWorkspace === "history"}
+        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in pb-10">
+          <div class="flex items-center justify-between pb-2 border-b border-surface-container-high">
+            <div class="flex items-center gap-2">
+              <HardDrive class="w-4 h-4 text-primary" />
+              <h2 class="text-sm font-bold text-on-surface font-mono uppercase tracking-tight">Local SQLite Audit Logs ({history.length})</h2>
             </div>
             {#if history.length > 0}
               <button
                 type="button"
                 onclick={handleClearAllHistory}
-                class="px-2.5 py-1 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-red-600 dark:text-red-400 border border-[var(--color-hairline)] rounded-none text-xs font-mono uppercase font-bold transition-colors cursor-pointer"
+                class="px-2.5 py-1 bg-surface-container-low hover:bg-surface-container text-error border border-error/30 rounded text-xs font-mono uppercase font-bold transition-colors cursor-pointer"
               >
                 Clear History
               </button>
@@ -1082,21 +1191,21 @@
           </div>
 
           {#if history.length === 0}
-            <div class="py-16 text-center bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none text-[var(--color-text-muted)] text-xs font-mono uppercase">
+            <div class="py-16 text-center bg-surface-container-low border border-surface-container-high rounded text-outline text-xs font-mono uppercase">
               No historical scan logs recorded yet.
             </div>
           {:else}
             <div class="space-y-2">
               {#each history as item (item.id)}
-                <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-4 hover:border-[var(--color-hairline-strong)] transition-colors">
+                <div class="p-3 bg-surface-container-low border border-surface-container-high rounded flex items-center justify-between gap-4 hover:border-surface-container-highest transition-colors">
                   <div class="space-y-1 min-w-0 flex-1">
                     <div class="flex items-center gap-2">
-                      <span class="font-bold text-[var(--color-text-headline)] font-mono text-xs truncate">{item.target_url}</span>
-                      <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] text-[var(--color-text-muted)]">
+                      <span class="font-bold text-on-surface font-mono text-xs truncate">{item.target_url}</span>
+                      <span class="px-1.5 py-0.2 text-[10px] font-mono rounded bg-surface-container text-outline">
                         SCORE: {item.security_score}/100
                       </span>
                     </div>
-                    <div class="text-[11px] font-mono text-[var(--color-text-muted)] uppercase">
+                    <div class="text-[11px] font-mono text-outline uppercase">
                       {new Date(item.scanned_at).toLocaleString()} • {item.total_findings} FINDINGS ({item.critical_count} CRITICAL)
                     </div>
                   </div>
@@ -1104,14 +1213,14 @@
                     <button
                       type="button"
                       onclick={() => handleSelectHistoryScan(item.id)}
-                      class="px-3 py-1 bg-[var(--color-text-headline)] text-[var(--color-canvas)] font-bold rounded-none text-xs font-mono uppercase transition-opacity cursor-pointer hover:opacity-90"
+                      class="px-3 py-1 bg-on-surface text-surface-container-lowest font-bold rounded text-xs font-mono uppercase transition-opacity cursor-pointer hover:opacity-90"
                     >
                       Load
                     </button>
                     <button
                       type="button"
                       onclick={() => handleDeleteScan(item.id)}
-                      class="p-1 text-[var(--color-text-muted)] hover:text-red-500 rounded-none cursor-pointer"
+                      class="p-1 text-outline hover:text-error rounded cursor-pointer"
                     >
                       <X class="w-4 h-4" />
                     </button>
@@ -1120,518 +1229,58 @@
               {/each}
             </div>
           {/if}
-        </div>
-
-      <!-- 7. WATCHDOG WORKSPACE VIEW -->
-      {:else if currentWorkspace === "watchdog"}
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          <div class="flex items-center justify-between pb-2 border-b border-[var(--color-hairline)]">
-            <div class="flex items-center gap-2">
-              <Activity class="w-4 h-4 text-[var(--color-signal-red)]" />
-              <h2 class="text-sm font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Automated Watchdog Daemon</h2>
-            </div>
-            <button
-              type="button"
-              onclick={() => (isMonitorsOpen = true)}
-              class="px-3 py-1 bg-[var(--color-text-headline)] text-[var(--color-canvas)] font-bold rounded-none text-xs font-mono uppercase transition-opacity cursor-pointer hover:opacity-90"
-            >
-              + Add Target
-            </button>
-          </div>
-
-          {#if monitors.length === 0}
-            <div class="py-16 text-center bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-3">
-              <Activity class="w-10 h-10 text-[var(--color-signal-red)] mx-auto opacity-70" />
-              <h3 class="text-sm font-bold text-[var(--color-text-headline)] font-mono uppercase">No Monitored Targets Active</h3>
-              <p class="text-xs text-[var(--color-text-muted)] max-w-sm mx-auto font-mono">
-                Schedule targets for continuous re-auditing (1h, 6h, 12h, 24h) with native desktop alerts upon score degradation.
-              </p>
-            </div>
-          {:else}
-            <div class="space-y-2">
-              {#each monitors as m (m.id)}
-                <div class="p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex items-center justify-between gap-4">
-                  <div class="space-y-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class="font-bold text-[var(--color-text-headline)] font-mono text-xs">{m.target_url}</span>
-                      <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none bg-[var(--color-canvas)] border border-[var(--color-hairline)] text-[var(--color-text-muted)] uppercase">
-                        Every {m.interval_hours}h
-                      </span>
-                    </div>
-                    <div class="text-[11px] font-mono text-[var(--color-text-muted)] uppercase">
-                      Next Run: {new Date(m.next_scan_at).toLocaleTimeString()} • Last Score: {m.last_score ?? "Pending"}
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onclick={() => handleToggleMonitor(m.id)}
-                      class="px-2.5 py-1 rounded-none text-xs font-mono font-bold uppercase transition-colors cursor-pointer {m.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] border border-[var(--color-hairline)]'}"
-                    >
-                      {m.is_active ? "Active" : "Paused"}
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => handleDeleteMonitor(m.id)}
-                      class="p-1 text-[var(--color-text-muted)] hover:text-red-500 rounded-none cursor-pointer"
-                    >
-                      <X class="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-      <!-- 8. SETTINGS WORKSPACE VIEW -->
-      {:else if currentWorkspace === "settings"}
-        <div class="space-y-4 max-w-4xl w-full mx-auto animate-fade-in">
-          <div class="p-5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-[var(--color-hairline)]">
-              <div>
-                <h2 class="text-sm font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Scanner Configuration</h2>
-                <p class="text-xs text-[var(--color-text-muted)] font-mono">Configure global scan parameters, HTTP headers, and port probe profiles.</p>
-              </div>
-              <button
-                type="button"
-                onclick={() => {
-                  settingsTab = "params";
-                  isSettingsOpen = true;
-                }}
-                class="px-3 py-1.5 bg-[var(--color-text-headline)] text-[var(--color-canvas)] font-bold rounded-none text-xs font-mono uppercase transition-opacity cursor-pointer hover:opacity-90"
-              >
-                Open Full Settings Hub
-              </button>
-            </div>
-
-            <!-- Fast Port Scanner Preset Selector -->
-            <div class="p-3 bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono flex items-center gap-1.5 uppercase">
-                  <Server class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-                  Automatic Port Discovery Profile
-                </span>
-                <span class="text-[10px] font-mono text-emerald-500 uppercase font-bold">Default: Top 20</span>
-              </div>
-              <p class="text-xs text-[var(--color-text-muted)] font-mono">
-                Ports are scanned concurrently with sub-second probes whenever a target audit is executed.
-              </p>
-              <div class="grid grid-cols-3 gap-2 pt-1">
-                <button
-                  type="button"
-                  onclick={() => (scanOptions.port_scan_profile = "top20")}
-                  class="py-1.5 px-2 rounded-none text-xs font-mono font-bold uppercase border transition-colors cursor-pointer {scanOptions.port_scan_profile === 'top20' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border-[var(--color-hairline)]'}"
-                >
-                  Top 20 (Fastest)
-                </button>
-                <button
-                  type="button"
-                  onclick={() => (scanOptions.port_scan_profile = "databases")}
-                  class="py-1.5 px-2 rounded-none text-xs font-mono font-bold uppercase border transition-colors cursor-pointer {scanOptions.port_scan_profile === 'databases' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border-[var(--color-hairline)]'}"
-                >
-                  Databases
-                </button>
-                <button
-                  type="button"
-                  onclick={() => (scanOptions.port_scan_profile = "top100")}
-                  class="py-1.5 px-2 rounded-none text-xs font-mono font-bold uppercase border transition-colors cursor-pointer {scanOptions.port_scan_profile === 'top100' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border-[var(--color-hairline)]'}"
-                >
-                  Top 100
-                </button>
-              </div>
-            </div>
-
-            <!-- Fast Wordlist & Path Discovery Preset Selector -->
-            <div class="p-3 bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono flex items-center gap-1.5 uppercase">
-                  <ListFilter class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
-                  Path Discovery & Wordlist Profile
-                </span>
-                <button
-                  type="button"
-                  onclick={() => {
-                    settingsTab = "wordlists";
-                    isSettingsOpen = true;
-                  }}
-                  class="text-[10px] font-mono text-[var(--color-signal-red)] hover:underline uppercase font-bold cursor-pointer"
-                >
-                  Configure Wordlists →
-                </button>
-              </div>
-              <p class="text-xs text-[var(--color-text-muted)] font-mono">
-                Select wordlists to discover hidden endpoints, administrative interfaces, and configuration files.
-              </p>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                {#each WORDLIST_PRESETS.slice(0, 4) as preset}
-                  <button
-                    type="button"
-                    onclick={() => {
-                      if (!scanOptions.wordlist_config) {
-                        scanOptions.wordlist_config = {
-                          selectedIds: [...preset.selectedIds],
-                          customPaths: [],
-                          activePreset: preset.id,
-                        };
-                      } else {
-                        scanOptions.wordlist_config.selectedIds = [...preset.selectedIds];
-                        scanOptions.wordlist_config.activePreset = preset.id;
-                      }
-                      showToast(`Applied ${preset.name}`, "success");
-                    }}
-                    class="py-1.5 px-2 rounded-none text-xs font-mono font-bold uppercase border transition-colors cursor-pointer {(scanOptions.wordlist_config?.activePreset || 'balanced') === preset.id ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border-[var(--color-hairline)]'}"
-                  >
-                    {preset.name.split(" ")[0]}
-                  </button>
-                {/each}
-              </div>
-            </div>
-          </div>
-        </div>
-
-      <!-- 9. PRIMARY AUDIT WORKSPACE (WHEN REPORT LOADED) -->
-      {:else if report}
-        <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
-          <!-- Target Summary Card -->
-          <div class="p-5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 transition-colors">
-            <div class="space-y-2 min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="px-2 py-0.5 text-xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-none uppercase tracking-wider">
-                  HTTP {report.status_code}
-                </span>
-                <span class="text-xs text-[var(--color-text-muted)] font-mono">
-                  LATENCY: <strong class="text-[var(--color-text-headline)] tabular-nums">{report.response_time_ms} MS</strong>
-                </span>
-                <span class="text-xs text-[var(--color-hairline-strong)]">•</span>
-                <span class="text-xs text-[var(--color-text-muted)] font-mono uppercase">
-                  AUDITED AT {new Date(report.scanned_at).toLocaleTimeString()}
-                </span>
-
-                {#if previousScan}
-                  <span class="text-xs text-[var(--color-hairline-strong)]">•</span>
-                  <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[11px] font-mono {report.security_score >= previousScan.security_score ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30'}">
-                    {#if report.security_score > previousScan.security_score}
-                      <TrendingUp class="w-3 h-3 text-emerald-500" />
-                      <span>+{report.security_score - previousScan.security_score} PTS</span>
-                    {:else if report.security_score < previousScan.security_score}
-                      <TrendingDown class="w-3 h-3 text-red-500" />
-                      <span>-{previousScan.security_score - report.security_score} PTS</span>
-                    {/if}
-                  </div>
-                {/if}
-              </div>
-
-              <div class="flex items-center gap-2">
-                <h1 class="text-xl font-bold text-[var(--color-text-headline)] tracking-tight truncate flex items-center gap-2 font-mono">
-                  <Globe class="w-4 h-4 text-[var(--color-signal-red)] flex-shrink-0" />
-                  <span class="truncate">{report.target_url}</span>
-                </h1>
-                <div class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onclick={copyTargetUrl}
-                    class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none border border-transparent hover:border-[var(--color-hairline)] cursor-pointer"
-                    title="Copy URL"
-                  >
-                    {#if copiedUrl}
-                      <CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
-                    {:else}
-                      <Search class="w-3.5 h-3.5" />
-                    {/if}
-                  </button>
-                  <button
-                    type="button"
-                    onclick={copyCurlCommand}
-                    class="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] rounded-none border border-transparent hover:border-[var(--color-hairline)] cursor-pointer"
-                    title="Copy cURL command"
-                  >
-                    {#if copiedCurl}
-                      <Check class="w-3.5 h-3.5 text-emerald-500" />
-                    {:else}
-                      <Terminal class="w-3.5 h-3.5" />
-                    {/if}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Detected Technologies -->
-              {#if report.technologies_detected.length > 0}
-                <div class="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span class="text-[10px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest flex items-center gap-1 mr-1 font-bold">
-                    <Cpu class="w-3 h-3 text-[var(--color-text-muted)]" /> STACK:
-                  </span>
-                  {#each report.technologies_detected as tech}
-                    <span class="px-2 py-0.5 text-[11px] font-mono bg-[var(--color-canvas)] text-[var(--color-text-body)] border border-[var(--color-hairline)] rounded-none">
-                      {tech}
-                    </span>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-
-            <!-- Score Gauge Component -->
-            <div class="w-full lg:w-auto flex-shrink-0">
-              <ScoreGauge score={report.security_score} />
-            </div>
-          </div>
-
-          <!-- Severity Distribution & Filter Bar -->
-          <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-3 transition-colors">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-headline)] font-mono">
-                  SEVERITY DISTRIBUTION
-                </span>
-                <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-[var(--color-canvas)] text-[var(--color-text-body)] border border-[var(--color-hairline)] rounded-none">
-                  {report.total_findings} FINDINGS
-                </span>
-              </div>
-              {#if selectedSeverity !== "all" || searchQuery.trim() || selectedCategory !== "all"}
-                <button
-                  type="button"
-                  onclick={() => {
-                    selectedSeverity = "all";
-                    selectedCategory = "all";
-                    searchQuery = "";
-                  }}
-                  class="text-xs font-mono text-[var(--color-signal-red)] hover:underline cursor-pointer uppercase tracking-wider"
-                >
-                  [Reset Filters]
-                </button>
-              {/if}
-            </div>
-
-            <!-- Proportional Colored Bar -->
-            {#if report.total_findings > 0}
-              <div class="w-full h-2 bg-[var(--color-hairline)] rounded-none overflow-hidden flex gap-0.5">
-                {#each [
-                  { count: report.critical_count, color: 'bg-red-500' },
-                  { count: report.high_count, color: 'bg-orange-500' },
-                  { count: report.medium_count, color: 'bg-amber-500' },
-                  { count: report.low_count, color: 'bg-blue-500' },
-                  { count: report.info_count, color: 'bg-zinc-500' },
-                ] as seg}
-                  {#if seg.count > 0}
-                    <div class="{seg.color} h-full" style="width: {(seg.count / report.total_findings) * 100}%"></div>
-                  {/if}
-                {/each}
-              </div>
-            {/if}
-
-            <!-- Severity Filter Chips -->
-            <div class="flex flex-wrap items-center gap-1.5 pt-1">
-              <button
-                type="button"
-                onclick={() => (selectedSeverity = "all")}
-                class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === 'all' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'bg-[var(--color-canvas)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)]'}"
-              >
-                ALL ({report.total_findings})
-              </button>
-              {#each [
-                { id: 'critical', label: 'CRITICAL', count: report.critical_count, active: 'bg-red-600 text-white', inactive: 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border-red-500/30' },
-                { id: 'high', label: 'HIGH', count: report.high_count, active: 'bg-orange-600 text-white', inactive: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 border-orange-500/30' },
-                { id: 'medium', label: 'MED', count: report.medium_count, active: 'bg-amber-600 text-white', inactive: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border-amber-500/30' },
-                { id: 'low', label: 'LOW', count: report.low_count, active: 'bg-blue-600 text-white', inactive: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border-blue-500/30' },
-                { id: 'info', label: 'INFO', count: report.info_count, active: 'bg-zinc-600 text-white', inactive: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-500/20 border-zinc-500/30' },
-              ] as s}
-                <button
-                  type="button"
-                  onclick={() => (selectedSeverity = s.id as Severity)}
-                  class="px-2.5 py-1 rounded-none text-xs font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer {selectedSeverity === s.id ? s.active : `${s.inactive} border`}"
-                >
-                  {s.label} ({s.count})
-                </button>
-              {/each}
-            </div>
-          </div>
-
-          <!-- Finding Cards Search & Filters -->
-          <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none flex flex-col sm:flex-row items-center justify-between gap-3 transition-colors">
-            <div class="relative w-full sm:flex-1">
-              <Search class="w-3.5 h-3.5 text-[var(--color-text-muted)] absolute inset-y-0 left-3 my-auto pointer-events-none" />
-              <input
-                type="text"
-                bind:value={searchQuery}
-                placeholder="SEARCH FINDINGS, CVES, OWASP CATEGORIES..."
-                class="w-full pl-8 pr-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] placeholder-[var(--color-text-muted)] font-mono focus:outline-none uppercase"
-              />
-            </div>
-
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-              <select
-                bind:value={selectedCategory}
-                class="w-full sm:w-auto appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
-              >
-                {#each categories as cat}
-                  <option value={cat.id}>{cat.label.toUpperCase()}</option>
-                {/each}
-              </select>
-
-              <div class="flex items-center gap-1">
-                <ArrowUpDown class="w-3.5 h-3.5 text-[var(--color-text-muted)] flex-shrink-0" />
-                <select
-                  bind:value={sortFindingsBy}
-                  class="appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
-                >
-                  <option value="severity">SORT: SEVERITY</option>
-                  <option value="title">SORT: TITLE (A-Z)</option>
-                  <option value="category">SORT: CATEGORY</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Findings List -->
-          <div class="space-y-3">
-            {#if filteredFindings.length === 0}
-              <div class="py-16 text-center bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-2">
-                <CheckCircle2 class="w-10 h-10 text-emerald-500 mx-auto" />
-                <h3 class="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text-headline)]">No findings matching active criteria</h3>
-              </div>
-            {:else}
-              {#each displayedFindings as finding (finding.id)}
-                <FindingCard {finding} />
-              {/each}
-
-              {#if filteredFindings.length > 35 && !showAllFindings}
-                <div class="pt-4 pb-2 text-center">
-                  <button
-                    type="button"
-                    onclick={() => (showAllFindings = true)}
-                    class="px-5 py-2.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] text-[var(--color-text-headline)] text-xs font-mono font-bold uppercase tracking-wider rounded-none cursor-pointer transition-colors shadow-sm"
-                  >
-                    [SHOW ALL {filteredFindings.length} FINDINGS (+{filteredFindings.length - 35} MORE)]
-                  </button>
-                </div>
-              {/if}
-            {/if}
-          </div>
-        </div>
-
-      <!-- 10. EMPTY DASHBOARD / STANDBY WORKSTATION -->
-      {:else}
-        <div class="my-auto max-w-2xl mx-auto w-full py-12 text-center space-y-6 animate-fade-in">
-          <div class="w-14 h-14 rounded-none bg-[var(--color-surface)] border border-[var(--color-hairline)] border-l-4 border-l-[var(--color-signal-red)] flex items-center justify-center text-[var(--color-text-headline)] mx-auto">
-            <ShieldCheck class="w-7 h-7" />
-          </div>
-
-          <div class="space-y-2">
-            <div class="text-[10px] font-mono font-bold tracking-widest text-[var(--color-signal-red)] uppercase">
-              00/STANDBY WORKSTATION
-            </div>
-            <h1 class="text-3xl sm:text-4xl font-black font-sans text-[var(--color-text-headline)] tracking-tight uppercase">
-              VulnRadar Security Workstation
-            </h1>
-            <p class="text-xs text-[var(--color-text-muted)] max-w-md mx-auto leading-relaxed font-mono">
-              Multi-threaded passive reconnaissance, automated TCP port discovery, email/DNS anti-spoofing verification, and continuous posture monitoring.
-            </p>
-          </div>
-
-          <!-- Central Instant Input -->
-          <form
-            onsubmit={(e) => {
-              e.preventDefault();
-              handleScan();
-            }}
-            class="flex items-center gap-2 p-2 bg-[var(--color-surface)] border border-[var(--color-hairline)] focus-within:border-[var(--color-hairline-strong)] rounded-none transition-all max-w-xl mx-auto"
-          >
-            <div class="pl-2 text-[var(--color-text-muted)]">
-              <Search class="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              bind:value={targetUrl}
-              placeholder="ENTER TARGET DOMAIN (E.G. EXAMPLE.COM OR HTTP://LOCALHOST:8000)..."
-              class="w-full py-2 bg-transparent text-xs font-mono text-[var(--color-text-headline)] placeholder-[var(--color-text-muted)] focus:outline-none uppercase"
-            />
-            <button
-              type="submit"
-              disabled={!targetUrl.trim() || isScanning}
-              class="px-5 py-2.5 bg-[var(--color-signal-red)] hover:opacity-90 disabled:opacity-40 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-none transition-all cursor-pointer flex-shrink-0"
-            >
-              [AUDIT TARGET]
-            </button>
-          </form>
-
-          <!-- Quick Presets -->
-          <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span class="text-[10px] text-[var(--color-text-muted)] font-mono uppercase tracking-widest font-bold mr-1">QUICK TARGET:</span>
-            {#each ["example.com", "httpbin.org", "testphp.vulnweb.com", "localhost:8000"] as preset}
-              <button
-                type="button"
-                onclick={() => {
-                  const url = preset.startsWith("http")
-                    ? preset
-                    : preset.includes("localhost") || preset.includes("127.0.0.1")
-                    ? `http://${preset}`
-                    : `https://${preset}`;
-                  targetUrl = url;
-                  handleScan(url);
-                }}
-                class="px-3 py-1 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] rounded-none text-xs font-mono text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] transition-colors cursor-pointer uppercase"
-              >
-                {preset}
-              </button>
-            {/each}
-          </div>
-
-          <!-- Native Engine Status Telemetry Widget -->
-          <div class="grid grid-cols-3 gap-2 max-w-xl mx-auto pt-4 text-left">
-            <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
-              <div class="text-[9px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] font-bold">SCANNER ENGINE</div>
-              <div class="text-xs font-bold font-mono text-[var(--color-text-headline)]">RUST CORE v0.9.0</div>
-            </div>
-            <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
-              <div class="text-[9px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] font-bold">PORT PROBING</div>
-              <div class="text-xs font-bold font-mono text-emerald-500">TOP 20 (AUTO)</div>
-            </div>
-            <div class="p-3 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-1">
-              <div class="text-[9px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] font-bold">LOCAL PERSISTENCE</div>
-              <div class="text-xs font-bold font-mono text-[var(--color-text-headline)]">SQLITE WAL</div>
-            </div>
-          </div>
         </div>
       {/if}
     </main>
   </div>
 
-  <!-- Native Desktop Footbar / Bottom Status Bar -->
+  <!-- Telemetry Footer Status Bar -->
   <footer
-    class="h-6 bg-[var(--color-surface)] border-t border-[var(--color-hairline)] px-4 flex items-center justify-between text-[10px] font-mono text-[var(--color-text-muted)] desktop-select-none flex-shrink-0 z-30 print:hidden uppercase tracking-wider"
+    class="h-6 bg-surface-container-lowest border-t border-surface-container-high z-50 px-4 flex items-center justify-between font-mono text-xs text-on-surface-variant flex-shrink-0 select-none"
   >
     <div class="flex items-center gap-3">
-      <span class="flex items-center gap-1.5 text-[var(--color-text-headline)] font-bold">
-        <span class="w-1.5 h-1.5 rounded-none bg-emerald-500"></span>
-        VULNRADAR v0.9.0
+      <span class="flex items-center gap-1.5 text-tertiary font-medium">
+        <span class="w-1.5 h-1.5 rounded-full {isScanning ? 'bg-primary animate-ping' : 'bg-tertiary'}"></span>
+        {isScanning ? "Scanning..." : "Ready"}
       </span>
-      <span class="text-[var(--color-hairline-strong)]">/</span>
-      <span>STORAGE: SQLITE WAL</span>
-      <span class="text-[var(--color-hairline-strong)]">/</span>
-      <span>PORTS: TOP 20</span>
-    </div>
-
-    <div class="flex items-center gap-3">
-      {#if report}
-        <span class="text-[var(--color-text-body)]">RESPONSE: {report.response_time_ms} MS</span>
-        <span class="text-[var(--color-hairline-strong)]">/</span>
+      {#if report?.target_url || targetUrl}
+        <span class="text-outline">/</span>
+        <span class="truncate max-w-xs text-on-surface">
+          {report?.target_url || targetUrl}
+        </span>
       {/if}
-      <span>MONITORS: {monitors.filter((m) => m.is_active).length} ACTIVE</span>
-      <span class="text-[var(--color-hairline-strong)]">/</span>
-      <span>SHORTCUTS: <kbd class="px-1 text-[9px] font-mono bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none text-[var(--color-text-headline)]">?</kbd></span>
+      {#if report}
+        <span class="text-outline">/</span>
+        <span class="text-outline">{report.findings.length} findings</span>
+        <span class="text-outline">/</span>
+        <span class="text-outline">{report.response_time_ms}ms</span>
+      {/if}
+    </div>
+    <div class="flex items-center gap-3 text-outline text-[11px]">
+      <span>⌘K Target</span>
+      <span>⌘B Fleet</span>
+      <span>⌘O Options</span>
+      <span>⌘, Settings</span>
+      <button
+        type="button"
+        onclick={() => (isShortcutsOpen = true)}
+        class="hover:text-on-surface cursor-pointer"
+      >
+        ? Help
+      </button>
     </div>
   </footer>
 </div>
 
-<!-- Modals & Drawers -->
+<!-- Global Modals System -->
 <SettingsModal
   isOpen={isSettingsOpen}
   activeTab={settingsTab}
   options={scanOptions}
   {monitors}
   historyCount={history.length}
-  onApplyOptions={(newOpts) => {
-    scanOptions = newOpts;
+  onApplyOptions={(opts: ScanOptions) => {
+    scanOptions = opts;
     showToast("Scan configuration updated", "success");
     isSettingsOpen = false;
   }}

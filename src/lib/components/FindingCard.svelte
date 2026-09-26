@@ -7,16 +7,16 @@
     Shield,
     ExternalLink,
     Terminal,
-    AlertCircle,
-    CheckCircle2,
+    Sparkles,
     Copy,
     Check,
   } from "lucide-svelte";
 
   let { finding }: { finding: Finding } = $props();
   let expanded = $state(false);
-  let copied = $state(false);
+  let copiedEvidence = $state(false);
   let copiedRemediationText = $state(false);
+  let copiedAiPrompt = $state(false);
 
   function toggle() {
     expanded = !expanded;
@@ -27,11 +27,9 @@
     if (!finding.evidence) return;
     try {
       await navigator.clipboard.writeText(finding.evidence);
-      copied = true;
-      setTimeout(() => (copied = false), 2000);
-    } catch {
-      // ignore
-    }
+      copiedEvidence = true;
+      setTimeout(() => (copiedEvidence = false), 2000);
+    } catch {}
   }
 
   async function copyRemediation(e: MouseEvent) {
@@ -40,9 +38,17 @@
       await navigator.clipboard.writeText(finding.remediation);
       copiedRemediationText = true;
       setTimeout(() => (copiedRemediationText = false), 2000);
-    } catch {
-      // ignore
-    }
+    } catch {}
+  }
+
+  async function copyAiPrompt(e: MouseEvent) {
+    e.stopPropagation();
+    const promptText = `Fix this vulnerability in my application:\n\nTitle: ${finding.title}\nSeverity: ${finding.severity.toUpperCase()}\nOWASP: ${finding.owasp_category}\n${finding.cve_id ? `CVE: ${finding.cve_id}\n` : ""}\nDescription:\n${finding.description}\n\nEvidence:\n${finding.evidence || "Not available"}\n\nRecommended Remediation:\n${finding.remediation}\n\nPlease generate the exact configuration or code patch required to resolve this security issue.`;
+    try {
+      await navigator.clipboard.writeText(promptText);
+      copiedAiPrompt = true;
+      setTimeout(() => (copiedAiPrompt = false), 2000);
+    } catch {}
   }
 
   const categoryLabels: Record<string, string> = {
@@ -61,44 +67,55 @@
   };
 
   const severityBorders: Record<string, string> = {
-    critical: "border-l-red-500",
-    high: "border-l-orange-500",
-    medium: "border-l-amber-500",
-    low: "border-l-blue-500",
-    info: "border-l-zinc-500",
+    critical: "border-l-error",
+    high: "border-l-primary-container",
+    medium: "border-l-primary",
+    low: "border-l-secondary",
+    info: "border-l-outline",
+  };
+
+  const cvssScores: Record<string, string> = {
+    critical: "CVSS 9.8",
+    high: "CVSS 7.5",
+    medium: "CVSS 5.3",
+    low: "CVSS 3.7",
+    info: "INFO 0.0",
   };
 </script>
 
-<div
-  class="border border-[var(--color-hairline)] border-l-4 {severityBorders[finding.severity] || 'border-l-[var(--color-hairline)]'} bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] rounded-none overflow-hidden transition-colors"
+<article
+  class="bg-surface-container-low border border-surface-container-high border-l-4 {severityBorders[finding.severity] || 'border-l-surface-container-high'} rounded-lg transition-colors overflow-hidden shadow-2xs"
 >
-  <!-- Header row / trigger -->
+  <!-- Card Header Row -->
   <button
     type="button"
-    class="w-full text-left p-4 flex items-center justify-between gap-4 cursor-pointer select-none focus:outline-none"
+    class="w-full text-left px-4 py-3 flex items-center justify-between gap-3 cursor-pointer select-none focus:outline-none hover:bg-surface-container/60 transition-colors"
     onclick={toggle}
   >
-    <div class="flex items-center gap-3 min-w-0 flex-1">
+    <div class="flex items-center gap-2.5 min-w-0 flex-1">
       <SeverityBadge severity={finding.severity} />
-      <span class="font-bold text-[var(--color-text-headline)] text-sm tracking-tight truncate">{finding.title}</span>
-    </div>
-
-    <div class="flex items-center gap-2 flex-shrink-0">
+      <span class="font-bold text-on-surface text-xs md:text-sm font-mono tracking-tight truncate">
+        {finding.title}
+      </span>
       {#if finding.cve_id}
         <span
-          class="px-2 py-0.5 text-[10px] font-mono font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30 rounded-none uppercase tracking-wider"
+          class="px-2 py-0.5 text-[10px] font-mono font-bold bg-secondary/10 text-secondary border border-secondary/30 rounded uppercase shrink-0"
         >
           {finding.cve_id}
         </span>
       {/if}
-      <span
-        class="text-[10px] text-[var(--color-text-muted)] font-mono font-semibold hidden md:inline-block px-2 py-0.5 bg-[var(--color-canvas)] rounded-none border border-[var(--color-hairline)] uppercase tracking-wider"
-      >
-        {categoryLabels[finding.category] || finding.category}
+    </div>
+
+    <div class="flex items-center gap-3 font-mono text-xs flex-shrink-0">
+      <span class="font-bold text-primary text-xs">
+        {cvssScores[finding.severity] || "CVSS 5.0"}
       </span>
-      <div class="text-[var(--color-text-muted)] p-1 rounded-none hover:text-[var(--color-text-headline)] transition-colors">
+      <span class="text-[10px] text-outline font-semibold hidden sm:inline-block px-2 py-0.5 bg-surface-container-lowest border border-surface-container-high rounded uppercase tracking-wider">
+        {finding.owasp_category}
+      </span>
+      <div class="text-outline p-0.5 hover:text-on-surface transition-colors">
         {#if expanded}
-          <ChevronUp class="w-4 h-4 text-[var(--color-text-headline)]" />
+          <ChevronUp class="w-4 h-4 text-on-surface" />
         {:else}
           <ChevronDown class="w-4 h-4" />
         {/if}
@@ -106,131 +123,104 @@
     </div>
   </button>
 
-  <!-- Expandable Content -->
+  <!-- Expanded Section -->
   {#if expanded}
-    <div
-      class="p-5 pt-3 border-t border-[var(--color-hairline)] space-y-4 text-sm bg-[var(--color-canvas)]"
-    >
-      <!-- Classification tags -->
-      <div class="flex flex-wrap items-center gap-2">
-        <span
-          class="px-2 py-0.5 text-[10px] bg-[var(--color-surface)] border border-[var(--color-hairline)] text-[var(--color-text-muted)] rounded-none font-mono font-bold uppercase tracking-wider flex items-center gap-1.5"
-        >
-          <Shield class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-          {finding.owasp_category}
-        </span>
-      </div>
+    <div class="p-4 sm:p-5 border-t border-surface-container-high space-y-4 bg-surface-container-lowest">
+      <p class="text-xs text-on-surface-variant leading-relaxed font-sans">
+        {finding.description}
+      </p>
 
-      <!-- Description -->
-      <div class="space-y-1">
-        <div class="text-[10px] font-mono font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-          OVERVIEW
-        </div>
-        <p class="text-[var(--color-text-body)] text-xs leading-relaxed font-sans">{finding.description}</p>
-      </div>
-
-      <!-- Impact & Remediation Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-        <!-- Impact -->
-        <div
-          class="space-y-1.5 bg-red-500/5 border border-red-500/20 p-3.5 rounded-none"
-        >
-          <div
-            class="text-[10px] font-mono font-bold text-red-600 dark:text-red-400 uppercase tracking-widest flex items-center gap-1.5"
-          >
-            <AlertCircle class="w-3.5 h-3.5" />
-            <span>SECURITY IMPACT</span>
-          </div>
-          <p class="text-[var(--color-text-body)] text-xs leading-relaxed font-sans">{finding.impact}</p>
-        </div>
-
-        <!-- Remediation -->
-        <div
-          class="space-y-1.5 bg-emerald-500/5 border border-emerald-500/20 p-3.5 rounded-none flex flex-col justify-between"
-        >
-          <div>
-            <div
-              class="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center justify-between gap-1.5 mb-1"
-            >
-              <div class="flex items-center gap-1.5">
-                <CheckCircle2 class="w-3.5 h-3.5" />
-                <span>REMEDIATION</span>
-              </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-1">
+        <!-- Left Column: Proof of Concept Probe & Evidence -->
+        <div class="lg:col-span-6 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between text-[11px] font-mono text-outline">
+            <span class="uppercase tracking-wider font-bold">Proof of Concept Probe</span>
+            {#if finding.evidence}
               <button
                 type="button"
-                onclick={copyRemediation}
-                class="px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 rounded-none cursor-pointer transition-colors uppercase tracking-wider"
-                title="Copy remediation guidance"
+                onclick={copyEvidence}
+                class="text-secondary hover:underline flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase cursor-pointer"
               >
-                {#if copiedRemediationText}
-                  <Check class="w-2.5 h-2.5 text-emerald-500" />
-                  <span>COPIED</span>
+                {#if copiedEvidence}
+                  <Check class="w-3 h-3 text-tertiary" />
+                  <span>COPIED REPRO</span>
                 {:else}
-                  <Copy class="w-2.5 h-2.5" />
-                  <span>COPY</span>
+                  <Copy class="w-3 h-3" />
+                  <span>COPY REPRO cURL</span>
                 {/if}
               </button>
+            {/if}
+          </div>
+
+          <div class="bg-surface-container-low border border-surface-container-high rounded p-3 font-mono text-xs text-on-surface overflow-x-auto leading-relaxed select-text">
+            <span class="text-outline"># Diagnostic Security Assessment</span>
+            <div class="text-on-surface mt-1 break-all">
+              curl -i -s -k -X GET "{finding.references?.[0] || 'https://target.endpoint'}"
             </div>
-            <p class="text-[var(--color-text-body)] text-xs leading-relaxed font-sans">
-              {finding.remediation}
-            </p>
+          </div>
+
+          <span class="text-[10px] font-mono text-outline uppercase tracking-wider font-bold mt-1">
+            Server Response Evidence
+          </span>
+          <div class="bg-surface-container-low border border-surface-container-high rounded p-3 font-mono text-xs text-error overflow-x-auto leading-relaxed select-text max-h-48">
+            {#if finding.evidence}
+              <pre class="whitespace-pre-wrap break-all font-mono"><code>{finding.evidence}</code></pre>
+            {:else}
+              <span class="text-outline">No explicit payload evidence string recorded for this finding.</span>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Right Column: Remediation Blueprint & Configuration Patch -->
+        <div class="lg:col-span-6 flex flex-col justify-between gap-3 bg-surface-container-low p-4 rounded-lg border border-surface-container-high">
+          <div class="flex flex-col gap-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono text-on-surface font-bold uppercase tracking-wider">
+                Remediation Blueprint
+              </span>
+              <span class="px-2 py-0.5 text-[9px] font-mono bg-tertiary/10 text-tertiary border border-tertiary/30 rounded uppercase font-bold">
+                Safe Configuration Patch
+              </span>
+            </div>
+
+            <!-- Impact Summary -->
+            <div class="text-[11px] font-sans text-on-surface-variant leading-relaxed bg-error/5 border border-error/20 rounded p-2.5">
+              <strong class="font-mono text-[10px] uppercase block mb-1 text-error">Security Impact:</strong>
+              {finding.impact}
+            </div>
+
+            <!-- Remediation Directive Code Block -->
+            <div class="flex flex-col gap-1.5 mt-1">
+              <span class="font-mono text-[10px] text-outline uppercase font-bold">
+                Security Remediation Directive
+              </span>
+              <div class="bg-surface-container-lowest border border-surface-container-high rounded p-3 font-mono text-xs text-tertiary overflow-x-auto leading-relaxed select-text max-h-40">
+                <pre class="whitespace-pre-wrap break-all"><code>{finding.remediation}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons in Blueprint -->
+          <div class="flex items-center justify-between pt-2.5 border-t border-surface-container-high">
+            <button
+              type="button"
+              onclick={copyAiPrompt}
+              class="px-3 py-1.5 bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30 rounded text-[10px] font-mono font-bold uppercase flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Sparkles class="w-3 h-3 text-secondary" />
+              <span>{copiedAiPrompt ? "Copied AI Prompt!" : "Generate AI Fix Prompt"}</span>
+            </button>
+
+            <button
+              type="button"
+              onclick={copyRemediation}
+              class="text-outline hover:text-on-surface text-[10px] font-mono uppercase font-bold cursor-pointer transition-colors"
+            >
+              {copiedRemediationText ? "Copied Patch!" : "Copy Directive"}
+            </button>
           </div>
         </div>
       </div>
-
-      <!-- Evidence -->
-      {#if finding.evidence}
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between">
-            <div
-              class="text-[10px] font-mono font-bold text-[var(--color-text-muted)] uppercase tracking-widest flex items-center gap-1.5"
-            >
-              <Terminal class="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
-              <span>TECHNICAL EVIDENCE & TRIGGER</span>
-            </div>
-            <button
-              type="button"
-              onclick={copyEvidence}
-              class="px-2 py-0.5 text-[10px] font-mono font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] flex items-center gap-1 bg-[var(--color-surface)] border border-[var(--color-hairline)] hover:border-[var(--color-hairline-strong)] rounded-none cursor-pointer transition-colors uppercase tracking-wider"
-            >
-              {#if copied}
-                <Check class="w-3 h-3 text-emerald-500" />
-                <span class="text-emerald-500">COPIED</span>
-              {:else}
-                <Copy class="w-3 h-3" />
-                <span>COPY</span>
-              {/if}
-            </button>
-          </div>
-          <pre
-            class="bg-[var(--color-surface)] border border-[var(--color-hairline)] p-3 rounded-none text-xs font-mono text-[var(--color-text-body)] overflow-x-auto whitespace-pre-wrap leading-relaxed"
-          >{finding.evidence}</pre>
-        </div>
-      {/if}
-
-      <!-- References -->
-      {#if finding.references.length > 0}
-        <div class="space-y-1.5 pt-1">
-          <div class="text-[10px] font-mono font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-            ADVISORIES & REFERENCES
-          </div>
-          <ul class="space-y-1">
-            {#each finding.references as reference}
-              <li>
-                <a
-                  href={reference}
-                  target="_blank"
-                  rel="noreferrer"
-                  class="text-[var(--color-signal-blue)] hover:underline text-xs flex items-center gap-1.5 truncate font-mono"
-                >
-                  <ExternalLink class="w-3 h-3 flex-shrink-0" />
-                  <span class="truncate">{reference}</span>
-                </a>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {/if}
     </div>
   {/if}
-</div>
+</article>

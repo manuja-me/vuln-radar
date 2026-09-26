@@ -112,15 +112,47 @@ pub struct ScanSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct WordlistConfig {
+    #[serde(default, alias = "selectedIds", alias = "selected_ids")]
+    pub selected_ids: Vec<String>,
+    #[serde(default, alias = "customPaths", alias = "custom_paths")]
+    pub custom_paths: Vec<String>,
+    #[serde(default, alias = "activePreset", alias = "active_preset")]
+    pub active_preset: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScanOptions {
+    #[serde(default, alias = "customHeaders", alias = "custom_headers")]
     pub custom_headers: Option<Vec<(String, String)>>,
+    #[serde(default, alias = "userAgent", alias = "user_agent")]
     pub user_agent: Option<String>,
+    #[serde(default, alias = "timeoutSeconds", alias = "timeout_seconds")]
     pub timeout_seconds: Option<u64>,
+    #[serde(default, alias = "includeSubdomains", alias = "include_subdomains")]
     pub include_subdomains: Option<bool>,
+    #[serde(default, alias = "enablePortScan", alias = "enable_port_scan")]
     pub enable_port_scan: Option<bool>,
+    #[serde(default, alias = "portScanProfile", alias = "port_scan_profile")]
     pub port_scan_profile: Option<String>,
+    #[serde(default, alias = "customPorts", alias = "custom_ports")]
     pub custom_ports: Option<String>,
+    #[serde(default, alias = "portTimeoutMs", alias = "port_timeout_ms")]
     pub port_timeout_ms: Option<u64>,
+    #[serde(default, alias = "wordlistConfig", alias = "wordlist_config")]
+    pub wordlist_config: Option<WordlistConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DnsRecord {
+    pub name: String,
+    pub ttl: u32,
+    pub class: String,
+    #[serde(rename = "type")]
+    pub record_type: String,
+    pub data: String,
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +185,12 @@ pub struct DnsSecurityReport {
     pub dmarc_valid: bool,
     pub dmarc_policy: Option<String>,
     pub dnssec_enabled: bool,
+    #[serde(default)]
+    pub nameservers: Vec<String>,
+    #[serde(default)]
+    pub latency_ms: Option<u64>,
+    #[serde(default)]
+    pub records: Vec<DnsRecord>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -223,15 +261,19 @@ pub struct WordlistRecord {
     pub category: String,
     pub description: String,
     pub paths: Vec<String>,
+    #[serde(default, alias = "itemCount", alias = "item_count")]
     pub item_count: usize,
+    #[serde(default, alias = "isCustom", alias = "is_custom")]
     pub is_custom: bool,
+    #[serde(default, alias = "createdAt", alias = "created_at")]
     pub created_at: String,
+    #[serde(default, alias = "updatedAt", alias = "updated_at")]
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DynamicWordlistParams {
-    #[serde(default)]
+    #[serde(default, alias = "baseWords", alias = "base_words")]
     pub base_words: Vec<String>,
     #[serde(default)]
     pub directories: Vec<String>,
@@ -239,9 +281,9 @@ pub struct DynamicWordlistParams {
     pub extensions: Vec<String>,
     #[serde(default)]
     pub prefixes: Vec<String>,
-    #[serde(default)]
+    #[serde(default, alias = "includeDotfiles", alias = "include_dotfiles")]
     pub include_dotfiles: bool,
-    #[serde(default)]
+    #[serde(default, alias = "includeBackups", alias = "include_backups")]
     pub include_backups: bool,
 }
 
@@ -256,4 +298,46 @@ pub struct PathProbeResult {
     pub is_found: bool,
     #[serde(default)]
     pub body: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wordlist_record_camel_case_deserialization() {
+        let json = r#"{
+            "id": "wl_123",
+            "name": "Custom Admin",
+            "category": "custom",
+            "description": "Admin test paths",
+            "paths": ["/admin", "/login"],
+            "itemCount": 2,
+            "isCustom": true,
+            "createdAt": "2026-09-27T00:00:00Z",
+            "updatedAt": "2026-09-27T00:00:00Z"
+        }"#;
+
+        let rec: WordlistRecord = serde_json::from_str(json).expect("Failed to deserialize WordlistRecord");
+        assert_eq!(rec.id, "wl_123");
+        assert_eq!(rec.item_count, 2);
+        assert!(rec.is_custom);
+        assert_eq!(rec.created_at, "2026-09-27T00:00:00Z");
+    }
+
+    #[test]
+    fn test_dynamic_wordlist_params_camel_case() {
+        let json = r#"{
+            "baseWords": ["admin", "api"],
+            "directories": ["v1"],
+            "extensions": ["json"],
+            "includeDotfiles": true,
+            "includeBackups": true
+        }"#;
+
+        let params: DynamicWordlistParams = serde_json::from_str(json).expect("Failed to deserialize DynamicWordlistParams");
+        assert_eq!(params.base_words, vec!["admin", "api"]);
+        assert!(params.include_dotfiles);
+        assert!(params.include_backups);
+    }
 }

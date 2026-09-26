@@ -207,8 +207,9 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         }
     };
 
+    let custom_paths_slice = opts.wordlist_config.as_ref().map(|wc| wc.custom_paths.as_slice());
     let endpoints_fut = async {
-        endpoints::audit_endpoints(&client, &parsed_url).await
+        endpoints::audit_endpoints(&client, &parsed_url, custom_paths_slice).await
     };
 
     let port_scan_enabled = opts.enable_port_scan.unwrap_or(true);
