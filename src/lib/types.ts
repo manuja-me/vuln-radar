@@ -42,6 +42,63 @@ export interface ScanSummary {
   info_count: number;
 }
 
+export type WordlistCategory =
+  | "all"
+  | "paths"
+  | "directories"
+  | "files"
+  | "api"
+  | "backups"
+  | "debug"
+  | "custom";
+
+export interface WordlistItem {
+  id: string;
+  name: string;
+  category: "paths" | "directories" | "files" | "api" | "backups" | "debug" | "custom";
+  description: string;
+  paths: string[];
+  tags?: string[];
+  isCustom?: boolean;
+}
+
+export interface WordlistRecord {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  paths: string[];
+  item_count: number;
+  is_custom: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DynamicWordlistParams {
+  base_words?: string[];
+  directories?: string[];
+  extensions?: string[];
+  prefixes?: string[];
+  include_dotfiles?: boolean;
+  include_backups?: boolean;
+}
+
+export interface PathProbeResult {
+  path: string;
+  status: number;
+  content_length: number;
+  content_type: string;
+  response_time_ms: number;
+  has_content: boolean;
+  is_found: boolean;
+}
+
+export interface WordlistConfig {
+  selectedIds: string[];
+  customPaths: string[];
+  activePreset: string;
+}
+
 export interface ScanOptions {
   custom_headers?: [string, string][];
   user_agent?: string;
@@ -51,6 +108,7 @@ export interface ScanOptions {
   port_scan_profile?: "top20" | "top100" | "databases" | "custom" | string;
   custom_ports?: string;
   port_timeout_ms?: number;
+  wordlist_config?: WordlistConfig;
 }
 
 export interface OpenPort {

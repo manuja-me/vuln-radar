@@ -4,13 +4,16 @@
     MonitorTarget,
     ScanOptions,
     ScanReport,
+    WordlistConfig,
   } from "$lib/types";
+  import WordlistSelector from "./WordlistSelector.svelte";
   import {
     X,
     Sliders,
     Server,
     Activity,
     Layers,
+    ListFilter,
     Keyboard,
     Database,
     Globe,
@@ -48,7 +51,7 @@
     onClose,
   }: {
     isOpen: boolean;
-    activeTab?: "params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data";
+    activeTab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data";
     options: ScanOptions;
     monitors: MonitorTarget[];
     historyCount?: number;
@@ -63,7 +66,7 @@
     onClose: () => void;
   } = $props();
 
-  let currentTab = $state<"params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data">("params");
+  let currentTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data">("params");
 
   // Sync activeTab when modal opens
   $effect(() => {
@@ -84,6 +87,13 @@
   let customPortsInput = $state("21, 22, 80, 443, 3000-3005, 8080, 8443");
   let portTimeoutMs = $state(600);
 
+  // --- Wordlist Engine Local State ---
+  let wordlistConfig = $state<WordlistConfig>({
+    selectedIds: ["common_paths", "sensitive_files", "api_documentation"],
+    customPaths: [],
+    activePreset: "balanced",
+  });
+
   // Synchronize internal options state when opening modal
   let previousIsOpen = false;
   $effect(() => {
@@ -100,6 +110,18 @@
       portScanProfile = options?.port_scan_profile || "top20";
       customPortsInput = options?.custom_ports || "21, 22, 80, 443, 3000-3005, 8080, 8443";
       portTimeoutMs = options?.port_timeout_ms || 600;
+
+      wordlistConfig = options?.wordlist_config
+        ? {
+            selectedIds: [...options.wordlist_config.selectedIds],
+            customPaths: [...options.wordlist_config.customPaths],
+            activePreset: options.wordlist_config.activePreset,
+          }
+        : {
+            selectedIds: ["common_paths", "sensitive_files", "api_documentation"],
+            customPaths: [],
+            activePreset: "balanced",
+          };
     }
     previousIsOpen = isOpen;
   });
@@ -129,6 +151,7 @@
       port_scan_profile: portScanProfile,
       custom_ports: customPortsInput.trim() ? customPortsInput.trim() : undefined,
       port_timeout_ms: Number(portTimeoutMs) || 800,
+      wordlist_config: wordlistConfig,
     };
 
     if (onApplyOptions) {
@@ -355,12 +378,28 @@
 
           <button
             type="button"
+            onclick={() => (currentTab = "wordlists")}
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'wordlists' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
+          >
+            <div class="flex items-center gap-2.5">
+              <ListFilter class="w-3.5 h-3.5" />
+              <span>05/WORDLISTS</span>
+            </div>
+            {#if wordlistConfig.selectedIds.length > 0}
+              <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none bg-[var(--color-canvas)] text-[var(--color-text-headline)] border border-[var(--color-hairline)]">
+                {wordlistConfig.selectedIds.length}
+              </span>
+            {/if}
+          </button>
+
+          <button
+            type="button"
             onclick={() => (currentTab = "shortcuts")}
             class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'shortcuts' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
           >
             <div class="flex items-center gap-2.5">
               <Keyboard class="w-3.5 h-3.5" />
-              <span>05/SHORTCUTS</span>
+              <span>06/SHORTCUTS</span>
             </div>
             <kbd class="text-[10px] font-mono opacity-70">⌘K</kbd>
           </button>
@@ -374,7 +413,7 @@
           >
             <div class="flex items-center gap-2.5">
               <Database class="w-3.5 h-3.5" />
-              <span>06/STORAGE</span>
+              <span>07/STORAGE</span>
             </div>
             {#if historyCount > 0}
               <span class="text-[10px] font-mono text-[var(--color-text-muted)]">{historyCount}</span>
@@ -636,7 +675,7 @@
                     />
                     <select
                       bind:value={selectedInterval}
-                      class="w-full sm:w-auto px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
+                      class="w-full sm:w-auto appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
                     >
                       <option value={1}>Every 1 hour</option>
                       <option value={6}>Every 6 hours</option>
@@ -899,7 +938,24 @@
                 {/if}
               </div>
 
-            <!-- TAB 5: Keyboard Shortcuts Reference -->
+            <!-- TAB 5: Wordlist & Path Discovery Engine -->
+            {:else if currentTab === "wordlists"}
+              <div class="space-y-4 animate-fade-in">
+                <div>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">
+                    Wordlist & Path Discovery Selection
+                  </h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">
+                    Select target paths, directory names, sensitive files, or import custom .txt wordlists for endpoint reconnaissance
+                  </p>
+                </div>
+
+                <WordlistSelector
+                  bind:config={wordlistConfig}
+                />
+              </div>
+
+            <!-- TAB 6: Keyboard Shortcuts Reference -->
             {:else if currentTab === "shortcuts"}
               <div class="space-y-4 animate-fade-in">
                 <div>
@@ -994,7 +1050,7 @@
           </div>
 
           <!-- Modal Footer (Shown for editable parameter tabs) -->
-          {#if currentTab === "params" || currentTab === "ports"}
+          {#if currentTab === "params" || currentTab === "ports" || currentTab === "wordlists"}
             <div class="px-5 py-3 border-t border-[var(--color-hairline)] flex items-center justify-between bg-[var(--color-surface)]">
               <div class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">
                 Changes apply immediately to subsequent security audits.

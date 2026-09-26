@@ -10,6 +10,8 @@
     RotateCw,
     Sun,
     Moon,
+    ListFilter,
+    Globe,
   } from "lucide-svelte";
   import type { SwissTheme } from "$lib/types";
 
@@ -23,6 +25,7 @@
     onOpenHistory,
     onOpenSettings,
     onOpenExport,
+    onOpenPaths,
   }: {
     targetUrl: string;
     isScanning: boolean;
@@ -31,8 +34,9 @@
     activeMonitorsCount?: number;
     onScan: () => void;
     onOpenHistory: () => void;
-    onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data") => void;
+    onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data") => void;
     onOpenExport: () => void;
+    onOpenPaths?: () => void;
   } = $props();
 
   let currentTheme = $state<SwissTheme>("swiss-dark");
@@ -152,6 +156,30 @@
         <RotateCw class="w-3.5 h-3.5" />
       </button>
     {/if}
+
+    <!-- Path Discovery & Analysis Workspace -->
+    {#if onOpenPaths}
+      <button
+        type="button"
+        onclick={onOpenPaths}
+        class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+        title="Path Analysis & Wordlist Discovery (Target URL & Wordlist Upload)"
+      >
+        <Globe class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
+        <span class="hidden md:inline">PATH RADAR</span>
+      </button>
+    {/if}
+
+    <!-- Wordlists Discovery Hub -->
+    <button
+      type="button"
+      onclick={() => onOpenSettings("wordlists")}
+      class="px-2.5 py-1.5 bg-[var(--color-canvas)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border border-[var(--color-hairline)] rounded-none text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+      title="Wordlist Selection & Path Discovery (Configure paths, directories, and files)"
+    >
+      <ListFilter class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
+      <span class="hidden md:inline">WORDLISTS</span>
+    </button>
 
     <!-- Scan History Drawer -->
     <button

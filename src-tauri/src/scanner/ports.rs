@@ -60,16 +60,10 @@ pub fn get_preset_ports(profile: &str, custom_input: Option<&str>) -> Vec<u16> {
             5985, 5986, 6379, 6667, 7000, 7001, 8000, 8008, 8080, 8081, 8086, 8088, 8443, 8888,
             9000, 9090, 9200, 9300, 9418, 9999, 10000, 11211, 27017, 27018, 28017,
         ],
-        "custom" => {
-            if let Some(custom) = custom_input {
-                let parsed = parse_port_input(custom);
-                if !parsed.is_empty() {
-                    return parsed;
-                }
-            }
-            // fallback if empty
-            vec![21, 22, 80, 443, 3000, 3306, 5432, 8080, 8443]
-        }
+        "custom" => custom_input
+            .map(parse_port_input)
+            .filter(|p| !p.is_empty())
+            .unwrap_or_else(|| vec![21, 22, 80, 443, 3000, 3306, 5432, 8080, 8443]),
         _ => vec![
             21, 22, 23, 25, 53, 80, 110, 143, 443, 465, 587, 993, 995, 3000, 3306, 3389, 5432,
             6379, 8080, 8443,
@@ -246,10 +240,8 @@ pub async fn audit_ports(
     for port in ports_to_scan {
         // Enforce maximum concurrent active tasks in memory
         while set.len() >= MAX_CONCURRENT_PORT_TASKS {
-            if let Some(res) = set.join_next().await {
-                if let Ok(Some(open_p)) = res {
-                    open_ports.push(open_p);
-                }
+            if let Some(Ok(Some(open_p))) = set.join_next().await {
+                open_ports.push(open_p);
             }
         }
 

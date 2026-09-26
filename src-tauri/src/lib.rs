@@ -1,16 +1,100 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 pub mod db;
 pub mod models;
 pub mod scanner;
+pub mod server;
+pub mod wordlists;
 
 use chrono::{Duration as ChronoDuration, Utc};
 use db::Database;
-use models::{BatchScanItem, MonitorTarget, ScanOptions, ScanReport, ScanSummary};
+use models::{
+    BatchScanItem, DynamicWordlistParams, MonitorTarget, PathProbeResult, ScanOptions, ScanReport,
+    ScanSummary, WordlistRecord,
+};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, Manager, State};
 
 pub struct AppState {
     pub db: Arc<Database>,
+    pub server_port: u16,
+}
+
+#[tauri::command]
+async fn analyze_paths(
+    target_url: String,
+    paths: Vec<String>,
+    timeout_seconds: Option<u64>,
+    concurrency: Option<usize>,
+) -> Result<Vec<PathProbeResult>, String> {
+    let timeout = Duration::from_secs(timeout_seconds.unwrap_or(8));
+    let concurrency_limit = concurrency.unwrap_or(20).clamp(1, 50);
+
+    let client = reqwest::Client::builder()
+        .timeout(timeout)
+        .redirect(reqwest::redirect::Policy::limited(3))
+        .danger_accept_invalid_certs(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let base_url = crate::server::sanitize_url(&target_url)?;
+    let sanitized_paths = crate::server::sanitize_word_list(&paths)?;
+
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency_limit));
+    let mut tasks = Vec::new();
+
+    for clean_path in sanitized_paths {
+        let sem = semaphore.clone();
+        let client_clone = client.clone();
+        let mut target_probe_url = base_url.clone();
+        let base_prefix = target_probe_url.path().trim_end_matches('/');
+        let combined_path = format!("{}/{}", base_prefix, clean_path.trim_start_matches('/'));
+        target_probe_url.set_path(&combined_path);
+
+        tasks.push(tokio::spawn(async move {
+            let _permit = sem.acquire().await.ok();
+            let start = std::time::Instant::now();
+            let res = client_clone.get(target_probe_url).send().await;
+            let elapsed = start.elapsed().as_millis() as u64;
+
+            match res {
+                Ok(resp) => {
+                    let status = resp.status().as_u16();
+                    let content_type = resp
+                        .headers()
+                        .get(reqwest::header::CONTENT_TYPE)
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("")
+                        .to_string();
+                    let body_bytes = resp.bytes().await.unwrap_or_default();
+                    let content_len = body_bytes.len();
+                    let is_found = status != 404 && status != 0;
+                    let has_content = content_len > 0 && is_found;
+
+                    Some(PathProbeResult {
+                        path: clean_path,
+                        status,
+                        content_length: content_len,
+                        content_type,
+                        response_time_ms: elapsed,
+                        has_content,
+                        is_found,
+                    })
+                }
+                Err(_) => None,
+            }
+        }));
+    }
+
+    let mut results = Vec::new();
+    for t in tasks {
+        if let Ok(Some(item)) = t.await {
+            results.push(item);
+        }
+    }
+
+    Ok(results)
 }
 
 #[tauri::command]
@@ -119,6 +203,100 @@ async fn scan_ports(
 }
 
 #[tauri::command]
+fn get_wordlists(state: State<'_, AppState>) -> Result<Vec<WordlistRecord>, String> {
+    state.db.get_wordlists().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_wordlist(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    mut item: WordlistRecord,
+) -> Result<WordlistRecord, String> {
+    let now = Utc::now().to_rfc3339();
+    if item.created_at.is_empty() {
+        item.created_at = now.clone();
+    }
+    item.updated_at = now;
+
+    // Sanitize & normalize paths
+    let mut unique_paths = std::collections::BTreeSet::new();
+    for p in item.paths {
+        let trimmed = p.trim();
+        if !trimmed.is_empty() && !trimmed.starts_with('#') {
+            let norm = format!("/{}", trimmed.trim_start_matches('/'));
+            unique_paths.insert(norm);
+        }
+    }
+    item.paths = unique_paths.into_iter().collect();
+    item.item_count = item.paths.len();
+
+    // 1. Store in SQLite Database
+    state.db.save_wordlist(&item).map_err(|e| e.to_string())?;
+
+    // 2. Store on File System (.txt)
+    if let Ok(app_data_dir) = app.path().app_data_dir() {
+        if let Ok(wl_dir) = wordlists::ensure_wordlist_dir(&app_data_dir) {
+            let _ = wordlists::save_to_filesystem(&wl_dir, &item.id, &item.paths);
+        }
+    }
+
+    Ok(item)
+}
+
+#[tauri::command]
+fn delete_wordlist(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    // 1. Delete from SQLite Database
+    state.db.delete_wordlist(&id).map_err(|e| e.to_string())?;
+
+    // 2. Delete from File System
+    if let Ok(app_data_dir) = app.path().app_data_dir() {
+        let wl_dir = app_data_dir.join("wordlists");
+        let _ = wordlists::delete_from_filesystem(&wl_dir, &id);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn generate_dynamic_wordlist(params: DynamicWordlistParams) -> Result<Vec<String>, String> {
+    Ok(wordlists::generate_dynamic_wordlist(&params))
+}
+
+#[tauri::command]
+fn export_wordlist_file(
+    app: tauri::AppHandle,
+    filename: String,
+    paths: Vec<String>,
+) -> Result<String, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let wl_dir = wordlists::ensure_wordlist_dir(&app_data_dir).map_err(|e| e.to_string())?;
+    let sanitized_filename = match filename.ends_with(".txt") {
+        true => filename,
+        false => format!("{}.txt", filename),
+    };
+    let file_path = wl_dir.join(sanitized_filename);
+    let content = paths.join("\n");
+    std::fs::write(&file_path, content).map_err(|e| e.to_string())?;
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn import_wordlist_file(file_path: String) -> Result<Vec<String>, String> {
+    let path = std::path::Path::new(&file_path);
+    wordlists::read_from_filesystem(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_server_port(state: State<'_, AppState>) -> u16 {
+    state.server_port
+}
+
+#[tauri::command]
 fn export_report_markdown(report: ScanReport) -> String {
     let mut md = format!(
         "# Security Assessment Report: {}\n\n\
@@ -193,10 +371,9 @@ fn export_report_markdown(report: ScanReport) -> String {
     for (i, f) in report.findings.iter().enumerate() {
         let cve_line = f.cve_id.as_deref().map(|c| format!("- **CVE ID**: {}\n", c)).unwrap_or_default();
         let ev_block = f.evidence.as_deref().map(|e| format!("**Evidence / Trigger**:\n```\n{}\n```\n\n", e)).unwrap_or_default();
-        let refs = if f.references.is_empty() {
-            String::new()
-        } else {
-            format!("**References**:\n{}\n\n", f.references.iter().map(|r| format!("- {}", r)).collect::<Vec<_>>().join("\n"))
+        let refs = match f.references.is_empty() {
+            true => String::new(),
+            false => format!("**References**:\n{}\n\n", f.references.iter().map(|r| format!("- {}", r)).collect::<Vec<_>>().join("\n")),
         };
 
         md.push_str(&format!(
@@ -228,8 +405,13 @@ pub fn run() {
             let db_path = app_data_dir.join("vuln_radar.db");
             let database = Arc::new(Database::new(db_path).expect("Failed to initialize SQLite database"));
 
+            let port = tauri::async_runtime::block_on(async {
+                server::start_wordlist_http_server(database.clone()).await
+            });
+
             app.manage(AppState {
                 db: database.clone(),
+                server_port: port,
             });
 
             // Start background monitoring worker using Tauri async runtime
@@ -272,9 +454,19 @@ pub fn run() {
                 }
             });
 
+            // Sync wordlists to filesystem directory app_data_dir/wordlists/
+            if let Ok(wl_dir) = wordlists::ensure_wordlist_dir(&app_data_dir) {
+                if let Ok(all_wordlists) = database.get_wordlists() {
+                    for wl in all_wordlists {
+                        let _ = wordlists::save_to_filesystem(&wl_dir, &wl.id, &wl.paths);
+                    }
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            analyze_paths,
             scan_target,
             scan_batch,
             scan_ports,
@@ -286,7 +478,14 @@ pub fn run() {
             add_monitor,
             delete_monitor,
             toggle_monitor,
-            export_report_markdown
+            export_report_markdown,
+            get_wordlists,
+            save_wordlist,
+            delete_wordlist,
+            generate_dynamic_wordlist,
+            export_wordlist_file,
+            import_wordlist_file,
+            get_server_port
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -27,7 +27,7 @@ fn is_local_or_private(host: &str) -> bool {
     hostname.strip_prefix("172.")
         .and_then(|r| r.split('.').next())
         .and_then(|s| s.parse::<u8>().ok())
-        .map_or(false, |b| (16..=31).contains(&b))
+        .is_some_and(|b| (16..=31).contains(&b))
 }
 
 pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<ScanReport, String> {
@@ -40,18 +40,15 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
 
     let had_explicit_scheme = trimmed.starts_with("http://") || trimmed.starts_with("https://");
 
-    // 1. Normalize and parse candidate URL
-    let mut candidate_url = if !had_explicit_scheme {
+    let mut candidate_url = trimmed.to_string();
+    if !had_explicit_scheme {
         let lower = trimmed.to_lowercase();
-        // If it starts with localhost, private IP, or contains port (e.g. :3000, :8000), default to http://
-        if is_local_or_private(&lower) || lower.contains(':') {
-            format!("http://{}", trimmed)
-        } else {
-            format!("https://{}", trimmed)
-        }
-    } else {
-        trimmed.to_string()
-    };
+        let scheme = match is_local_or_private(&lower) || lower.contains(':') {
+            true => "http",
+            false => "https",
+        };
+        candidate_url = format!("{}://{}", scheme, trimmed);
+    }
 
     let mut parsed_url = Url::parse(&candidate_url).map_err(|e| format!("Invalid URL format: {}", e))?;
     

@@ -18,6 +18,7 @@
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
+  import PathAnalysisWorkspace from "$lib/components/PathAnalysisWorkspace.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     ShieldCheck,
@@ -55,7 +56,9 @@
     RotateCw,
     Database,
     FileText,
+    ListFilter,
   } from "lucide-svelte";
+  import { WORDLIST_PRESETS } from "$lib/wordlists";
 
   let targetUrl = $state("");
   let isScanning = $state(false);
@@ -74,11 +77,11 @@
   });
 
   // Active Workspace Navigation View
-  let currentWorkspace = $state<"audit" | "ports" | "dns" | "recon" | "batch" | "watchdog" | "history" | "settings">("audit");
+  let currentWorkspace = $state<"audit" | "ports" | "dns" | "recon" | "paths" | "batch" | "watchdog" | "history" | "settings">("audit");
 
   // Modal States
   let isSettingsOpen = $state(false);
-  let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "shortcuts" | "data">("params");
+  let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data">("params");
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
   let isBatchOpen = $state(false);
@@ -514,9 +517,14 @@
     activeMonitorsCount={monitors.filter((m) => m.is_active).length}
     onScan={() => handleScan()}
     onOpenHistory={() => (currentWorkspace = "history")}
+    onOpenPaths={() => (currentWorkspace = "paths")}
     onOpenSettings={(tab) => {
-      if (tab) settingsTab = tab;
-      currentWorkspace = "settings";
+      if (tab) {
+        settingsTab = tab;
+        isSettingsOpen = true;
+      } else {
+        currentWorkspace = "settings";
+      }
     }}
     onOpenExport={openExportModal}
   />
@@ -636,11 +644,26 @@
           {/if}
         </button>
 
+        <!-- 5. Path Discovery & Analysis Workspace -->
+        <button
+          type="button"
+          onclick={() => (currentWorkspace = "paths")}
+          class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'paths' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
+        >
+          <div class="flex items-center gap-2.5 truncate">
+            <span class="text-[10px] font-mono opacity-50">05/</span>
+            <span class="truncate uppercase tracking-wider font-semibold">PATH RADAR</span>
+          </div>
+          <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
+            .TXT
+          </span>
+        </button>
+
         <div class="pt-3 pb-1 px-3 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-muted)]">
           FLEET TOOLS
         </div>
 
-        <!-- 5. Batch Fleet Scanner -->
+        <!-- 6. Batch Fleet Scanner -->
         <button
           type="button"
           onclick={() => {
@@ -650,20 +673,20 @@
           class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'batch' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">05/</span>
+            <span class="text-[10px] font-mono opacity-50">06/</span>
             <span class="truncate uppercase tracking-wider font-semibold">FLEET BATCH</span>
           </div>
           <span class="text-[9px] font-mono text-[var(--color-text-muted)]">⌘B</span>
         </button>
 
-        <!-- 6. Watchdog Monitor -->
+        <!-- 7. Watchdog Monitor -->
         <button
           type="button"
           onclick={() => (currentWorkspace = "watchdog")}
           class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'watchdog' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">06/</span>
+            <span class="text-[10px] font-mono opacity-50">07/</span>
             <span class="truncate uppercase tracking-wider font-semibold">WATCHDOG</span>
           </div>
           {#if monitors.filter((m) => m.is_active).length > 0}
@@ -673,14 +696,14 @@
           {/if}
         </button>
 
-        <!-- 7. History & Database Logs -->
+        <!-- 8. History & Database Logs -->
         <button
           type="button"
           onclick={() => (currentWorkspace = "history")}
           class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'history' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">07/</span>
+            <span class="text-[10px] font-mono opacity-50">08/</span>
             <span class="truncate uppercase tracking-wider font-semibold">SCAN HISTORY</span>
           </div>
           <span class="px-1.5 py-0.2 text-[10px] font-mono rounded-none border border-[var(--color-hairline)] bg-[var(--color-canvas)] text-[var(--color-text-headline)]">
@@ -688,14 +711,14 @@
           </span>
         </button>
 
-        <!-- 8. Preferences & Settings -->
+        <!-- 9. Preferences & Settings -->
         <button
           type="button"
           onclick={() => (currentWorkspace = "settings")}
           class="w-full flex items-center justify-between px-3 py-2 text-xs font-mono transition-colors cursor-pointer {currentWorkspace === 'settings' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] border-l-2 border-l-[var(--color-signal-red)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)] border-l-2 border-l-transparent'}"
         >
           <div class="flex items-center gap-2.5 truncate">
-            <span class="text-[10px] font-mono opacity-50">08/</span>
+            <span class="text-[10px] font-mono opacity-50">09/</span>
             <span class="truncate uppercase tracking-wider font-semibold">SETTINGS</span>
           </div>
           {#if hasCustomOptions}
@@ -1029,7 +1052,17 @@
           {/if}
         </div>
 
-      <!-- 6. SCAN LOGS / HISTORY WORKSPACE VIEW -->
+      <!-- 6. PATH ANALYSIS & CONTENT DISCOVERY WORKSPACE -->
+      {:else if currentWorkspace === "paths"}
+        <PathAnalysisWorkspace
+          defaultUrl={targetUrl}
+          onScanReport={(url) => {
+            targetUrl = url;
+            handleScan(url);
+          }}
+        />
+
+      <!-- 7. SCAN LOGS / HISTORY WORKSPACE VIEW -->
       {:else if currentWorkspace === "history"}
         <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in">
           <div class="flex items-center justify-between pb-2 border-b border-[var(--color-hairline)]">
@@ -1208,6 +1241,52 @@
                 </button>
               </div>
             </div>
+
+            <!-- Fast Wordlist & Path Discovery Preset Selector -->
+            <div class="p-3 bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-[var(--color-text-headline)] font-mono flex items-center gap-1.5 uppercase">
+                  <ListFilter class="w-3.5 h-3.5 text-[var(--color-signal-red)]" />
+                  Path Discovery & Wordlist Profile
+                </span>
+                <button
+                  type="button"
+                  onclick={() => {
+                    settingsTab = "wordlists";
+                    isSettingsOpen = true;
+                  }}
+                  class="text-[10px] font-mono text-[var(--color-signal-red)] hover:underline uppercase font-bold cursor-pointer"
+                >
+                  Configure Wordlists →
+                </button>
+              </div>
+              <p class="text-xs text-[var(--color-text-muted)] font-mono">
+                Select wordlists to discover hidden endpoints, administrative interfaces, and configuration files.
+              </p>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {#each WORDLIST_PRESETS.slice(0, 4) as preset}
+                  <button
+                    type="button"
+                    onclick={() => {
+                      if (!scanOptions.wordlist_config) {
+                        scanOptions.wordlist_config = {
+                          selectedIds: [...preset.selectedIds],
+                          customPaths: [],
+                          activePreset: preset.id,
+                        };
+                      } else {
+                        scanOptions.wordlist_config.selectedIds = [...preset.selectedIds];
+                        scanOptions.wordlist_config.activePreset = preset.id;
+                      }
+                      showToast(`Applied ${preset.name}`, "success");
+                    }}
+                    class="py-1.5 px-2 rounded-none text-xs font-mono font-bold uppercase border transition-colors cursor-pointer {(scanOptions.wordlist_config?.activePreset || 'balanced') === preset.id ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)] border-transparent' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] border-[var(--color-hairline)]'}"
+                  >
+                    {preset.name.split(" ")[0]}
+                  </button>
+                {/each}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1382,7 +1461,7 @@
             <div class="flex items-center gap-2 w-full sm:w-auto">
               <select
                 bind:value={selectedCategory}
-                class="w-full sm:w-auto px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
+                class="w-full sm:w-auto appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
               >
                 {#each categories as cat}
                   <option value={cat.id}>{cat.label.toUpperCase()}</option>
@@ -1393,7 +1472,7 @@
                 <ArrowUpDown class="w-3.5 h-3.5 text-[var(--color-text-muted)] flex-shrink-0" />
                 <select
                   bind:value={sortFindingsBy}
-                  class="px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
+                  class="appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs text-[var(--color-text-body)] font-mono uppercase tracking-wider focus:outline-none cursor-pointer"
                 >
                   <option value="severity">SORT: SEVERITY</option>
                   <option value="title">SORT: TITLE (A-Z)</option>

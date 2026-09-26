@@ -125,7 +125,7 @@
             />
             <select
               bind:value={selectedInterval}
-              class="w-full sm:w-auto px-3 py-1.5 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
+              class="w-full sm:w-auto appearance-none px-3 py-1.5 pr-7 bg-[var(--color-canvas)] border border-[var(--color-hairline)] focus:border-[var(--color-hairline-strong)] rounded-none text-xs font-mono uppercase font-bold text-[var(--color-text-headline)] focus:outline-none cursor-pointer"
             >
               <option value={1}>Every 1 hour</option>
               <option value={6}>Every 6 hours</option>

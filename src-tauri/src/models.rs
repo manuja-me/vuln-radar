@@ -215,3 +215,43 @@ pub struct BatchScanItem {
     pub report: Option<ScanReport>,
     pub error: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WordlistRecord {
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub description: String,
+    pub paths: Vec<String>,
+    pub item_count: usize,
+    pub is_custom: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DynamicWordlistParams {
+    #[serde(default)]
+    pub base_words: Vec<String>,
+    #[serde(default)]
+    pub directories: Vec<String>,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+    #[serde(default)]
+    pub prefixes: Vec<String>,
+    #[serde(default)]
+    pub include_dotfiles: bool,
+    #[serde(default)]
+    pub include_backups: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PathProbeResult {
+    pub path: String,
+    pub status: u16,
+    pub content_length: usize,
+    pub content_type: String,
+    pub response_time_ms: u64,
+    pub has_content: bool,
+    pub is_found: bool,
+}

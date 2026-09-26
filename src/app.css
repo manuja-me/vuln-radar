@@ -8,6 +8,7 @@
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     /* Swiss Dark (Workstation Mode) */
+    color-scheme: dark;
     --color-canvas: #09090b;
     --color-surface: #121215;
     --color-surface-hover: #1c1d22;
@@ -34,6 +35,7 @@
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     /* Swiss Light (Refined Modern Workstation Mode) */
+    color-scheme: light;
     --color-canvas: #f8fafc;
     --color-surface: #ffffff;
     --color-surface-hover: #f1f5f9;
@@ -75,6 +77,46 @@
 
   code, pre, kbd, samp {
     font-family: var(--font-mono);
+  }
+
+  /* Linux WebKitGTK & Cross-Platform Form Controls Normalization */
+  select {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-headline) !important;
+    border: 1px solid var(--color-hairline) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.6rem center !important;
+    background-size: 10px !important;
+    padding-right: 1.8rem !important;
+  }
+
+  [data-theme="swiss-light"] select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-headline) !important;
+  }
+
+  select:focus {
+    outline: none !important;
+    border-color: var(--color-signal-red) !important;
+  }
+
+  input,
+  textarea {
+    color-scheme: dark;
+  }
+
+  [data-theme="swiss-light"] input,
+  [data-theme="swiss-light"] textarea {
+    color-scheme: light;
   }
 }
 
