@@ -27,6 +27,9 @@
     RotateCcw,
     Layers,
     ListFilter,
+    ChevronDown,
+    ChevronRight,
+    FileCode,
   } from "lucide-svelte";
 
   let {
@@ -50,6 +53,8 @@
   let concurrency = $state<number>(20);
   let timeoutSeconds = $state<number>(8);
   let copiedPath = $state<string | null>(null);
+  let copiedContentPath = $state<string | null>(null);
+  let expandedPaths = $state<Record<string, boolean>>({});
   let isDraggingFile = $state<boolean>(false);
 
   // Sync defaultUrl if updated
@@ -124,12 +129,29 @@
     return await invoke<T>(cmd, args);
   }
 
+  function toggleExpand(path: string) {
+    expandedPaths[path] = !expandedPaths[path];
+  }
+
+  async function copyContent(content: string, path: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      copiedContentPath = path;
+      setTimeout(() => {
+        if (copiedContentPath === path) copiedContentPath = null;
+      }, 2000);
+    } catch (e) {
+      console.error("Clipboard copy failed:", e);
+    }
+  }
+
   async function startAnalysis() {
     const url = targetUrl.trim();
     if (!url || parsedPaths.length === 0 || isAnalyzing) return;
 
     isAnalyzing = true;
     results = [];
+    expandedPaths = {};
 
     try {
       const res = await invokeTauri<PathProbeResult[]>("analyze_paths", {
@@ -157,16 +179,32 @@
       const fullUrl = `${cleanBase}${p}`;
       const start = performance.now();
       try {
-        const response = await fetch(fullUrl, { method: "GET", mode: "no-cors" });
+        let status = 200;
+        let contentType = "text/html";
+        let body: string | null = null;
+        let contentLen = 512;
+
+        try {
+          const resp = await fetch(fullUrl, { method: "GET" });
+          status = resp.status;
+          contentType = resp.headers.get("content-type") || "text/html";
+          body = await resp.text();
+          contentLen = body.length;
+        } catch {
+          const fallback = await fetch(fullUrl, { method: "GET", mode: "no-cors" });
+          status = fallback.status || 200;
+        }
+
         const elapsed = Math.round(performance.now() - start);
         probeResults.push({
           path: p,
-          status: response.status || 200,
-          content_length: 512,
-          content_type: response.headers.get("content-type") || "text/html",
+          status,
+          content_length: contentLen,
+          content_type: contentType,
           response_time_ms: elapsed,
           has_content: true,
           is_found: true,
+          body,
         });
       } catch {
         // network error / blocked
@@ -569,7 +607,8 @@
             {:else}
               {#each filteredResults as item}
                 {@const fullUrl = `${targetUrl.replace(/\/+$/, "")}${item.path}`}
-                <tr class="hover:bg-[var(--color-canvas)] transition-colors">
+                {@const isExpanded = !!expandedPaths[item.path]}
+                <tr class="hover:bg-[var(--color-canvas)] transition-colors {isExpanded ? 'bg-[var(--color-canvas)]' : ''}">
                   <!-- Status Code Badge -->
                   <td class="p-2.5 whitespace-nowrap">
                     <span class="px-2 py-0.5 text-[10px] font-bold border uppercase {getStatusColor(item.status)}">
@@ -577,14 +616,35 @@
                     </span>
                   </td>
 
-                  <!-- Path -->
-                  <td class="p-2.5 font-bold text-[var(--color-text-headline)] flex items-center gap-2">
-                    <span class="truncate">{item.path}</span>
-                    {#if item.has_content}
-                      <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                        CONTENT
-                      </span>
-                    {/if}
+                  <!-- Path with Expand Chevron Toggle -->
+                  <td class="p-2.5 font-bold text-[var(--color-text-headline)]">
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onclick={() => toggleExpand(item.path)}
+                        class="p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] cursor-pointer flex-shrink-0"
+                        title={isExpanded ? "Collapse inline content" : "Expand inline content"}
+                      >
+                        {#if isExpanded}
+                          <ChevronDown class="w-3.5 h-3.5" />
+                        {:else}
+                          <ChevronRight class="w-3.5 h-3.5" />
+                        {/if}
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => toggleExpand(item.path)}
+                        class="truncate text-left hover:underline cursor-pointer"
+                        title="Click to toggle inline content preview"
+                      >
+                        {item.path}
+                      </button>
+                      {#if item.has_content}
+                        <span class="px-1.5 py-0.2 text-[9px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+                          CONTENT
+                        </span>
+                      {/if}
+                    </div>
                   </td>
 
                   <!-- Size / Content Length -->
@@ -605,6 +665,15 @@
                   <!-- Actions -->
                   <td class="p-2.5 whitespace-nowrap text-right">
                     <div class="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onclick={() => toggleExpand(item.path)}
+                        class="p-1 hover:bg-[var(--color-surface-hover)] border border-[var(--color-hairline)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] cursor-pointer inline-flex items-center {isExpanded ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-headline)]' : ''}"
+                        title={isExpanded ? "Collapse inline preview" : "Expand inline content preview"}
+                      >
+                        <FileCode class="w-3 h-3" />
+                      </button>
+
                       <button
                         type="button"
                         onclick={() => copyToClipboard(fullUrl)}
@@ -630,6 +699,62 @@
                     </div>
                   </td>
                 </tr>
+
+                {#if isExpanded}
+                  <tr class="bg-[var(--color-canvas)] border-b border-[var(--color-hairline)]">
+                    <td colspan="6" class="p-3">
+                      <div class="border border-[var(--color-hairline)] bg-[var(--color-surface)]">
+                        <!-- Preview bar header -->
+                        <div class="px-3 py-2 border-b border-[var(--color-hairline)] bg-[var(--color-canvas)] flex items-center justify-between text-[11px] font-mono">
+                          <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="font-bold text-[var(--color-text-headline)] truncate">{item.path}</span>
+                            <span class="text-[var(--color-text-muted)] truncate">({item.content_type || "unknown"})</span>
+                            {#if item.content_length > 65536}
+                              <span class="px-1.5 py-0.2 text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/30 uppercase flex-shrink-0">
+                                Truncated preview (64 KB of {formatBytes(item.content_length)})
+                              </span>
+                            {/if}
+                          </div>
+                          <div class="flex items-center gap-2 flex-shrink-0">
+                            {#if item.body}
+                              <button
+                                type="button"
+                                onclick={() => copyContent(item.body || "", item.path)}
+                                class="px-2 py-0.5 border border-[var(--color-hairline)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-headline)] flex items-center gap-1 cursor-pointer transition-colors text-[10px] font-bold uppercase"
+                              >
+                                {#if copiedContentPath === item.path}
+                                  <Check class="w-3 h-3 text-emerald-500" />
+                                  <span>COPIED</span>
+                                {:else}
+                                  <Copy class="w-3 h-3" />
+                                  <span>COPY CONTENT</span>
+                                {/if}
+                              </button>
+                            {/if}
+                            <button
+                              type="button"
+                              onclick={() => toggleExpand(item.path)}
+                              class="px-2 py-0.5 border border-[var(--color-hairline)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] cursor-pointer text-[10px] uppercase font-bold"
+                            >
+                              CLOSE
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- Content preview body -->
+                        <div class="p-3">
+                          {#if item.body && item.body.trim().length > 0}
+                            <pre class="font-mono text-xs text-[var(--color-text-body)] bg-[var(--color-canvas)] p-3 border border-[var(--color-hairline)] max-h-80 overflow-auto select-text whitespace-pre-wrap break-all"><code>{item.body}</code></pre>
+                          {:else}
+                            <div class="py-4 text-center text-xs font-mono text-[var(--color-text-muted)]">
+                              No response body received or empty payload.
+                            </div>
+                          {/if}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                {/if}
               {/each}
             {/if}
           </tbody>

@@ -254,4 +254,6 @@ pub struct PathProbeResult {
     pub response_time_ms: u64,
     pub has_content: bool,
     pub is_found: bool,
+    #[serde(default)]
+    pub body: Option<String>,
 }

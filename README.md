@@ -147,6 +147,15 @@ vuln-radar/
 
 ## 📦 Release Changelog
 
+### 🚀 [v1.1.1] — Inline Path Content Inspection & Safe Accordion Previews
+- 🔍 **Direct Inline Path Content Expansion**: Expand any probed endpoint directly within the Path Radar table without opening an external browser window.
+- 📋 **Payload Capture & Safe Inspection**: Captures up to 64 KB of response body in a sanitized `<pre><code>` block, neutralizing potential client-side XSS from untrusted probed payloads.
+- ⚡ **1-Click Response Body Copy**: Added dedicated copy button with live state confirmation to instantly extract discovered files (e.g. `.env`, `robots.txt`, `config.json`).
+
+### 🧭 [v1.1.0] — Path Radar Analysis & Wordlist Management
+- 🌐 **Dedicated Path Analysis Workspace**: Multi-threaded endpoint and file enumeration engine with configurable concurrency, timeouts, and categorized status filters.
+- 📂 **Custom Wordlist Management**: Support for built-in curated lists and custom user-provided dictionaries.
+
 ### 🇨🇭 [v0.9.0] — Swiss Light Ergonomics & Defensive Path Vulnerability Auditing
 - 🎨 **Swiss Light Theme Ergonomic Refinement**:
   - Replaced harsh pitch-black wireframe borders with refined, subtle hairlines (`#e2e8f0` and `#cbd5e1`), eliminating grid fatigue.

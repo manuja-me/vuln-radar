@@ -71,6 +71,12 @@ async fn analyze_paths(
                     let content_len = body_bytes.len();
                     let is_found = status != 404 && status != 0;
                     let has_content = content_len > 0 && is_found;
+                    let body = if has_content {
+                        let max_len = 65536.min(content_len);
+                        Some(String::from_utf8_lossy(&body_bytes[..max_len]).to_string())
+                    } else {
+                        None
+                    };
 
                     Some(PathProbeResult {
                         path: clean_path,
@@ -80,6 +86,7 @@ async fn analyze_paths(
                         response_time_ms: elapsed,
                         has_content,
                         is_found,
+                        body,
                     })
                 }
                 Err(_) => None,

@@ -91,6 +91,7 @@ export interface PathProbeResult {
   response_time_ms: number;
   has_content: boolean;
   is_found: boolean;
+  body?: string | null;
 }
 
 export interface WordlistConfig {
