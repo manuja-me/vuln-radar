@@ -8,7 +8,6 @@
     ScanOptions,
     MonitorTarget,
   } from "$lib/types";
-  import Navbar from "$lib/components/Navbar.svelte";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import FindingCard from "$lib/components/FindingCard.svelte";
   import PortMatrixWorkspace from "$lib/components/PortMatrixWorkspace.svelte";
@@ -497,26 +496,6 @@
 
 <!-- Application Window Frame Container -->
 <div class="h-screen w-screen flex flex-col overflow-hidden bg-surface-container-lowest text-on-surface">
-  <!-- Native Desktop Window Header Toolbar -->
-  <Navbar
-    {isScanning}
-    hasReport={!!report}
-    {hasCustomOptions}
-    activeMonitorsCount={monitors.filter((m) => m.is_active).length}
-    {hasUpdateAvailable}
-    {updateVersion}
-    currentVersion={currentAppVersion}
-    onCheckUpdates={handleCheckUpdates}
-    onOpenSettings={(tab) => {
-      if (tab) {
-        settingsTab = tab;
-      }
-      currentWorkspace = "settings";
-    }}
-    onOpenExport={openExportModal}
-    onOpenShortcuts={() => (isShortcutsOpen = true)}
-  />
-
   <!-- Watchdog Alert Banner -->
   {#if watchdogAlert}
     <div
@@ -560,6 +539,11 @@
       {currentWorkspace}
       activeMonitorsCount={monitors.filter((m) => m.is_active).length}
       historyCount={history.length}
+      currentVersion={currentAppVersion}
+      {hasUpdateAvailable}
+      {updateVersion}
+      {isScanning}
+      onCheckUpdates={handleCheckUpdates}
       onSelectWorkspace={(ws) => {
         currentWorkspace = ws as any;
       }}
