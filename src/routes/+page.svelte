@@ -19,7 +19,7 @@
   import BatchScanModal from "$lib/components/BatchScanModal.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
-  import SettingsModal from "$lib/components/SettingsModal.svelte";
+  import SettingsWorkspace from "$lib/components/SettingsWorkspace.svelte";
   import UpdateModal from "$lib/components/UpdateModal.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
@@ -69,7 +69,6 @@
   let currentWorkspace = $state<"audit" | "ports" | "dns" | "paths" | "batch" | "watchdog" | "history" | "settings">("audit");
 
   // Modal States
-  let isSettingsOpen = $state(false);
   let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates">("params");
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
@@ -161,12 +160,14 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
-      isSettingsOpen = false;
       isExportOpen = false;
       isExecutiveReportOpen = false;
       isBatchOpen = false;
       isMonitorsOpen = false;
       isShortcutsOpen = false;
+      if (currentWorkspace === "settings") {
+        currentWorkspace = "audit";
+      }
       return;
     }
 
@@ -179,7 +180,7 @@
 
     if ((e.ctrlKey || e.metaKey) && e.key === ",") {
       e.preventDefault();
-      isSettingsOpen = true;
+      currentWorkspace = "settings";
       return;
     }
 
@@ -228,7 +229,7 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
       e.preventDefault();
       settingsTab = "params";
-      isSettingsOpen = true;
+      currentWorkspace = "settings";
       return;
     }
 
@@ -512,7 +513,7 @@
       if (tab) {
         settingsTab = tab;
       }
-      isSettingsOpen = true;
+      currentWorkspace = "settings";
     }}
     onOpenExport={openExportModal}
     onOpenShortcuts={() => (isShortcutsOpen = true)}
@@ -562,9 +563,7 @@
       activeMonitorsCount={monitors.filter((m) => m.is_active).length}
       historyCount={history.length}
       onSelectWorkspace={(ws) => {
-        if (ws === "settings") {
-          isSettingsOpen = true;
-        } else if (ws === "batch") {
+        if (ws === "batch") {
           isBatchOpen = true;
         } else {
           currentWorkspace = ws as any;
@@ -824,7 +823,7 @@
                 type="button"
                 onclick={() => {
                   settingsTab = "params";
-                  isSettingsOpen = true;
+                  currentWorkspace = "settings";
                 }}
                 class="flex items-center gap-1.5 text-outline hover:text-on-surface transition-colors cursor-pointer text-xs"
               >
@@ -1247,6 +1246,41 @@
             </div>
           {/if}
         </div>
+
+      <!-- 9. WORKSPACE 08: SETTINGS & ENGINE CONFIGURATION -->
+      {:else if currentWorkspace === "settings"}
+        <SettingsWorkspace
+          activeTab={settingsTab}
+          options={scanOptions}
+          {monitors}
+          historyCount={history.length}
+          {hasUpdateAvailable}
+          {updateVersion}
+          currentVersion={currentAppVersion}
+          onCheckUpdates={handleCheckUpdates}
+          onApplyOptions={(opts) => {
+            scanOptions = opts;
+            showToast("Scan configuration updated", "success");
+          }}
+          onAddMonitor={handleAddMonitor}
+          onDeleteMonitor={handleDeleteMonitor}
+          onToggleMonitor={handleToggleMonitor}
+          onScanTarget={(url) => {
+            targetUrl = url;
+            currentWorkspace = "audit";
+            handleScan(url);
+          }}
+          onClearHistory={handleClearAllHistory}
+          onOpenHistory={() => {
+            currentWorkspace = "history";
+          }}
+          onSelectBatchReport={(batchReport) => {
+            report = batchReport;
+            targetUrl = batchReport.target_url;
+            currentWorkspace = "audit";
+          }}
+          onClose={() => (currentWorkspace = "audit")}
+        />
       {/if}
     </main>
   </div>
@@ -1290,43 +1324,6 @@
 </div>
 
 <!-- Global Modals System -->
-<SettingsModal
-  isOpen={isSettingsOpen}
-  activeTab={settingsTab}
-  options={scanOptions}
-  {monitors}
-  historyCount={history.length}
-  {hasUpdateAvailable}
-  {updateVersion}
-  currentVersion={currentAppVersion}
-  onCheckUpdates={handleCheckUpdates}
-  onApplyOptions={(opts: ScanOptions) => {
-    scanOptions = opts;
-    showToast("Scan configuration updated", "success");
-    isSettingsOpen = false;
-  }}
-  onAddMonitor={handleAddMonitor}
-  onDeleteMonitor={handleDeleteMonitor}
-  onToggleMonitor={handleToggleMonitor}
-  onScanTarget={(url) => {
-    isSettingsOpen = false;
-    targetUrl = url;
-    handleScan(url);
-  }}
-  onClearHistory={handleClearAllHistory}
-  onOpenHistory={() => {
-    isSettingsOpen = false;
-    currentWorkspace = "history";
-  }}
-  onSelectBatchReport={(batchReport) => {
-    isSettingsOpen = false;
-    report = batchReport;
-    targetUrl = batchReport.target_url;
-    currentWorkspace = "audit";
-  }}
-  onClose={() => (isSettingsOpen = false)}
-/>
-
 <ExportModal
   isOpen={isExportOpen}
   {report}
