@@ -81,6 +81,7 @@
   let updateVersion = $state("");
   let updateModalRef: any = $state(null);
   let exportMarkdown = $state("");
+  const currentAppVersion = "1.3.0";
 
   function handleCheckUpdates() {
     isUpdateOpen = true;
@@ -505,6 +506,7 @@
     activeMonitorsCount={monitors.filter((m) => m.is_active).length}
     {hasUpdateAvailable}
     {updateVersion}
+    currentVersion={currentAppVersion}
     onCheckUpdates={handleCheckUpdates}
     onOpenSettings={(tab) => {
       if (tab) {
@@ -1296,7 +1298,7 @@
   historyCount={history.length}
   {hasUpdateAvailable}
   {updateVersion}
-  currentVersion="1.2.0"
+  currentVersion={currentAppVersion}
   onCheckUpdates={handleCheckUpdates}
   onApplyOptions={(opts: ScanOptions) => {
     scanOptions = opts;
@@ -1376,7 +1378,7 @@
 <UpdateModal
   bind:this={updateModalRef}
   bind:isOpen={isUpdateOpen}
-  currentVersion="1.2.0"
+  currentVersion={currentAppVersion}
   onUpdateStatusChange={(hasUp, ver) => {
     hasUpdateAvailable = hasUp;
     if (ver) updateVersion = ver;

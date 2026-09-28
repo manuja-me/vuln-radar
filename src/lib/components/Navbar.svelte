@@ -17,6 +17,7 @@
     activeMonitorsCount = 0,
     hasUpdateAvailable = false,
     updateVersion = "",
+    currentVersion = "1.3.0",
     onOpenSettings,
     onOpenExport,
     onOpenShortcuts,
@@ -28,6 +29,7 @@
     activeMonitorsCount?: number;
     hasUpdateAvailable?: boolean;
     updateVersion?: string;
+    currentVersion?: string;
     onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data") => void;
     onOpenExport: () => void;
     onOpenShortcuts?: () => void;
@@ -136,7 +138,7 @@
       class="font-mono text-[10px] text-outline hover:text-primary transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-surface-container-high flex items-center gap-1"
       title="Check for software updates"
     >
-      <span>v1.2.0</span>
+      <span>v{currentVersion}</span>
       {#if hasUpdateAvailable}
         <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title={`Update v${updateVersion} available`}></span>
       {/if}
