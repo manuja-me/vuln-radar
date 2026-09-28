@@ -20,6 +20,7 @@
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsModal from "$lib/components/SettingsModal.svelte";
+  import UpdateModal from "$lib/components/UpdateModal.svelte";
   import Toast from "$lib/components/Toast.svelte";
   import {
     AlertOctagon,
@@ -69,13 +70,24 @@
 
   // Modal States
   let isSettingsOpen = $state(false);
-  let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data">("params");
+  let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates">("params");
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
   let isBatchOpen = $state(false);
   let isMonitorsOpen = $state(false);
   let isShortcutsOpen = $state(false);
+  let isUpdateOpen = $state(false);
+  let hasUpdateAvailable = $state(false);
+  let updateVersion = $state("");
+  let updateModalRef: any = $state(null);
   let exportMarkdown = $state("");
+
+  function handleCheckUpdates() {
+    isUpdateOpen = true;
+    if (updateModalRef) {
+      updateModalRef.checkForUpdates(true);
+    }
+  }
 
   // Toast Notification System
   let toastMessage = $state("");
@@ -491,6 +503,9 @@
     hasReport={!!report}
     {hasCustomOptions}
     activeMonitorsCount={monitors.filter((m) => m.is_active).length}
+    {hasUpdateAvailable}
+    {updateVersion}
+    onCheckUpdates={handleCheckUpdates}
     onOpenSettings={(tab) => {
       if (tab) {
         settingsTab = tab;
@@ -1279,6 +1294,10 @@
   options={scanOptions}
   {monitors}
   historyCount={history.length}
+  {hasUpdateAvailable}
+  {updateVersion}
+  currentVersion="1.2.0"
+  onCheckUpdates={handleCheckUpdates}
   onApplyOptions={(opts: ScanOptions) => {
     scanOptions = opts;
     showToast("Scan configuration updated", "success");
@@ -1352,6 +1371,17 @@
 <ShortcutsModal
   isOpen={isShortcutsOpen}
   onClose={() => (isShortcutsOpen = false)}
+/>
+
+<UpdateModal
+  bind:this={updateModalRef}
+  bind:isOpen={isUpdateOpen}
+  currentVersion="1.2.0"
+  onUpdateStatusChange={(hasUp, ver) => {
+    hasUpdateAvailable = hasUp;
+    if (ver) updateVersion = ver;
+  }}
+  onClose={() => (isUpdateOpen = false)}
 />
 
 <!-- Toast Notifications -->

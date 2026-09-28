@@ -32,6 +32,9 @@
     Info,
     Terminal,
     ShieldCheck,
+    Sparkles,
+    Download,
+    ExternalLink,
   } from "lucide-svelte";
 
   let {
@@ -40,6 +43,10 @@
     options,
     monitors = [],
     historyCount = 0,
+    hasUpdateAvailable = false,
+    updateVersion = "",
+    currentVersion = "1.2.0",
+    onCheckUpdates,
     onApplyOptions,
     onAddMonitor,
     onDeleteMonitor,
@@ -51,10 +58,14 @@
     onClose,
   }: {
     isOpen: boolean;
-    activeTab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data";
+    activeTab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates";
     options: ScanOptions;
     monitors: MonitorTarget[];
     historyCount?: number;
+    hasUpdateAvailable?: boolean;
+    updateVersion?: string;
+    currentVersion?: string;
+    onCheckUpdates?: () => void;
     onApplyOptions?: (newOptions: ScanOptions) => void;
     onAddMonitor?: (url: string, intervalHours: number) => Promise<void>;
     onDeleteMonitor?: (id: string) => Promise<void>;
@@ -66,7 +77,7 @@
     onClose: () => void;
   } = $props();
 
-  let currentTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data">("params");
+  let currentTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates">("params");
 
   // Sync activeTab when modal opens
   $effect(() => {
@@ -417,6 +428,20 @@
             </div>
             {#if historyCount > 0}
               <span class="text-[10px] font-mono text-[var(--color-text-muted)]">{historyCount}</span>
+            {/if}
+          </button>
+
+          <button
+            type="button"
+            onclick={() => (currentTab = "updates")}
+            class="px-3 py-2 rounded-none text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'updates' ? 'bg-[var(--color-text-headline)] text-[var(--color-canvas)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-headline)] hover:bg-[var(--color-surface-hover)]'}"
+          >
+            <div class="flex items-center gap-2.5">
+              <Sparkles class="w-3.5 h-3.5" />
+              <span>08/UPDATES</span>
+            </div>
+            {#if hasUpdateAvailable}
+              <span class="w-2 h-2 rounded-full bg-primary animate-pulse" title="Update available"></span>
             {/if}
           </button>
         </nav>
@@ -1036,13 +1061,88 @@
                       <ShieldCheck class="w-4 h-4" />
                     </div>
                     <div>
-                      <div class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">VulnRadar Desktop v0.9.0</div>
+                      <div class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">VulnRadar Desktop v{currentVersion}</div>
                       <div class="text-[11px] text-[var(--color-text-muted)] font-mono uppercase">Tauri v2 • Svelte 5 • Rust 2021 Engine</div>
                     </div>
                   </div>
                   <p class="text-xs text-[var(--color-text-muted)] leading-relaxed font-mono">
                     Lightweight passive reconnaissance, HTTP security posture verification, TLS cipher audit, DNS SPF/DMARC alignment, and asynchronous TCP port scanner.
                   </p>
+                </div>
+              </div>
+            {:else if currentTab === "updates"}
+              <div class="space-y-5 animate-fade-in">
+                <div>
+                  <h3 class="text-xs font-black text-[var(--color-text-headline)] font-mono uppercase tracking-tight">Software Updates & Channel</h3>
+                  <p class="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">Manage application auto-updates, verify signatures, and check for new releases</p>
+                </div>
+
+                <!-- Update Status Card -->
+                <div class="p-4 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none space-y-4">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                        <Sparkles class="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div class="text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">
+                          VulnRadar Desktop v{currentVersion}
+                        </div>
+                        <div class="text-[11px] text-[var(--color-text-muted)] font-mono mt-0.5">
+                          Channel: <span class="text-primary font-bold">Stable (GitHub Releases)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onclick={() => onCheckUpdates?.()}
+                      class="px-4 py-2 bg-primary hover:bg-primary/90 text-black font-mono font-bold text-xs uppercase rounded flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                    >
+                      <RotateCw class="w-3.5 h-3.5" />
+                      <span>Check for Updates</span>
+                    </button>
+                  </div>
+
+                  {#if hasUpdateAvailable}
+                    <div class="p-3 bg-primary/10 border border-primary/30 rounded flex items-center justify-between">
+                      <span class="text-xs font-mono font-bold text-primary">
+                        Update v{updateVersion} is ready to download!
+                      </span>
+                      <button
+                        type="button"
+                        onclick={() => onCheckUpdates?.()}
+                        class="px-3 py-1 bg-primary text-black font-mono font-bold text-xs uppercase rounded hover:bg-primary/90 transition-colors cursor-pointer"
+                      >
+                        Install Update
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+
+                <!-- Cryptographic Verification Notice -->
+                <div class="p-4 bg-[var(--color-canvas)] border border-[var(--color-hairline)] rounded-none space-y-2">
+                  <div class="flex items-center gap-2 text-xs font-bold text-[var(--color-text-headline)] font-mono uppercase">
+                    <ShieldCheck class="w-4 h-4 text-emerald-400" />
+                    <span>Cryptographic Verification</span>
+                  </div>
+                  <p class="text-[11px] text-[var(--color-text-muted)] font-mono leading-relaxed">
+                    All updates are digitally signed with an Ed25519 Minisign private key during GitHub Actions automated releases. The running application verifies the integrity and author signature before applying any new binary.
+                  </p>
+                </div>
+
+                <!-- Release Channel Link -->
+                <div class="flex items-center justify-between p-3.5 bg-[var(--color-surface)] border border-[var(--color-hairline)] rounded-none text-xs font-mono">
+                  <span class="text-[var(--color-text-muted)] uppercase">Release Repository</span>
+                  <a
+                    href="https://github.com/manuja-me/vuln-radar/releases"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="text-primary hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <span>github.com/manuja-me/vuln-radar/releases</span>
+                    <ExternalLink class="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
             {/if}

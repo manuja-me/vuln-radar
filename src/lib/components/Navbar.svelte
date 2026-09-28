@@ -6,6 +6,7 @@
     Sun,
     Moon,
     HelpCircle,
+    Sparkles,
   } from "lucide-svelte";
   import type { SwissTheme } from "$lib/types";
 
@@ -14,17 +15,23 @@
     hasReport = false,
     hasCustomOptions = false,
     activeMonitorsCount = 0,
+    hasUpdateAvailable = false,
+    updateVersion = "",
     onOpenSettings,
     onOpenExport,
     onOpenShortcuts,
+    onCheckUpdates,
   }: {
     isScanning: boolean;
     hasReport: boolean;
     hasCustomOptions?: boolean;
     activeMonitorsCount?: number;
+    hasUpdateAvailable?: boolean;
+    updateVersion?: string;
     onOpenSettings: (tab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data") => void;
     onOpenExport: () => void;
     onOpenShortcuts?: () => void;
+    onCheckUpdates?: () => void;
   } = $props();
 
   let currentTheme = $state<SwissTheme>("swiss-dark");
@@ -123,7 +130,17 @@
   <div class="flex items-center gap-2 no-drag">
     <img src="/favicon.png" alt="VulnRadar" class="h-5 w-5 object-contain" />
     <span class="font-mono text-xs font-black uppercase text-on-surface tracking-wider">VulnRadar</span>
-    <span class="font-mono text-[10px] text-outline">v1.2.0</span>
+    <button
+      type="button"
+      onclick={() => onCheckUpdates?.()}
+      class="font-mono text-[10px] text-outline hover:text-primary transition-colors cursor-pointer px-1 py-0.5 rounded hover:bg-surface-container-high flex items-center gap-1"
+      title="Check for software updates"
+    >
+      <span>v1.2.0</span>
+      {#if hasUpdateAvailable}
+        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title={`Update v${updateVersion} available`}></span>
+      {/if}
+    </button>
   </div>
 
   <!-- Center: Engine Status Pulse -->
@@ -174,6 +191,19 @@
         >
           <FileDown class="w-3.5 h-3.5 text-secondary" />
           <span>EXPORT</span>
+        </button>
+      {/if}
+
+      <!-- Update Alert Button (Visible when update is available) -->
+      {#if hasUpdateAvailable && onCheckUpdates}
+        <button
+          type="button"
+          onclick={onCheckUpdates}
+          class="h-7 px-2 bg-primary/10 hover:bg-primary/20 border border-primary/40 text-primary text-[10px] font-mono font-bold uppercase rounded cursor-pointer flex items-center gap-1.5 transition-colors animate-pulse"
+          title={`Update v${updateVersion || ''} Available! Click to review & install`}
+        >
+          <Sparkles class="w-3.5 h-3.5" />
+          <span>UPDATE</span>
         </button>
       {/if}
 
