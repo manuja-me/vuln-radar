@@ -16,7 +16,7 @@
   import PathAnalysisWorkspace from "$lib/components/PathAnalysisWorkspace.svelte";
   import ExportModal from "$lib/components/ExportModal.svelte";
   import ExecutiveReportModal from "$lib/components/ExecutiveReportModal.svelte";
-  import BatchScanModal from "$lib/components/BatchScanModal.svelte";
+  import FleetWorkspace from "$lib/components/FleetWorkspace.svelte";
   import MonitorModal from "$lib/components/MonitorModal.svelte";
   import ShortcutsModal from "$lib/components/ShortcutsModal.svelte";
   import SettingsWorkspace from "$lib/components/SettingsWorkspace.svelte";
@@ -72,7 +72,6 @@
   let settingsTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates">("params");
   let isExportOpen = $state(false);
   let isExecutiveReportOpen = $state(false);
-  let isBatchOpen = $state(false);
   let isMonitorsOpen = $state(false);
   let isShortcutsOpen = $state(false);
   let isUpdateOpen = $state(false);
@@ -162,10 +161,9 @@
     if (e.key === "Escape") {
       isExportOpen = false;
       isExecutiveReportOpen = false;
-      isBatchOpen = false;
       isMonitorsOpen = false;
       isShortcutsOpen = false;
-      if (currentWorkspace === "settings") {
+      if (currentWorkspace === "settings" || currentWorkspace === "batch") {
         currentWorkspace = "audit";
       }
       return;
@@ -196,7 +194,7 @@
 
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
       e.preventDefault();
-      isBatchOpen = true;
+      currentWorkspace = "batch";
       return;
     }
 
@@ -563,11 +561,7 @@
       activeMonitorsCount={monitors.filter((m) => m.is_active).length}
       historyCount={history.length}
       onSelectWorkspace={(ws) => {
-        if (ws === "batch") {
-          isBatchOpen = true;
-        } else {
-          currentWorkspace = ws as any;
-        }
+        currentWorkspace = ws as any;
       }}
     />
 
@@ -1113,7 +1107,19 @@
           }}
         />
 
-      <!-- 7. WORKSPACE 06: WATCHDOG CONTINUOUS MONITORING -->
+      <!-- 7. WORKSPACE 05: FLEET RECONNAISSANCE & BATCH SCANNER -->
+      {:else if currentWorkspace === "batch"}
+        <FleetWorkspace
+          options={scanOptions}
+          onSelectReport={(batchReport) => {
+            report = batchReport;
+            targetUrl = batchReport.target_url;
+            currentWorkspace = "audit";
+          }}
+          onClose={() => (currentWorkspace = "audit")}
+        />
+
+      <!-- 8. WORKSPACE 06: WATCHDOG CONTINUOUS MONITORING -->
       {:else if currentWorkspace === "watchdog"}
         <div class="space-y-4 max-w-6xl w-full mx-auto animate-fade-in pb-10">
           <div class="flex items-center justify-between pb-2 border-b border-surface-container-high">
@@ -1339,18 +1345,6 @@
   isOpen={isExecutiveReportOpen}
   {report}
   onClose={() => (isExecutiveReportOpen = false)}
-/>
-
-<BatchScanModal
-  isOpen={isBatchOpen}
-  options={scanOptions}
-  onSelectReport={(batchReport) => {
-    isBatchOpen = false;
-    report = batchReport;
-    targetUrl = batchReport.target_url;
-    currentWorkspace = "audit";
-  }}
-  onClose={() => (isBatchOpen = false)}
 />
 
 <MonitorModal
