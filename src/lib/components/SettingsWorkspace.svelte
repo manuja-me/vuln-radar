@@ -1,6 +1,5 @@
 <script lang="ts">
   import type {
-    BatchScanItem,
     MonitorTarget,
     ScanOptions,
     ScanReport,
@@ -54,10 +53,9 @@
     onScanTarget,
     onClearHistory,
     onOpenHistory,
-    onSelectBatchReport,
     onClose,
   }: {
-    activeTab?: "params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates";
+    activeTab?: "params" | "ports" | "watchdog" | "wordlists" | "shortcuts" | "data" | "updates";
     options: ScanOptions;
     monitors: MonitorTarget[];
     historyCount?: number;
@@ -72,11 +70,10 @@
     onScanTarget?: (url: string) => void;
     onClearHistory?: () => Promise<void>;
     onOpenHistory?: () => void;
-    onSelectBatchReport?: (report: ScanReport) => void;
     onClose?: () => void;
   } = $props();
 
-  let currentTab = $state<"params" | "ports" | "watchdog" | "batch" | "wordlists" | "shortcuts" | "data" | "updates">("params");
+  let currentTab = $state<"params" | "ports" | "watchdog" | "wordlists" | "shortcuts" | "data" | "updates">("params");
 
   // Sync activeTab when changed from parent
   $effect(() => {
@@ -204,59 +201,6 @@
     return "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 rounded-none";
   }
 
-  // --- Batch Scanner Local State ---
-  let batchRawUrls = $state(
-    "https://example.com\nhttps://httpbin.org\nhttp://testphp.vulnweb.com"
-  );
-  let isBatchRunning = $state(false);
-  let batchItems = $state<BatchScanItem[]>([]);
-  let batchCompletedCount = $derived(
-    batchItems.filter((i) => i.status === "completed" || i.status === "failed")
-      .length
-  );
-
-  async function invokeTauri<T>(
-    cmd: string,
-    args: Record<string, unknown> = {}
-  ): Promise<T> {
-    const { invoke } = await import("@tauri-apps/api/core");
-    return await invoke<T>(cmd, args);
-  }
-
-  async function startBatchScan() {
-    const lines = batchRawUrls
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    if (lines.length === 0) return;
-
-    isBatchRunning = true;
-    batchItems = lines.map((url) => ({
-      url,
-      status: "scanning",
-      report: null,
-      error: null,
-    }));
-
-    try {
-      const results = await invokeTauri<BatchScanItem[]>("scan_batch", {
-        targets: lines,
-        options: {
-          timeout_seconds: Number(timeoutSeconds) || 15,
-          include_subdomains: includeSubdomains,
-          enable_port_scan: enablePortScan,
-          port_scan_profile: portScanProfile,
-        },
-      });
-      batchItems = results;
-    } catch (e) {
-      console.error("Batch scan error:", e);
-    } finally {
-      isBatchRunning = false;
-    }
-  }
-
   // --- Keyboard Shortcuts Reference ---
   const shortcutsList = [
     { key: "⌘ / Ctrl + ,", description: "Open Settings Workspace" },
@@ -371,23 +315,12 @@
 
       <button
         type="button"
-        onclick={() => (currentTab = "batch")}
-        class="px-3 py-2 rounded text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'batch' ? 'bg-on-surface text-surface-container-lowest font-black' : 'text-outline hover:text-on-surface hover:bg-surface-container-highest'}"
-      >
-        <div class="flex items-center gap-2.5">
-          <Layers class="w-3.5 h-3.5" />
-          <span>04/BATCH</span>
-        </div>
-      </button>
-
-      <button
-        type="button"
         onclick={() => (currentTab = "wordlists")}
         class="px-3 py-2 rounded text-xs font-bold uppercase flex items-center justify-between transition-colors cursor-pointer {currentTab === 'wordlists' ? 'bg-on-surface text-surface-container-lowest font-black' : 'text-outline hover:text-on-surface hover:bg-surface-container-highest'}"
       >
         <div class="flex items-center gap-2.5">
           <ListFilter class="w-3.5 h-3.5" />
-          <span>05/WORDLISTS</span>
+          <span>04/WORDLISTS</span>
         </div>
         {#if wordlistConfig.selectedIds.length > 0}
           <span class="px-1.5 py-0.2 text-[10px] font-mono rounded bg-surface-container-lowest text-on-surface border border-surface-container-high">
@@ -403,7 +336,7 @@
       >
         <div class="flex items-center gap-2.5">
           <Keyboard class="w-3.5 h-3.5" />
-          <span>06/SHORTCUTS</span>
+          <span>05/SHORTCUTS</span>
         </div>
         <kbd class="text-[10px] font-mono opacity-70">⌘K</kbd>
       </button>
@@ -417,7 +350,7 @@
       >
         <div class="flex items-center gap-2.5">
           <Database class="w-3.5 h-3.5" />
-          <span>07/STORAGE</span>
+          <span>06/STORAGE</span>
         </div>
         {#if historyCount > 0}
           <span class="text-[10px] font-mono text-outline">{historyCount}</span>
@@ -431,7 +364,7 @@
       >
         <div class="flex items-center gap-2.5">
           <Sparkles class="w-3.5 h-3.5 text-primary" />
-          <span>08/UPDATES</span>
+          <span>07/UPDATES</span>
         </div>
         {#if hasUpdateAvailable}
           <span class="w-2 h-2 rounded-full bg-primary animate-pulse" title="Update available"></span>
@@ -743,95 +676,7 @@
             </div>
           </div>
 
-        <!-- 04/BATCH TAB -->
-        {:else if currentTab === "batch"}
-          <div class="space-y-6 animate-fade-in">
-            <div>
-              <h3 class="text-sm font-bold text-on-surface font-mono uppercase tracking-tight">
-                Fleet Batch Scanner
-              </h3>
-              <p class="text-xs text-outline mt-0.5 font-mono">
-                Queue multiple web properties for sequential or parallel automated reconnaissance audits.
-              </p>
-            </div>
-
-            <div class="space-y-3">
-              <label for="settings-batch-urls" class="text-xs font-bold uppercase tracking-wider text-outline font-mono">
-                Target URLs (One per line)
-              </label>
-              <textarea
-                id="settings-batch-urls"
-                rows="5"
-                bind:value={batchRawUrls}
-                disabled={isBatchRunning}
-                class="w-full p-3 text-xs bg-surface-container rounded border border-surface-container-high font-mono text-on-surface focus:border-outline outline-none leading-relaxed"
-                placeholder="https://example.com&#10;https://api.example.com&#10;https://internal.example.com"
-              ></textarea>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-mono text-outline">
-                {#if batchItems.length > 0}
-                  Completed: {batchCompletedCount} / {batchItems.length}
-                {/if}
-              </span>
-              <button
-                type="button"
-                disabled={isBatchRunning || !batchRawUrls.trim()}
-                onclick={startBatchScan}
-                class="px-5 py-2 bg-primary text-on-primary font-bold uppercase font-mono text-xs rounded hover:bg-primary/90 transition-opacity cursor-pointer disabled:opacity-50 flex items-center gap-2 shadow-xs"
-              >
-                {#if isBatchRunning}
-                  <Loader2 class="w-3.5 h-3.5 animate-spin" />
-                  <span>Scanning Fleet...</span>
-                {:else}
-                  <Layers class="w-3.5 h-3.5" />
-                  <span>Run Fleet Audit</span>
-                {/if}
-              </button>
-            </div>
-
-            <!-- Batch Results Table -->
-            {#if batchItems.length > 0}
-              <div class="space-y-2 pt-2 border-t border-surface-container-high">
-                <span class="text-xs font-bold uppercase tracking-wider text-outline font-mono">
-                  Batch Execution Progress
-                </span>
-                <div class="space-y-1.5 max-h-72 overflow-y-auto">
-                  {#each batchItems as item}
-                    <div class="p-3 bg-surface-container rounded border border-surface-container-high flex items-center justify-between gap-4 font-mono text-xs">
-                      <span class="truncate font-bold text-on-surface">{item.url}</span>
-                      <div class="flex items-center gap-2 shrink-0">
-                        {#if item.status === "scanning"}
-                          <span class="text-primary flex items-center gap-1.5 font-bold">
-                            <Loader2 class="w-3 h-3 animate-spin" />
-                            <span>Scanning</span>
-                          </span>
-                        {:else if item.status === "completed"}
-                          <span class="text-emerald-400 font-bold">
-                            Score: {item.report?.security_score ?? "—"}/100
-                          </span>
-                          {#if onSelectBatchReport && item.report}
-                            <button
-                              type="button"
-                              onclick={() => item.report && onSelectBatchReport(item.report)}
-                              class="px-2 py-0.5 bg-surface-container-lowest hover:bg-surface-container-highest border border-surface-container-high rounded text-[10px] uppercase font-bold text-on-surface transition-colors cursor-pointer"
-                            >
-                              Inspect
-                            </button>
-                          {/if}
-                        {:else}
-                          <span class="text-error font-bold">Failed</span>
-                        {/if}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-          </div>
-
-        <!-- 05/WORDLISTS TAB -->
+        <!-- 04/WORDLISTS TAB -->
         {:else if currentTab === "wordlists"}
           <div class="space-y-6 animate-fade-in w-full">
             <div>
