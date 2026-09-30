@@ -264,6 +264,19 @@ pub fn sanitize_word_list(words: &[String]) -> Result<Vec<String>, &'static str>
     Ok(cleaned)
 }
 
+/// Validates whether an HTTP Origin header belongs to an approved local Tauri or development client.
+pub fn is_trusted_origin(origin: &str) -> bool {
+    let lower = origin.trim().to_ascii_lowercase();
+    lower == "tauri://localhost"
+        || lower == "http://tauri.localhost"
+        || lower == "https://tauri.localhost"
+        || lower == "null"
+        || lower.starts_with("http://localhost:")
+        || lower.starts_with("http://127.0.0.1:")
+        || lower == "http://localhost"
+        || lower == "http://127.0.0.1"
+}
+
 /// Helper function to transmit standardized HTTP responses with custom headers.
 async fn send_response<W: AsyncWriteExt + Unpin>(
     stream: &mut W,
@@ -271,21 +284,25 @@ async fn send_response<W: AsyncWriteExt + Unpin>(
     status_text: &str,
     content_type: &str,
     body: &[u8],
+    allowed_origin: Option<&str>,
     extra_headers: &[(&str, &str)],
 ) -> Result<(), tokio::io::Error> {
     let mut header = format!(
         "HTTP/1.1 {} {}\r\n\
         Content-Type: {}\r\n\
         Content-Length: {}\r\n\
-        Access-Control-Allow-Origin: *\r\n\
-        Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
-        Access-Control-Allow-Headers: *\r\n\
+        Access-Control-Allow-Methods: GET, OPTIONS\r\n\
+        Access-Control-Allow-Headers: Content-Type\r\n\
         Connection: close\r\n",
         status_code,
         status_text,
         content_type,
         body.len()
     );
+
+    if let Some(orig) = allowed_origin {
+        header.push_str(&format!("Access-Control-Allow-Origin: {}\r\nVary: Origin\r\n", orig));
+    }
 
     for (k, v) in extra_headers {
         header.push_str(&format!("{}: {}\r\n", k, v));
@@ -307,6 +324,7 @@ async fn send_error_response<W: AsyncWriteExt + Unpin>(
     status_text: &str,
     error: &str,
     message: &str,
+    allowed_origin: Option<&str>,
     extra_headers: &[(&str, &str)],
 ) {
     let retry_after = extra_headers
@@ -327,19 +345,21 @@ async fn send_error_response<W: AsyncWriteExt + Unpin>(
         status_text,
         "application/json; charset=utf-8",
         &json_bytes,
+        allowed_origin,
         extra_headers,
     )
     .await;
 }
 
-/// Reads HTTP headers and content body according to Content-Length.
+/// Reads HTTP headers and content body according to Content-Length, extracting Origin if present.
 async fn read_full_request<R: AsyncReadExt + Unpin>(
     stream: &mut R,
-) -> Result<(String, String, Vec<u8>), ()> {
+) -> Result<(String, String, Option<String>, Vec<u8>), ()> {
     let mut data = Vec::with_capacity(4096);
     let mut buf = [0u8; 2048];
     let mut header_end = None;
     let mut content_length = 0usize;
+    let mut origin = None;
 
     loop {
         let n = stream.read(&mut buf).await.map_err(|_| ())?;
@@ -357,6 +377,10 @@ async fn read_full_request<R: AsyncReadExt + Unpin>(
                     if lower.starts_with("content-length:") {
                         if let Some(val) = line.split(':').nth(1) {
                             content_length = val.trim().parse::<usize>().unwrap_or(0);
+                        }
+                    } else if lower.starts_with("origin:") {
+                        if let Some(pos_colon) = line.find(':') {
+                            origin = Some(line[pos_colon + 1..].trim().to_string());
                         }
                     }
                 }
@@ -388,7 +412,7 @@ async fn read_full_request<R: AsyncReadExt + Unpin>(
     let method = parts.next().unwrap_or("").to_string();
     let path = parts.next().unwrap_or("").to_string();
 
-    Ok((method, path, body))
+    Ok((method, path, origin, body))
 }
 
 /// Starts local HTTP server providing wordlist downloads and rate-limited,
@@ -418,7 +442,7 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                 let peer_ip = peer_addr.ip();
 
                 tokio::spawn(async move {
-                    let (method, path, body) = match read_full_request(&mut stream).await {
+                    let (method, path, origin, _body) = match read_full_request(&mut stream).await {
                         Ok(req) => req,
                         Err(_) => {
                             send_error_response(
@@ -427,11 +451,31 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                                 "Bad Request",
                                 "Invalid Request",
                                 "Failed to parse incoming HTTP stream",
+                                None,
                                 &[],
                             )
                             .await;
                             return;
                         }
+                    };
+
+                    // Strict Origin Validation: Block malicious web pages attempting cross-origin port probing or SSRF
+                    let allowed_origin = match &origin {
+                        Some(orig) if is_trusted_origin(orig) => Some(orig.as_str()),
+                        Some(_) => {
+                            send_error_response(
+                                &mut stream,
+                                403,
+                                "Forbidden",
+                                "Cross-Origin Denied",
+                                "Cross-origin access from external web pages is prohibited",
+                                None,
+                                &[],
+                            )
+                            .await;
+                            return;
+                        }
+                        None => None, // Direct loopback invocation / non-browser client
                     };
 
                     // Handle CORS preflight
@@ -442,213 +486,31 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                             "No Content",
                             "text/plain",
                             b"",
+                            allowed_origin,
                             &[],
                         )
                         .await;
                         return;
                     }
 
-                    // POST /analyze_paths endpoint
-                    if method == "POST"
-                        && (path == "/analyze_paths"
-                            || path == "/api/analyze_paths"
-                            || path.starts_with("/analyze_paths?")
-                            || path.starts_with("/api/analyze_paths?"))
-                    {
-                        // 1. Rate Limiting Check
-                        let limit_status = limiter.check(peer_ip).await;
-                        let limit_str = limit_status.limit.to_string();
-                        let remaining_str = limit_status.remaining.to_string();
-                        let retry_str = limit_status.retry_after_secs.to_string();
+                    // Rate Limiting Check
+                    let limit_status = limiter.check(peer_ip).await;
+                    let limit_str = limit_status.limit.to_string();
+                    let remaining_str = limit_status.remaining.to_string();
+                    let retry_str = limit_status.retry_after_secs.to_string();
 
-                        if !limit_status.allowed {
-                            send_error_response(
-                                &mut stream,
-                                429,
-                                "Too Many Requests",
-                                "Rate Limit Exceeded",
-                                "Maximum request threshold reached for this endpoint. Please retry later.",
-                                &[
-                                    ("Retry-After", &retry_str),
-                                    ("X-RateLimit-Limit", &limit_str),
-                                    ("X-RateLimit-Remaining", "0"),
-                                ],
-                            )
-                            .await;
-                            return;
-                        }
-
-                        // 2. Request Deserialization with Graceful Error Handling
-                        let req: AnalyzePathsRequest = match serde_json::from_slice(&body) {
-                            Ok(r) => r,
-                            Err(err) => {
-                                send_error_response(
-                                    &mut stream,
-                                    400,
-                                    "Bad Request",
-                                    "Malformed JSON",
-                                    &format!("Failed to parse request JSON payload: {}", err),
-                                    &[
-                                        ("X-RateLimit-Limit", &limit_str),
-                                        ("X-RateLimit-Remaining", &remaining_str),
-                                    ],
-                                )
-                                .await;
-                                return;
-                            }
-                        };
-
-                        let raw_url = req.website_url.unwrap_or_default();
-                        let raw_words = req.word_list.unwrap_or_default();
-
-                        // 3. Validation of Required Input Parameters
-                        if raw_url.trim().is_empty() || raw_words.is_empty() {
-                            send_error_response(
-                                &mut stream,
-                                400,
-                                "Bad Request",
-                                "Missing Parameters",
-                                "Both 'website_url' and 'word_list' are required and cannot be empty.",
-                                &[
-                                    ("X-RateLimit-Limit", &limit_str),
-                                    ("X-RateLimit-Remaining", &remaining_str),
-                                ],
-                            )
-                            .await;
-                            return;
-                        }
-
-                        // 4. URL Sanitization Error Handling
-                        let base_url = match sanitize_url(&raw_url) {
-                            Ok(u) => u,
-                            Err(err_msg) => {
-                                send_error_response(
-                                    &mut stream,
-                                    400,
-                                    "Bad Request",
-                                    "Invalid Website URL",
-                                    err_msg,
-                                    &[
-                                        ("X-RateLimit-Limit", &limit_str),
-                                        ("X-RateLimit-Remaining", &remaining_str),
-                                    ],
-                                )
-                                .await;
-                                return;
-                            }
-                        };
-
-                        // 5. Wordlist Sanitization Error Handling
-                        let sanitized_words = match sanitize_word_list(&raw_words) {
-                            Ok(words) => words,
-                            Err(err_msg) => {
-                                send_error_response(
-                                    &mut stream,
-                                    400,
-                                    "Bad Request",
-                                    "Invalid Word List",
-                                    err_msg,
-                                    &[
-                                        ("X-RateLimit-Limit", &limit_str),
-                                        ("X-RateLimit-Remaining", &remaining_str),
-                                    ],
-                                )
-                                .await;
-                                return;
-                            }
-                        };
-
-                        // 6. HTTP Client Initialization Error Handling
-                        let timeout_sec = req.timeout_seconds.unwrap_or(5).clamp(1, 30);
-                        let client = match reqwest::Client::builder()
-                            .timeout(Duration::from_secs(timeout_sec))
-                            .redirect(reqwest::redirect::Policy::limited(3))
-                            .danger_accept_invalid_certs(true)
-                            .build()
-                        {
-                            Ok(c) => c,
-                            Err(err) => {
-                                send_error_response(
-                                    &mut stream,
-                                    500,
-                                    "Internal Server Error",
-                                    "Client Initialization Failed",
-                                    &format!("Failed to initialize backend probe client: {}", err),
-                                    &[],
-                                )
-                                .await;
-                                return;
-                            }
-                        };
-
-                        // 7. Concurrent Path Execution with Per-Probe Exception Handling
-                        let semaphore = Arc::new(tokio::sync::Semaphore::new(10));
-                        let mut tasks = Vec::new();
-                        let total_words = sanitized_words.len();
-
-                        for path in sanitized_words {
-                            let sem = semaphore.clone();
-                            let client_clone = client.clone();
-
-                            let mut target_url = base_url.clone();
-                            let base_prefix = target_url.path().trim_end_matches('/');
-                            let combined_path =
-                                format!("{}/{}", base_prefix, path.trim_start_matches('/'));
-                            target_url.set_path(&combined_path);
-
-                            tasks.push(tokio::spawn(async move {
-                                let _permit = sem.acquire().await.ok();
-                                // Gracefully catch per-path connection/timeout exceptions
-                                let response = match client_clone.get(target_url).send().await {
-                                    Ok(resp) => resp,
-                                    Err(_) => return None, // Network failure/timeout handled gracefully
-                                };
-
-                                let status = response.status().as_u16();
-                                if status != 404 {
-                                    let content_type = response
-                                        .headers()
-                                        .get(reqwest::header::CONTENT_TYPE)
-                                        .and_then(|v| v.to_str().ok())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    let bytes = response.bytes().await.unwrap_or_default();
-                                    Some(PathResult {
-                                        path,
-                                        status_code: status,
-                                        content_length: bytes.len(),
-                                        content_type,
-                                    })
-                                } else {
-                                    None
-                                }
-                            }));
-                        }
-
-                        let mut results = Vec::new();
-                        for t in tasks {
-                            if let Ok(Some(item)) = t.await {
-                                results.push(item);
-                            }
-                        }
-
-                        let non_404_found = results.len();
-                        let resp_obj = AnalyzePathsResponse {
-                            results,
-                            total_tested: total_words,
-                            non_404_found,
-                        };
-
-                        let json_bytes = serde_json::to_vec(&resp_obj).unwrap_or_default();
-                        let _ = send_response(
+                    if !limit_status.allowed {
+                        send_error_response(
                             &mut stream,
-                            200,
-                            "OK",
-                            "application/json; charset=utf-8",
-                            &json_bytes,
+                            429,
+                            "Too Many Requests",
+                            "Rate Limit Exceeded",
+                            "Maximum request threshold reached for this endpoint. Please retry later.",
+                            allowed_origin,
                             &[
+                                ("Retry-After", &retry_str),
                                 ("X-RateLimit-Limit", &limit_str),
-                                ("X-RateLimit-Remaining", &remaining_str),
+                                ("X-RateLimit-Remaining", "0"),
                             ],
                         )
                         .await;
@@ -704,9 +566,12 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                             "OK",
                             "text/plain; charset=utf-8",
                             content_bytes,
+                            allowed_origin,
                             &[
                                 ("Content-Disposition", &cd_header),
                                 ("Access-Control-Expose-Headers", "Content-Disposition"),
+                                ("X-RateLimit-Limit", &limit_str),
+                                ("X-RateLimit-Remaining", &remaining_str),
                             ],
                         )
                         .await;
@@ -717,6 +582,7 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                             "Not Found",
                             "Resource Not Found",
                             "The requested path does not exist on this server.",
+                            allowed_origin,
                             &[],
                         )
                         .await;
@@ -858,5 +724,20 @@ mod tests {
         assert!(json.contains("Bad Request"));
         assert!(json.contains("Missing parameter"));
         assert!(!json.contains("retry_after_secs"));
+    }
+
+    #[test]
+    fn test_trusted_origin_validation() {
+        assert!(is_trusted_origin("tauri://localhost"));
+        assert!(is_trusted_origin("http://tauri.localhost"));
+        assert!(is_trusted_origin("https://tauri.localhost"));
+        assert!(is_trusted_origin("null"));
+        assert!(is_trusted_origin("http://localhost:1420"));
+        assert!(is_trusted_origin("http://127.0.0.1:5173"));
+
+        assert!(!is_trusted_origin("https://malicious-site.com"));
+        assert!(!is_trusted_origin("http://attacker.com"));
+        assert!(!is_trusted_origin("https://evil.org:1420"));
+        assert!(!is_trusted_origin("http://localhost.attacker.com"));
     }
 }

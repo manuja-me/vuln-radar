@@ -316,14 +316,6 @@ export async function exportWordlistToDisk(filename: string, paths: string[]): P
   }
 }
 
-export async function importWordlistFromDisk(filePath: string): Promise<string[]> {
-  try {
-    return await invokeTauri<string[]>("import_wordlist_file", { filePath });
-  } catch (e) {
-    console.warn("Backend import_wordlist_file not available:", e);
-    return [];
-  }
-}
 
 export function generateDynamicWordlistClient(params: DynamicWordlistParams): string[] {
   const set = new Set<string>();

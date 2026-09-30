@@ -332,20 +332,29 @@ fn export_wordlist_file(
 ) -> Result<String, String> {
     let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let wl_dir = wordlists::ensure_wordlist_dir(&app_data_dir).map_err(|e| e.to_string())?;
-    let sanitized_filename = match filename.ends_with(".txt") {
-        true => filename,
-        false => format!("{}.txt", filename),
+
+    // Extract filename component only, preventing any path traversal outside wl_dir
+    let base_name = std::path::Path::new(&filename)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or("wordlist.txt");
+
+    let clean_stem: String = base_name
+        .trim_end_matches(".txt")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+        .collect();
+
+    let safe_filename = if clean_stem.is_empty() {
+        "wordlist.txt".to_string()
+    } else {
+        format!("{}.txt", clean_stem)
     };
-    let file_path = wl_dir.join(sanitized_filename);
+
+    let file_path = wl_dir.join(&safe_filename);
     let content = paths.join("\n");
     std::fs::write(&file_path, content).map_err(|e| e.to_string())?;
     Ok(file_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-fn import_wordlist_file(file_path: String) -> Result<Vec<String>, String> {
-    let path = std::path::Path::new(&file_path);
-    wordlists::read_from_filesystem(path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -543,7 +552,6 @@ pub fn run() {
             delete_wordlist,
             generate_dynamic_wordlist,
             export_wordlist_file,
-            import_wordlist_file,
             get_server_port
         ])
         .run(tauri::generate_context!())
