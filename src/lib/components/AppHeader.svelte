@@ -3,7 +3,7 @@
 
   let {
     currentWorkspace = "audit",
-    currentVersion = "1.4.1",
+    currentVersion = "1.5.0",
   }: {
     currentWorkspace?: string;
     currentVersion?: string;

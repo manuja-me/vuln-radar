@@ -58,7 +58,7 @@
   let updateVersion = $state("");
   let updateModalRef: any = $state(null);
   let exportMarkdown = $state("");
-  const currentAppVersion = "1.4.0";
+  const currentAppVersion = "1.5.0";
 
   function handleCheckUpdates() {
     isUpdateOpen = true;

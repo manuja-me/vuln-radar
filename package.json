@@ -1,6 +1,6 @@
 {
   "name": "vuln-radar",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "Desktop Web Vulnerability & Security Scanner",
   "type": "module",
   "scripts": {
