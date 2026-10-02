@@ -205,7 +205,7 @@
     (async () => {
       try {
         const { listen } = await import("@tauri-apps/api/event");
-        unlistenWatchdog = await listen<any>("watchdog-alert", (event) => {
+        unlistenWatchdog = await listen<any>("watchdog_alert", (event) => {
           watchdogAlert = event.payload;
           loadMonitors();
           loadHistory();

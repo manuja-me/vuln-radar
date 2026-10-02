@@ -546,6 +546,7 @@ pub fn run() {
                                     });
                                     let _ = app_handle.emit("monitor_alert", &alert_payload);
                                     let _ = app_handle.emit("watchdog_alert", &alert_payload);
+                                    let _ = app_handle.emit("watchdog-alert", &alert_payload);
                                 }
                             }
                         }
