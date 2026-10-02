@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
 
       - name: Setup Rust toolchain
@@ -123,16 +123,19 @@ jobs:
       - name: Check WINGET_TOKEN availability
         id: check-token
         shell: bash
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
-          if [ -z "${{ secrets.WINGET_TOKEN }}" ]; then
-            echo "::warning ::WINGET_TOKEN secret is not set. Skipping automated WinGet submission."
-            echo "has_token=false" >> $GITHUB_OUTPUT
+          if [ -z "$WINGET_TOKEN" ]; then
+            echo "::warning::WINGET_TOKEN secret is not set. Skipping automated WinGet submission."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_token=true" >> $GITHUB_OUTPUT
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Submit package to Windows Package Manager
         if: steps.check-token.outputs.has_token == 'true'
+        continue-on-error: true
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: manuja-me.VulnRadar
