@@ -64,6 +64,7 @@ jobs:
   build-arch-package:
     name: Build Arch Linux (.pkg.tar.zst)
     needs: release
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
@@ -116,6 +117,7 @@ jobs:
   winget-release:
     name: Publish to WinGet
     needs: release
+    if: always() && !cancelled()
     runs-on: windows-latest
     steps:
       - name: Check WINGET_TOKEN availability
