@@ -6,6 +6,7 @@
     ScanOptions,
     MonitorTarget,
   } from "$lib/types";
+  import AppHeader from "$lib/components/AppHeader.svelte";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import AuditWorkspace from "$lib/components/AuditWorkspace.svelte";
   import PortMatrixWorkspace from "$lib/components/PortMatrixWorkspace.svelte";
@@ -344,6 +345,8 @@
 
 <!-- Application Window Frame Container -->
 <div class="h-screen w-screen flex flex-col overflow-hidden bg-surface-container-lowest text-on-surface">
+  <AppHeader {currentWorkspace} currentVersion={currentAppVersion} />
+
   <!-- Watchdog Alert Banner -->
   {#if watchdogAlert}
     <div

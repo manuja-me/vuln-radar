@@ -458,6 +458,38 @@ fn export_report_markdown(report: ScanReport) -> String {
     md
 }
 
+#[tauri::command]
+async fn minimize_window(window: tauri::Window) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn toggle_maximize_window(window: tauri::Window) -> Result<bool, String> {
+    let is_max = window.is_maximized().map_err(|e| e.to_string())?;
+    if is_max {
+        window.unmaximize().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        window.maximize().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+async fn close_window(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn hide_to_tray(window: tauri::Window) -> Result<(), String> {
+    window.hide().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn is_window_maximized(window: tauri::Window) -> Result<bool, String> {
+    window.is_maximized().map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -530,6 +562,58 @@ pub fn run() {
                 }
             }
 
+            // Setup System Tray
+            let show_i = tauri::menu::MenuItem::with_id(app, "show", "Open VulnRadar", true, None::<&str>)?;
+            let hide_i = tauri::menu::MenuItem::with_id(app, "hide", "Hide to Tray", true, None::<&str>)?;
+            let quit_i = tauri::menu::MenuItem::with_id(app, "quit", "Quit VulnRadar", true, None::<&str>)?;
+            let menu = tauri::menu::Menu::with_items(app, &[&show_i, &hide_i, &quit_i])?;
+
+            if let Some(tray_icon) = app.default_window_icon().cloned() {
+                let _tray = tauri::tray::TrayIconBuilder::new()
+                    .icon(tray_icon)
+                    .tooltip("VulnRadar - Web Security Scanner")
+                    .menu(&menu)
+                    .show_menu_on_left_click(false)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "show" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.show();
+                                let _ = w.unminimize();
+                                let _ = w.set_focus();
+                            }
+                        }
+                        "hide" => {
+                            if let Some(w) = app.get_webview_window("main") {
+                                let _ = w.hide();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let tauri::tray::TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            let app = tray.app_handle();
+                            if let Some(w) = app.get_webview_window("main") {
+                                if w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false) {
+                                    let _ = w.hide();
+                                } else {
+                                    let _ = w.show();
+                                    let _ = w.unminimize();
+                                    let _ = w.set_focus();
+                                }
+                            }
+                        }
+                    })
+                    .build(app)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -552,7 +636,12 @@ pub fn run() {
             delete_wordlist,
             generate_dynamic_wordlist,
             export_wordlist_file,
-            get_server_port
+            get_server_port,
+            minimize_window,
+            toggle_maximize_window,
+            close_window,
+            hide_to_tray,
+            is_window_maximized
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
