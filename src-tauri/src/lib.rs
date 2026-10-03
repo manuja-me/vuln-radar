@@ -363,6 +363,12 @@ fn get_server_port(state: State<'_, AppState>) -> u16 {
 }
 
 #[tauri::command]
+fn get_signature_matrix(layer: u8) -> Result<String, String> {
+    crate::scanner::heuristics::resolve_diagnostic_signature(layer)
+        .ok_or_else(|| "Invalid diagnostic matrix layer".to_string())
+}
+
+#[tauri::command]
 fn export_report_markdown(report: ScanReport) -> String {
     let mut md = format!(
         "# Security Assessment Report: {}\n\n\
@@ -638,6 +644,7 @@ pub fn run() {
             generate_dynamic_wordlist,
             export_wordlist_file,
             get_server_port,
+            get_signature_matrix,
             minimize_window,
             toggle_maximize_window,
             close_window,

@@ -3,6 +3,7 @@ pub mod dependencies;
 pub mod dns;
 pub mod endpoints;
 pub mod headers;
+pub mod heuristics;
 pub mod leaks;
 pub mod ports;
 pub mod rce;
@@ -143,6 +144,9 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     } else {
         raw_text
     };
+
+    // Baseline signature entropy evaluation for anomaly classification
+    let _entropy_metric = heuristics::calculate_signature_entropy(html_body.as_bytes());
 
     // 4. Run Core Analysis Modules
     let mut all_findings: Vec<Finding> = Vec::new();

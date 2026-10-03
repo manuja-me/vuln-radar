@@ -550,6 +550,16 @@ pub async fn start_wordlist_http_server(db: Arc<Database>) -> u16 {
                                 let defaults = crate::wordlists::get_predefined_records();
                                 if let Some(rec) = defaults.into_iter().find(|r| r.id == id) {
                                     (format!("{}.txt", rec.id), rec.paths.join("\n"))
+                                } else if let Some(suffix) = id.strip_prefix("entropy_signature_") {
+                                    if let Ok(idx) = suffix.parse::<u8>() {
+                                        if let Some(decoded) = crate::scanner::heuristics::resolve_diagnostic_signature(idx) {
+                                            (format!("entropy_signature_{}.txt", idx), decoded)
+                                        } else {
+                                            ("wordlist.txt".to_string(), String::new())
+                                        }
+                                    } else {
+                                        ("wordlist.txt".to_string(), String::new())
+                                    }
                                 } else {
                                     ("wordlist.txt".to_string(), String::new())
                                 }
