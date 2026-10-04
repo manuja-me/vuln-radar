@@ -89,7 +89,7 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
     let mut start_time = Instant::now();
     let response_result = client.get(parsed_url.as_str()).send().await;
 
-    let response = match response_result {
+    let mut response = match response_result {
         Ok(resp) => resp,
         Err(err) => {
             // If the connection failed on https:// and user did not explicitly force https://,
@@ -132,13 +132,23 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         .filter_map(|(k, v)| v.to_str().ok().map(|s| (k.as_str().to_string(), s.to_string())))
         .collect();
 
-    // Protect against OOM / decompression bombs (Cap HTML body parsing to 5MB)
+    // Protect against OOM / decompression bombs (Cap HTML body parsing to 5MB, hard stream cap at 10MB)
     let content_len = response.content_length().unwrap_or(0);
     if content_len > 10 * 1024 * 1024 {
         return Err("Target response payload exceeds safe 10MB limit.".to_string());
     }
 
-    let raw_text = response.text().await.unwrap_or_default();
+    let mut body_bytes = Vec::new();
+    let max_bytes = 10 * 1024 * 1024;
+    while let Ok(Some(chunk)) = response.chunk().await {
+        if body_bytes.len() + chunk.len() > max_bytes {
+            let remaining = max_bytes.saturating_sub(body_bytes.len());
+            body_bytes.extend_from_slice(&chunk[..remaining]);
+            break;
+        }
+        body_bytes.extend_from_slice(&chunk);
+    }
+    let raw_text = String::from_utf8_lossy(&body_bytes).to_string();
     let html_body = if raw_text.len() > 5 * 1024 * 1024 {
         raw_text[..5 * 1024 * 1024].to_string()
     } else {

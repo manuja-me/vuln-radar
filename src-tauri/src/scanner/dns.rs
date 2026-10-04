@@ -140,14 +140,19 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
 
     let dmarc_query_name = format!("_dmarc.{}", clean_domain);
 
+    let doh_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(6))
+        .build()
+        .unwrap_or_else(|_| client.clone());
+
     let (a_res, aaaa_res, ns_res, mx_res, txt_res, dmarc_res, soa_res) = tokio::join!(
-        query_doh(client, &clean_domain, "A"),
-        query_doh(client, &clean_domain, "AAAA"),
-        query_doh(client, &clean_domain, "NS"),
-        query_doh(client, &clean_domain, "MX"),
-        query_doh(client, &clean_domain, "TXT"),
-        query_doh(client, &dmarc_query_name, "TXT"),
-        query_doh(client, &clean_domain, "SOA"),
+        query_doh(&doh_client, &clean_domain, "A"),
+        query_doh(&doh_client, &clean_domain, "AAAA"),
+        query_doh(&doh_client, &clean_domain, "NS"),
+        query_doh(&doh_client, &clean_domain, "MX"),
+        query_doh(&doh_client, &clean_domain, "TXT"),
+        query_doh(&doh_client, &dmarc_query_name, "TXT"),
+        query_doh(&doh_client, &clean_domain, "SOA"),
     );
 
     let (a_answers, a_dnssec, a_lat) = a_res;

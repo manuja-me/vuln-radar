@@ -25,7 +25,7 @@
       if (!str) return '""';
       let clean = str;
       // Prevent CSV / Excel Formula Injection (CWE-1236)
-      if (/^[=+\-@\t\r]/.test(clean)) {
+      if (/^[=+\-@\t\r]/.test(clean.trimStart())) {
         clean = `'${clean}`;
       }
       return `"${clean.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;

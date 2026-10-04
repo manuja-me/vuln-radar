@@ -251,7 +251,6 @@ async fn query_dns(domain: String) -> Result<models::DnsSecurityReport, String> 
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))
-        .danger_accept_invalid_certs(true)
         .build()
         .map_err(|e| e.to_string())?;
 

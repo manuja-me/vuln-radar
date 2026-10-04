@@ -270,7 +270,6 @@ pub fn is_trusted_origin(origin: &str) -> bool {
     lower == "tauri://localhost"
         || lower == "http://tauri.localhost"
         || lower == "https://tauri.localhost"
-        || lower == "null"
         || lower.starts_with("http://localhost:")
         || lower.starts_with("http://127.0.0.1:")
         || lower == "http://localhost"
