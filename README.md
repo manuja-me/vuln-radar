@@ -157,7 +157,9 @@ vuln-radar/
 
 | Version | Release | Highlights |
 |---|---|---|
-| **v1.5.0** | Latest | Custom app header & system tray controls, serialized multi-platform CI, Tauri v2 updates. |
+| **v1.5.2** | Latest | Watchdog retry loop fix, IPC parameter parity, subdomain suffix validation, and hardened cookie auditing. |
+| **v1.5.1** | Oct 2026 | CORS null origin bypass fix, CSV formula escaping, DoH TLS verification, streaming response limits. |
+| **v1.5.0** | Oct 2026 | Custom app header & system tray controls, serialized multi-platform CI, Tauri v2 updates. |
 | **v1.4.x** | Sep 2026 | Modular workspace views, local CORS & path traversal protection. |
 | **v1.3.0** | Sep 2026 | Cryptographically signed in-app auto-updater (Tauri v2). |
 | **v1.2.0** | Sep 2026 | Workspaces sidebar architecture, native window controls, and tactical UI refinements. |

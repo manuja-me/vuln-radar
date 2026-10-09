@@ -7,29 +7,6 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-#[derive(Debug, serde::Deserialize)]
-pub struct AnalyzePathsRequest {
-    #[serde(alias = "websiteUrl", alias = "target_url", alias = "targetUrl")]
-    pub website_url: Option<String>,
-    #[serde(alias = "wordList", alias = "paths")]
-    pub word_list: Option<Vec<String>>,
-    pub timeout_seconds: Option<u64>,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct PathResult {
-    pub path: String,
-    pub status_code: u16,
-    pub content_length: usize,
-    pub content_type: String,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct AnalyzePathsResponse {
-    pub results: Vec<PathResult>,
-    pub total_tested: usize,
-    pub non_404_found: usize,
-}
 
 #[derive(Debug, serde::Serialize)]
 pub struct ApiErrorResponse {
@@ -711,17 +688,6 @@ mod tests {
     }
 
     #[test]
-    fn test_request_payload_deserialization() {
-        let json = r#"{"website_url": "https://example.com", "word_list": ["admin", "api"]}"#;
-        let req: AnalyzePathsRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.website_url, Some("https://example.com".to_string()));
-        assert_eq!(
-            req.word_list,
-            Some(vec!["admin".to_string(), "api".to_string()])
-        );
-    }
-
-    #[test]
     fn test_error_response_serialization() {
         let err = ApiErrorResponse {
             error: "Bad Request".to_string(),
@@ -740,7 +706,7 @@ mod tests {
         assert!(is_trusted_origin("tauri://localhost"));
         assert!(is_trusted_origin("http://tauri.localhost"));
         assert!(is_trusted_origin("https://tauri.localhost"));
-        assert!(is_trusted_origin("null"));
+        assert!(!is_trusted_origin("null"));
         assert!(is_trusted_origin("http://localhost:1420"));
         assert!(is_trusted_origin("http://127.0.0.1:5173"));
 

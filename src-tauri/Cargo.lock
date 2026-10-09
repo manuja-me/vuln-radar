@@ -5104,7 +5104,7 @@ dependencies = [
 
 [[package]]
 name = "vuln-radar"
-version = "1.5.1"
+version = "1.5.2"
 dependencies = [
  "chrono",
  "regex",

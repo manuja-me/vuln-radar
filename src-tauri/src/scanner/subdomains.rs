@@ -15,6 +15,7 @@ pub async fn discover_subdomains(client: &Client, domain: &str) -> Vec<String> {
     }
 
     let mut subdomains: BTreeSet<String> = BTreeSet::new();
+    let dot_domain = format!(".{}", clean_domain);
 
     // 1. Query HackerTarget Hostsearch API (Fast & highly reliable)
     let ht_fut = async {
@@ -26,7 +27,8 @@ pub async fn discover_subdomains(client: &Client, domain: &str) -> Vec<String> {
                     for line in text.lines() {
                         if let Some((sub, _)) = line.split_once(',') {
                             let sub_clean = sub.trim().to_lowercase();
-                            if sub_clean.ends_with(&clean_domain) && !sub_clean.is_empty() {
+                            let is_sub = sub_clean == clean_domain || sub_clean.ends_with(&dot_domain);
+                            if is_sub && !sub_clean.is_empty() {
                                 found.push(sub_clean);
                             }
                         }
@@ -49,7 +51,8 @@ pub async fn discover_subdomains(client: &Client, domain: &str) -> Vec<String> {
                         if let Some(names) = entry.name_value {
                             for line in names.lines() {
                                 let name = line.trim().trim_start_matches("*.").to_lowercase();
-                                if name.ends_with(&clean_domain) && !name.is_empty() {
+                                let is_sub = name == clean_domain || name.ends_with(&dot_domain);
+                                if is_sub && !name.is_empty() {
                                     found.push(name);
                                 }
                             }
@@ -124,5 +127,18 @@ mod tests {
         let name = "*.sub.example.com";
         let clean = name.trim().trim_start_matches("*.").to_lowercase();
         assert_eq!(clean, "sub.example.com");
+    }
+
+    #[test]
+    fn test_subdomain_suffix_matching() {
+        let domain = "example.com";
+        let dot_domain = format!(".{}", domain);
+        let check = |s: &str| s == domain || s.ends_with(&dot_domain);
+
+        assert!(check("sub.example.com"));
+        assert!(check("api.v2.example.com"));
+        assert!(check("example.com"));
+        assert!(!check("fakeexample.com"));
+        assert!(!check("attacker-example.com"));
     }
 }

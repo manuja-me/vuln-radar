@@ -44,7 +44,7 @@
     historyCount = 0,
     hasUpdateAvailable = false,
     updateVersion = "",
-    currentVersion = "1.5.0",
+    currentVersion = "1.5.2",
     onCheckUpdates,
     onApplyOptions,
     onAddMonitor,

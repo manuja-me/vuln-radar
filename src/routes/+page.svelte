@@ -58,7 +58,7 @@
   let updateVersion = $state("");
   let updateModalRef: any = $state(null);
   let exportMarkdown = $state("");
-  const currentAppVersion = "1.5.0";
+  const currentAppVersion = "1.5.2";
 
   function handleCheckUpdates() {
     isUpdateOpen = true;
@@ -234,6 +234,7 @@
     try {
       const res = await invokeTauri<ScanReport>("scan_target", {
         targetUrl: url,
+        url,
         options: scanOptions,
       });
 

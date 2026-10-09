@@ -118,7 +118,7 @@ fn dns_finding(
     .with_refs(refs)
 }
 
-pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (DnsSecurityReport, Vec<Finding>) {
+pub async fn audit_dns_and_email_security(_client: &Client, domain: &str) -> (DnsSecurityReport, Vec<Finding>) {
     let clean_domain = domain.trim_start_matches("www.").to_lowercase();
     let mut report = DnsSecurityReport {
         domain: clean_domain.clone(),
@@ -140,10 +140,13 @@ pub async fn audit_dns_and_email_security(client: &Client, domain: &str) -> (Dns
 
     let dmarc_query_name = format!("_dmarc.{}", clean_domain);
 
-    let doh_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(6))
-        .build()
-        .unwrap_or_else(|_| client.clone());
+    static DOH_CLIENT: std::sync::OnceLock<Client> = std::sync::OnceLock::new();
+    let doh_client = DOH_CLIENT.get_or_init(|| {
+        Client::builder()
+            .timeout(std::time::Duration::from_secs(6))
+            .build()
+            .unwrap_or_default()
+    });
 
     let (a_res, aaaa_res, ns_res, mx_res, txt_res, dmarc_res, soa_res) = tokio::join!(
         query_doh(&doh_client, &clean_domain, "A"),

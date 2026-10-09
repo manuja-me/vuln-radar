@@ -36,11 +36,16 @@ pub fn analyze_cookies(headers: &HeaderMap, is_https: bool) -> Vec<Finding> {
             Err(_) => continue,
         };
 
-        let cookie_name = cookie_str.split('=').next().unwrap_or("unknown").trim();
-        let cookie_lower = cookie_str.to_lowercase();
+        let mut parts = cookie_str.split(';');
+        let cookie_name = parts.next().and_then(|p| p.split('=').next()).unwrap_or("unknown").trim();
+        let attrs: Vec<String> = parts.map(|p| p.trim().to_lowercase()).collect();
+
+        let has_httponly = attrs.iter().any(|a| a == "httponly");
+        let has_secure = attrs.iter().any(|a| a == "secure");
+        let samesite_attr = attrs.iter().find(|a| a.starts_with("samesite"));
 
         // 1. Missing HttpOnly
-        if !cookie_lower.contains("httponly") {
+        if !has_httponly {
             findings.push(cookie_finding(
                 "cookie-missing-httponly",
                 cookie_name,
@@ -56,7 +61,7 @@ pub fn analyze_cookies(headers: &HeaderMap, is_https: bool) -> Vec<Finding> {
         }
 
         // 2. Missing Secure Flag on HTTPS
-        if is_https && !cookie_lower.contains("secure") {
+        if is_https && !has_secure {
             findings.push(cookie_finding(
                 "cookie-missing-secure",
                 cookie_name,
@@ -72,34 +77,60 @@ pub fn analyze_cookies(headers: &HeaderMap, is_https: bool) -> Vec<Finding> {
         }
 
         // 3. SameSite Attribute
-        if !cookie_lower.contains("samesite") {
-            findings.push(cookie_finding(
-                "cookie-missing-samesite",
-                cookie_name,
-                "Missing 'SameSite' Attribute",
-                Severity::Low,
-                format!("The cookie '{}' does not explicitly specify a SameSite policy (Lax, Strict, or None).", cookie_name),
-                "Can increase vulnerability to Cross-Site Request Forgery (CSRF) and cross-site tracking.",
-                "Set 'SameSite=Lax' or 'SameSite=Strict' for the cookie.",
-                "A01:2021-Broken Access Control",
-                cookie_str,
-                "https://web.dev/articles/samesite-cookies-explained",
-            ));
-        } else if cookie_lower.contains("samesite=none") && !cookie_lower.contains("secure") {
-            findings.push(cookie_finding(
-                "cookie-samesite-none-insecure",
-                cookie_name,
-                "Has SameSite=None Without Secure Flag",
-                Severity::High,
-                format!("The cookie '{}' specifies SameSite=None without the Secure attribute.", cookie_name),
-                "Modern browsers will reject this cookie, or unencrypted transmission will expose cross-site cookies.",
-                "Always pair 'SameSite=None' with the 'Secure' attribute.",
-                "A05:2021-Security Misconfiguration",
-                cookie_str,
-                "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitenone",
-            ));
+        match samesite_attr {
+            None => {
+                findings.push(cookie_finding(
+                    "cookie-missing-samesite",
+                    cookie_name,
+                    "Missing 'SameSite' Attribute",
+                    Severity::Low,
+                    format!("The cookie '{}' does not explicitly specify a SameSite policy (Lax, Strict, or None).", cookie_name),
+                    "Can increase vulnerability to Cross-Site Request Forgery (CSRF) and cross-site tracking.",
+                    "Set 'SameSite=Lax' or 'SameSite=Strict' for the cookie.",
+                    "A01:2021-Broken Access Control",
+                    cookie_str,
+                    "https://web.dev/articles/samesite-cookies-explained",
+                ));
+            }
+            Some(attr) => {
+                let clean_samesite = attr.replace(' ', "");
+                if clean_samesite == "samesite=none" && !has_secure {
+                    findings.push(cookie_finding(
+                        "cookie-samesite-none-insecure",
+                        cookie_name,
+                        "Has SameSite=None Without Secure Flag",
+                        Severity::High,
+                        format!("The cookie '{}' specifies SameSite=None without the Secure attribute.", cookie_name),
+                        "Modern browsers will reject this cookie, or unencrypted transmission will expose cross-site cookies.",
+                        "Always pair 'SameSite=None' with the 'Secure' attribute.",
+                        "A05:2021-Security Misconfiguration",
+                        cookie_str,
+                        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitenone",
+                    ));
+                }
+            }
         }
     }
 
     findings
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reqwest::header::HeaderValue;
+
+    #[test]
+    fn test_cookie_attribute_parsing_exact() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "set-cookie",
+            HeaderValue::from_static("notsecure_token=abc; Path=/; SameSite=Lax"),
+        );
+        let findings = analyze_cookies(&headers, true);
+        let ids: Vec<String> = findings.into_iter().map(|f| f.id).collect();
+        assert!(ids.contains(&"cookie-missing-secure-notsecure_token".to_string()));
+        assert!(ids.contains(&"cookie-missing-httponly-notsecure_token".to_string()));
+        assert!(!ids.contains(&"cookie-missing-samesite-notsecure_token".to_string()));
+    }
 }

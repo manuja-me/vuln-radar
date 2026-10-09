@@ -123,10 +123,14 @@ async fn analyze_paths(
 #[tauri::command]
 async fn scan_target(
     state: State<'_, AppState>,
-    url: String,
+    target_url: Option<String>,
+    url: Option<String>,
     options: Option<ScanOptions>,
 ) -> Result<ScanReport, String> {
-    let report = scanner::run_scan(&url, options).await?;
+    let effective_url = target_url
+        .or(url)
+        .ok_or_else(|| "Target URL cannot be empty.".to_string())?;
+    let report = scanner::run_scan(&effective_url, options).await?;
     let _ = state.db.save_scan(&report);
     Ok(report)
 }
@@ -530,28 +534,39 @@ pub fn run() {
 
                     if let Ok(due_targets) = bg_db.get_due_monitors(&now_iso) {
                         for target in due_targets {
-                            if let Ok(report) = scanner::run_scan(&target.target_url, None).await {
-                                let _ = bg_db.save_scan(&report);
-                                let next_scan = Utc::now() + ChronoDuration::hours(target.interval_hours as i64);
-                                let _ = bg_db.update_monitor_scan(
-                                    &target.id,
-                                    &Utc::now().to_rfc3339(),
-                                    &next_scan.to_rfc3339(),
-                                    report.security_score,
-                                );
+                            match scanner::run_scan(&target.target_url, None).await {
+                                Ok(report) => {
+                                    let _ = bg_db.save_scan(&report);
+                                    let next_scan = Utc::now() + ChronoDuration::hours(target.interval_hours as i64);
+                                    let _ = bg_db.update_monitor_scan(
+                                        &target.id,
+                                        &Utc::now().to_rfc3339(),
+                                        &next_scan.to_rfc3339(),
+                                        report.security_score,
+                                    );
 
-                                // If previous score was known and score decreased or critical issues found, emit alert
-                                let previous_score = target.last_score.unwrap_or(report.security_score);
-                                if report.security_score < previous_score || report.critical_count > 0 {
-                                    let alert_payload = serde_json::json!({
-                                        "target_url": target.target_url,
-                                        "new_score": report.security_score,
-                                        "previous_score": previous_score,
-                                        "critical_count": report.critical_count,
-                                    });
-                                    let _ = app_handle.emit("monitor_alert", &alert_payload);
-                                    let _ = app_handle.emit("watchdog_alert", &alert_payload);
-                                    let _ = app_handle.emit("watchdog-alert", &alert_payload);
+                                    // If previous score was known and score decreased or critical issues found, emit alert
+                                    let previous_score = target.last_score.unwrap_or(report.security_score);
+                                    if report.security_score < previous_score || report.critical_count > 0 {
+                                        let alert_payload = serde_json::json!({
+                                            "target_url": target.target_url,
+                                            "new_score": report.security_score,
+                                            "previous_score": previous_score,
+                                            "critical_count": report.critical_count,
+                                        });
+                                        let _ = app_handle.emit("monitor_alert", &alert_payload);
+                                        let _ = app_handle.emit("watchdog_alert", &alert_payload);
+                                        let _ = app_handle.emit("watchdog-alert", &alert_payload);
+                                    }
+                                }
+                                Err(_) => {
+                                    let next_scan = Utc::now() + ChronoDuration::hours(target.interval_hours as i64);
+                                    let _ = bg_db.update_monitor_scan(
+                                        &target.id,
+                                        &Utc::now().to_rfc3339(),
+                                        &next_scan.to_rfc3339(),
+                                        target.last_score.unwrap_or(0),
+                                    );
                                 }
                             }
                         }

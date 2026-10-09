@@ -17,7 +17,7 @@
 
   let {
     isOpen = $bindable(false),
-    currentVersion = "1.3.0",
+    currentVersion = "1.5.2",
     onUpdateStatusChange,
     onClose,
   }: {

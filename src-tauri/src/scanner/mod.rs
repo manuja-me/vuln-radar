@@ -148,12 +148,8 @@ pub async fn run_scan(target_url: &str, options: Option<ScanOptions>) -> Result<
         }
         body_bytes.extend_from_slice(&chunk);
     }
-    let raw_text = String::from_utf8_lossy(&body_bytes).to_string();
-    let html_body = if raw_text.len() > 5 * 1024 * 1024 {
-        raw_text[..5 * 1024 * 1024].to_string()
-    } else {
-        raw_text
-    };
+    let capped_bytes = &body_bytes[..body_bytes.len().min(5 * 1024 * 1024)];
+    let html_body = String::from_utf8_lossy(capped_bytes).to_string();
 
     // Baseline signature entropy evaluation for anomaly classification
     let _entropy_metric = heuristics::calculate_signature_entropy(html_body.as_bytes());
